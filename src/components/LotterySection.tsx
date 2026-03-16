@@ -12,24 +12,10 @@ export function LotterySection() {
         if (response.ok) {
           const data = await response.json();
           
-          // Check if it should be visible
-          if (data.showOnHomepage === false) {
-            setLottery(null);
-            return;
-          }
-
-          if (data.active) {
+          if (data.showOnHomepage) {
             setLottery(data);
-          } else if (data.drawDate) {
-            const drawDate = new Date(data.drawDate);
-            const now = new Date();
-            const diffTime = Math.abs(now.getTime() - drawDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // Show results for 40 days even if inactive
-            if (diffDays <= 40) {
-              setLottery(data);
-            }
+          } else {
+            setLottery(null);
           }
         }
       } catch (error) {
@@ -61,7 +47,7 @@ export function LotterySection() {
           </h2>
           <p className="text-stone-600 max-w-2xl mx-auto flex items-center justify-center gap-2">
             <Calendar className="w-4 h-4" />
-            Data Estrazione: <span className="font-bold">{new Date(lottery.drawDate).toLocaleDateString('it-IT')}</span>
+            Data Estrazione: <span className="font-bold">{lottery.drawDate ? new Date(lottery.drawDate).toLocaleDateString('it-IT') : 'Da definire'}</span>
           </p>
         </div>
 

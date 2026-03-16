@@ -142,7 +142,9 @@ async function startServer() {
     res.json(polls.map(p => ({ 
       ...p, 
       options: JSON.parse(p.options),
-      votes: JSON.parse(p.votes || '[]')
+      votes: JSON.parse(p.votes || '[]'),
+      active: !!p.active,
+      showOnHomepage: !!p.showOnHomepage
     })));
   });
 

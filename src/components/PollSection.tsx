@@ -8,6 +8,7 @@ interface PollOption {
 }
 
 interface Poll {
+  id: number;
   active: boolean;
   showOnHomepage: boolean;
   question: string;
@@ -29,8 +30,9 @@ export function PollSection() {
         const response = await fetch('/api/polls');
         const data = await response.json();
         if (data.length > 0) {
-          const activePoll = data.find((p: any) => p.active) || data[0];
-          setPoll(activePoll);
+          // Find the poll specifically marked for the homepage
+          const homepagePoll = data.find((p: any) => p.showOnHomepage);
+          setPoll(homepagePoll || null);
         }
       } catch (error) {
         console.error('Error fetching poll:', error);
@@ -65,7 +67,7 @@ export function PollSection() {
     }
   };
 
-  if (!poll || !poll.active || !poll.showOnHomepage) return null;
+  if (!poll || !poll.showOnHomepage) return null;
 
   return (
     <section className="py-24 bg-stone-900 overflow-hidden relative">
