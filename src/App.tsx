@@ -27,6 +27,12 @@ export default function App() {
   const [selectedNews, setSelectedNews] = React.useState<any>(null);
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [socialLinks, setSocialLinks] = React.useState({
+    facebook: 'https://facebook.com',
+    instagram: 'https://instagram.com',
+    youtube: 'https://youtube.com',
+    twitter: 'https://twitter.com'
+  });
 
   const [apiStatus, setApiStatus] = React.useState<'checking' | 'ok' | 'error'>('checking');
 
@@ -34,6 +40,13 @@ export default function App() {
     fetch('/api/health')
       .then(res => res.ok ? setApiStatus('ok') : setApiStatus('error'))
       .catch(() => setApiStatus('error'));
+
+    fetch('/api/settings/social_links')
+      .then(res => res.json())
+      .then(data => {
+        if (data.value) setSocialLinks(data.value);
+      })
+      .catch(err => console.error('Error fetching social links:', err));
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -105,18 +118,26 @@ export default function App() {
             <div>
               <h5 className="text-white font-semibold mb-4 uppercase text-xs tracking-widest">Seguici</h5>
               <div className="flex gap-4">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#1877F2] hover:text-white transition-all">
-                  <Facebook className="w-5 h-5" />
-                </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#E4405F] hover:text-white transition-all">
-                  <Instagram className="w-5 h-5" />
-                </a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#1DA1F2] hover:text-white transition-all">
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#FF0000] hover:text-white transition-all">
-                  <Youtube className="w-5 h-5" />
-                </a>
+                {socialLinks.facebook && (
+                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#1877F2] hover:text-white transition-all">
+                    <Facebook className="w-5 h-5" />
+                  </a>
+                )}
+                {socialLinks.instagram && (
+                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#E4405F] hover:text-white transition-all">
+                    <Instagram className="w-5 h-5" />
+                  </a>
+                )}
+                {socialLinks.twitter && (
+                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#1DA1F2] hover:text-white transition-all">
+                    <Twitter className="w-5 h-5" />
+                  </a>
+                )}
+                {socialLinks.youtube && (
+                  <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center hover:bg-[#FF0000] hover:text-white transition-all">
+                    <Youtube className="w-5 h-5" />
+                  </a>
+                )}
               </div>
             </div>
           </div>

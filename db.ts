@@ -74,7 +74,8 @@ export async function getDb() {
       votes TEXT DEFAULT '[]', -- JSON string of {email, phone, date, optionId}
       totalVotes INTEGER DEFAULT 0,
       active INTEGER DEFAULT 1,
-      showOnHomepage INTEGER DEFAULT 0
+      showOnHomepage INTEGER DEFAULT 0,
+      endDate TEXT -- ISO date string
     );
 
     CREATE TABLE IF NOT EXISTS minutes (
@@ -118,6 +119,11 @@ export async function getDb() {
       prizes TEXT, -- JSON string
       history TEXT -- JSON string
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
 
   // Migrations
@@ -125,7 +131,8 @@ export async function getDb() {
     'ALTER TABLE polls ADD COLUMN votes TEXT DEFAULT "[]"',
     'ALTER TABLE polls ADD COLUMN active INTEGER DEFAULT 1',
     'ALTER TABLE polls ADD COLUMN showOnHomepage INTEGER DEFAULT 0',
-    'ALTER TABLE polls ADD COLUMN totalVotes INTEGER DEFAULT 0'
+    'ALTER TABLE polls ADD COLUMN totalVotes INTEGER DEFAULT 0',
+    'ALTER TABLE polls ADD COLUMN endDate TEXT'
   ];
 
   for (const migration of migrations) {
@@ -149,6 +156,18 @@ export async function getDb() {
   if (!adminUser) {
     await db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
       ['admin', 'admin', 'Amministratore']);
+  }
+
+  // Seed social links if not exists
+  const socialLinks = await db.get('SELECT * FROM settings WHERE key = ?', ['social_links']);
+  if (!socialLinks) {
+    const defaultLinks = {
+      facebook: 'https://facebook.com',
+      instagram: 'https://instagram.com',
+      youtube: 'https://youtube.com',
+      twitter: 'https://twitter.com'
+    };
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['social_links', JSON.stringify(defaultLinks)]);
   }
 
   return db;

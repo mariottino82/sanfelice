@@ -14,6 +14,7 @@ interface Poll {
   question: string;
   options: PollOption[];
   votes: any[];
+  endDate?: string;
 }
 
 export function PollSection() {
@@ -74,6 +75,11 @@ export function PollSection() {
 
   if (!poll || !poll.showOnHomepage) return null;
 
+  const isExpired = poll.endDate ? new Date() > new Date(poll.endDate) : false;
+  const isGracePeriodOver = poll.endDate ? new Date() > new Date(new Date(poll.endDate).getTime() + 5 * 24 * 60 * 60 * 1000) : false;
+
+  if (isGracePeriodOver) return null;
+
   return (
     <section className="py-24 bg-stone-900 overflow-hidden relative">
       {/* Decorative background */}
@@ -120,25 +126,63 @@ export function PollSection() {
               {poll.question}
             </h3>
 
-            <div className="space-y-4">
-              {poll.options.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => {
-                    setSelectedOption(option);
-                    setShowVoteModal(true);
-                  }}
-                  className="w-full group relative flex items-center justify-between p-5 rounded-2xl border border-stone-100 hover:border-stone-900 hover:bg-stone-50 transition-all text-left"
-                >
-                  <span className="font-medium text-stone-700 group-hover:text-stone-900 transition-colors">
-                    {option.text}
-                  </span>
-                  <div className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center group-hover:bg-stone-900 group-hover:border-stone-900 transition-all">
-                    <div className="w-2 h-2 rounded-full bg-stone-200 group-hover:bg-white transition-all" />
-                  </div>
-                </button>
-              ))}
-            </div>
+            {isExpired ? (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 text-stone-500 mb-6 justify-center">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Sondaggio Terminato - Risultati</span>
+                </div>
+                {poll.options.map((option) => {
+                  const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
+                  const totalVotes = poll.votes?.length || 0;
+                  const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
+                  
+                  return (
+                    <div key={option.id} className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+                        <span className="text-stone-600">{option.text}</span>
+                        <span className="text-stone-900">{percentage}%</span>
+                      </div>
+                      <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          whileInView={{ width: `${percentage}%` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 1, ease: "easeOut" }}
+                          className="h-full bg-stone-900"
+                        />
+                      </div>
+                      <p className="text-[10px] text-stone-400">{optionVotes} voti</p>
+                    </div>
+                  );
+                })}
+                <div className="pt-6 border-t border-stone-100 text-center">
+                  <p className="text-xs text-stone-500 italic">
+                    Totale votanti: <span className="font-bold text-stone-900">{poll.votes?.length || 0}</span>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {poll.options.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setSelectedOption(option);
+                      setShowVoteModal(true);
+                    }}
+                    className="w-full group relative flex items-center justify-between p-5 rounded-2xl border border-stone-100 hover:border-stone-900 hover:bg-stone-50 transition-all text-left"
+                  >
+                    <span className="font-medium text-stone-700 group-hover:text-stone-900 transition-colors">
+                      {option.text}
+                    </span>
+                    <div className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center group-hover:bg-stone-900 group-hover:border-stone-900 transition-all">
+                      <div className="w-2 h-2 rounded-full bg-stone-200 group-hover:bg-white transition-all" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
       </div>

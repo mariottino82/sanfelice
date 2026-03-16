@@ -180,12 +180,12 @@ async function startServer() {
   });
 
   app.post('/api/polls', async (req, res) => {
-    const { question, options, active, showOnHomepage } = req.body;
-    console.log('Creating new poll:', { question, active, showOnHomepage });
+    const { question, options, active, showOnHomepage, endDate } = req.body;
+    console.log('Creating new poll:', { question, active, showOnHomepage, endDate });
     try {
       const result = await db.run(
-        'INSERT INTO polls (question, options, votes, active, showOnHomepage) VALUES (?, ?, ?, ?, ?)',
-        [question || '', JSON.stringify(options || []), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0]
+        'INSERT INTO polls (question, options, votes, active, showOnHomepage, endDate) VALUES (?, ?, ?, ?, ?, ?)',
+        [question || '', JSON.stringify(options || []), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0, endDate || null]
       );
       console.log('Poll created successfully, ID:', result.lastID);
       res.json({ success: true, id: result.lastID });
@@ -199,12 +199,12 @@ async function startServer() {
   });
 
   app.put('/api/polls/:id', async (req, res) => {
-    const { question, options, active, showOnHomepage } = req.body;
-    console.log(`Updating poll ${req.params.id}:`, { question, active, showOnHomepage });
+    const { question, options, active, showOnHomepage, endDate } = req.body;
+    console.log(`Updating poll ${req.params.id}:`, { question, active, showOnHomepage, endDate });
     try {
       const result = await db.run(
-        'UPDATE polls SET question = ?, options = ?, active = ?, showOnHomepage = ? WHERE id = ?',
-        [question || '', JSON.stringify(options || []), active ? 1 : 0, showOnHomepage ? 1 : 0, req.params.id]
+        'UPDATE polls SET question = ?, options = ?, active = ?, showOnHomepage = ?, endDate = ? WHERE id = ?',
+        [question || '', JSON.stringify(options || []), active ? 1 : 0, showOnHomepage ? 1 : 0, endDate || null, req.params.id]
       );
       console.log(`Poll ${req.params.id} updated successfully. Changes:`, result.changes);
       res.json({ success: true });
@@ -348,6 +348,25 @@ async function startServer() {
     await db.run(
       'UPDATE lottery SET active = ?, showOnHomepage = ?, name = ?, drawDate = ?, prizes = ?, history = ? WHERE id = 1',
       [active ? 1 : 0, showOnHomepage ? 1 : 0, name, drawDate, JSON.stringify(prizes), JSON.stringify(history)]
+    );
+    res.json({ success: true });
+  });
+
+  // Settings API
+  app.get('/api/settings/:key', async (req, res) => {
+    const setting = await db.get('SELECT * FROM settings WHERE key = ?', [req.params.key]);
+    if (setting) {
+      res.json({ value: JSON.parse(setting.value) });
+    } else {
+      res.status(404).json({ error: 'Impostazione non trovata' });
+    }
+  });
+
+  app.post('/api/settings/:key', async (req, res) => {
+    const { value } = req.body;
+    await db.run(
+      'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+      [req.params.key, JSON.stringify(value)]
     );
     res.json({ success: true });
   });

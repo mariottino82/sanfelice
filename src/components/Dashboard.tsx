@@ -9,6 +9,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [members, setMembers] = React.useState([]);
   const [collections, setCollections] = React.useState([]);
   const [news, setNews] = React.useState([]);
+  const [polls, setPolls] = React.useState([]);
   const [lottery, setLottery] = React.useState<any>({
     active: false,
     showOnHomepage: true,
@@ -27,6 +28,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [accounts, setAccounts] = React.useState([
     { id: 1, username: 'admin', role: 'Amministratore', lastLogin: '2026-03-15' }
   ]);
+  const [socialLinks, setSocialLinks] = React.useState({
+    facebook: '',
+    instagram: '',
+    youtube: '',
+    twitter: ''
+  });
 
   const [editingMember, setEditingMember] = React.useState<any>(null);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
@@ -66,7 +73,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           appointmentsRes,
           registrationsRes,
           newsRes,
-          galleryRes
+          galleryRes,
+          usersRes,
+          socialLinksRes
         ] = await Promise.all([
           fetch('/api/members'),
           fetch('/api/finances'),
@@ -76,7 +85,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           fetch('/api/appointments'),
           fetch('/api/registrations'),
           fetch('/api/news'),
-          fetch('/api/gallery')
+          fetch('/api/gallery'),
+          fetch('/api/users'),
+          fetch('/api/settings/social_links')
         ]);
 
         const [
@@ -88,7 +99,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           appointmentsData,
           registrationsData,
           newsData,
-          galleryData
+          galleryData,
+          usersData,
+          socialLinksData
         ] = await Promise.all([
           membersRes.json(),
           financesRes.json(),
@@ -98,13 +111,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           appointmentsRes.json(),
           registrationsRes.json(),
           newsRes.json(),
-          galleryRes.json()
+          galleryRes.json(),
+          usersRes.json(),
+          socialLinksRes.json()
         ]);
 
         setMembers(membersData);
         setCollections(financesData);
         setLottery(lotteryData);
-        // For polls, we take the first active one if it exists
+        setPolls(pollData);
+        // For current active poll in management
         if (pollData.length > 0) {
           const activePoll = pollData.find((p: any) => p.active) || pollData[0];
           setPoll(activePoll);
@@ -114,6 +130,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         setRegistrations(registrationsData);
         setNews(newsData);
         setGallery(galleryData);
+        setAccounts(usersData);
+        if (socialLinksData && socialLinksData.value) {
+          setSocialLinks(socialLinksData.value);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -184,6 +204,51 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     };
 
     await saveLottery(updatedLottery);
+  };
+
+  const saveSocialLinks = async (links: any) => {
+    try {
+      const res = await fetch('/api/settings/social_links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: links })
+      });
+      if (res.ok) {
+        setSocialLinks(links);
+        alert('Link social aggiornati con successo!');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Errore durante il salvataggio dei link social.');
+    }
+  };
+
+  const handleVote = async (optionIndex: number) => {
+    if (!poll || !poll.id) return;
+    try {
+      const response = await fetch(`/api/polls/${poll.id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          optionIndex,
+          email: user?.email,
+          phone: currentMember?.phone || ''
+        })
+      });
+      if (response.ok) {
+        // Refresh poll data
+        const pollRes = await fetch('/api/polls');
+        const pollData = await pollRes.json();
+        if (pollData.length > 0) {
+          const activePoll = pollData.find((p: any) => p.id === poll.id) || pollData[0];
+          setPoll(activePoll);
+        }
+        alert('Voto registrato con successo!');
+      }
+    } catch (error) {
+      console.error('Error voting:', error);
+      alert('Errore durante la votazione.');
+    }
   };
 
   const addAccount = async (newAcc: any) => {
@@ -705,62 +770,99 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
               </div>
 
-              {/* Risultati Sondaggi per i Soci */}
+              {/* Sondaggi per i Soci */}
               <div className="bg-stone-900 p-8 rounded-3xl shadow-sm text-white md:col-span-2">
                 <div className="flex items-center gap-3 text-stone-400 mb-8">
                   <Vote className="w-5 h-5" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Risultati Sondaggio Attivo</span>
+                  <span className="text-xs font-bold uppercase tracking-widest">Sondaggi Associazione</span>
                 </div>
                 
-                {poll && poll.question ? (
-                  <div className="space-y-8">
-                    <div>
-                      <h4 className="text-xl font-serif mb-2">{poll.question}</h4>
-                      <p className="text-stone-500 text-xs italic">La tua opinione aiuta l'associazione a crescere.</p>
-                    </div>
+                <div className="space-y-12">
+                  {polls.length > 0 ? polls.map((p: any) => {
+                    const isExpired = p.endDate ? new Date() > new Date(p.endDate) : false;
+                    const hasVoted = p.votes?.some((v: any) => v.email === user?.email);
+                    const showResults = isExpired || hasVoted;
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-6">
-                        {poll.options.map((option: any) => {
-                          const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
-                          const totalVotes = poll.votes?.length || 0;
-                          const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
-                          
-                          return (
-                            <div key={option.id} className="space-y-2">
-                              <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-                                <span className="text-stone-400">{option.text}</span>
-                                <span>{percentage}%</span>
-                              </div>
-                              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${percentage}%` }}
-                                  className="h-full bg-white"
-                                />
-                              </div>
-                              <p className="text-[10px] text-stone-500">{optionVotes} voti</p>
+                    return (
+                      <div key={p.id} className="space-y-6 pb-8 border-b border-white/5 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-xl font-serif mb-2">{p.question}</h4>
+                            <div className="flex items-center gap-3">
+                              {isExpired ? (
+                                <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest rounded">Terminato</span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest rounded">Attivo</span>
+                              )}
+                              {p.endDate && (
+                                <span className="text-[10px] text-stone-500 uppercase tracking-widest">Scadenza: {new Date(p.endDate).toLocaleDateString('it-IT')}</span>
+                              )}
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        </div>
 
-                      <div className="bg-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center border border-white/10">
-                        <div className="text-4xl font-serif mb-2">{poll.votes?.length || 0}</div>
-                        <p className="text-stone-400 text-xs uppercase tracking-widest font-bold">Voti Totali</p>
-                        <div className="mt-6 w-12 h-1 bg-stone-700 rounded-full" />
-                        <p className="mt-4 text-[10px] text-stone-500 leading-relaxed">
-                          I risultati sono aggiornati in tempo reale. <br />
-                          Grazie per la partecipazione!
-                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-6">
+                            {p.options.map((option: any, idx: number) => {
+                              const optionVotes = p.votes?.filter((v: any) => v.optionId === option.id).length || 0;
+                              const totalVotes = p.votes?.length || 0;
+                              const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
+                              
+                              if (showResults) {
+                                return (
+                                  <div key={option.id} className="space-y-2">
+                                    <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+                                      <span className="text-stone-400">{option.text}</span>
+                                      <span>{percentage}%</span>
+                                    </div>
+                                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${percentage}%` }}
+                                        className="h-full bg-white"
+                                      />
+                                    </div>
+                                    <p className="text-[10px] text-stone-500">{optionVotes} voti</p>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <button
+                                  key={option.id}
+                                  onClick={() => handleVote(idx)}
+                                  className="w-full text-left p-4 rounded-2xl border border-white/10 hover:bg-white/5 hover:border-white/30 transition-all group"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-stone-300 group-hover:text-white transition-colors">{option.text}</span>
+                                    <div className="w-6 h-6 rounded-full border border-white/20 flex items-center justify-center group-hover:border-white/50 transition-colors">
+                                      <div className="w-2 h-2 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="bg-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center border border-white/10">
+                            <div className="text-4xl font-serif mb-2">{p.votes?.length || 0}</div>
+                            <p className="text-stone-400 text-xs uppercase tracking-widest font-bold">Voti Totali</p>
+                            <div className="mt-6 w-12 h-1 bg-stone-700 rounded-full" />
+                            <p className="mt-4 text-[10px] text-stone-500 leading-relaxed">
+                              {showResults
+                                ? 'I risultati sono aggiornati in tempo reale.'
+                                : 'Vota per vedere i risultati in tempo reale.'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
+                    );
+                  }) : (
+                    <div className="text-center py-12">
+                      <p className="text-stone-500 italic">Nessun sondaggio disponibile.</p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-stone-500 italic">Nessun sondaggio attivo al momento.</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1275,6 +1377,76 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
+                  <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
+                    <Share2 className="w-5 h-5" />
+                    Gestione Link Social
+                  </h3>
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const links = Object.fromEntries(formData);
+                      saveSocialLinks(links);
+                    }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  >
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Facebook</label>
+                      <div className="relative">
+                        <Facebook className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="facebook" 
+                          defaultValue={socialLinks.facebook} 
+                          placeholder="https://facebook.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Instagram</label>
+                      <div className="relative">
+                        <Instagram className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="instagram" 
+                          defaultValue={socialLinks.instagram} 
+                          placeholder="https://instagram.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">YouTube</label>
+                      <div className="relative">
+                        <Youtube className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="youtube" 
+                          defaultValue={socialLinks.youtube} 
+                          placeholder="https://youtube.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Twitter / X</label>
+                      <div className="relative">
+                        <Share2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="twitter" 
+                          defaultValue={socialLinks.twitter} 
+                          placeholder="https://twitter.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="md:col-span-2 pt-4">
+                      <button type="submit" className="bg-stone-900 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors">
+                        Salva Link Social
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
 
@@ -1670,6 +1842,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               Aggiungi
                             </button>
                           </form>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Data Termine Sondaggio (Opzionale)</label>
+                            <input 
+                              type="datetime-local"
+                              value={poll.endDate ? poll.endDate.slice(0, 16) : ''}
+                              onChange={(e) => setPoll({ ...poll, endDate: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                              className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                            />
+                            <p className="text-[10px] text-stone-400 mt-1 ml-1">Dopo questa data, il sondaggio mostrerà solo i risultati per 5 giorni prima di sparire dalla home.</p>
+                          </div>
                         </div>
 
                         <div className="pt-6 border-t border-stone-100 flex justify-end">
