@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X } from 'lucide-react';
 
 export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void }) {
-  const isAdmin = user?.role === 'Amministratore';
+  const isAdmin = user?.role === 'Amministratore' || user?.role === 'Presidente' || user?.role === 'Operatore';
   const [activeTab, setActiveTab] = React.useState(isAdmin ? 'members' : 'member-home');
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [members, setMembers] = React.useState([]);
@@ -1083,6 +1083,68 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
+                  <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5" />
+                    Gestione Logo Associazione
+                  </h3>
+                  <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="w-32 h-32 bg-stone-50 rounded-2xl border border-stone-100 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={`/logo.png?t=${Date.now()}`} 
+                        alt="Logo Attuale" 
+                        className="max-w-full max-h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Logo';
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <p className="text-sm text-stone-500">
+                        Carica un nuovo logo per l'associazione. Il file deve essere in formato <strong>PNG</strong> e verrà rinominato automaticamente in <code>logo.png</code>.
+                      </p>
+                      <div className="flex gap-4">
+                        <input 
+                          type="file" 
+                          id="logo-upload" 
+                          accept="image/png" 
+                          className="hidden" 
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            const formData = new FormData();
+                            formData.append('logo', file);
+                            
+                            try {
+                              const res = await fetch('/api/upload-logo', {
+                                method: 'POST',
+                                body: formData
+                              });
+                              if (res.ok) {
+                                alert('Logo aggiornato con successo! Ricarica la pagina per vedere le modifiche ovunque.');
+                                window.location.reload();
+                              } else {
+                                alert('Errore durante il caricamento del logo.');
+                              }
+                            } catch (err) {
+                              console.error(err);
+                              alert('Errore di rete.');
+                            }
+                          }}
+                        />
+                        <label 
+                          htmlFor="logo-upload"
+                          className="bg-stone-900 text-white px-6 py-3 rounded-xl text-sm font-bold cursor-pointer hover:bg-stone-800 transition-colors inline-flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Seleziona Nuovo Logo
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

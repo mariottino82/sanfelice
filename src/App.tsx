@@ -28,6 +28,14 @@ export default function App() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
 
+  const [apiStatus, setApiStatus] = React.useState<'checking' | 'ok' | 'error'>('checking');
+
+  React.useEffect(() => {
+    fetch('/api/health')
+      .then(res => res.ok ? setApiStatus('ok') : setApiStatus('error'))
+      .catch(() => setApiStatus('error'));
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -148,6 +156,11 @@ export default function App() {
                 </div>
                 <h3 className="text-2xl font-serif text-stone-900">Area Riservata</h3>
                 <p className="text-stone-500 text-sm mt-2">Accedi per gestire l'associazione</p>
+                {apiStatus === 'error' && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
+                    Attenzione: Il server non risponde. Verifica la connessione.
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">

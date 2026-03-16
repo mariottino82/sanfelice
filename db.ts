@@ -1,14 +1,21 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let db: Database | null = null;
 
 export async function getDb() {
   if (db) return db;
 
+  const dbPath = path.resolve(__dirname, 'database.sqlite');
+  console.log('Opening database at:', dbPath);
+
   db = await open({
-    filename: path.join(process.cwd(), 'database.sqlite'),
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
@@ -64,6 +71,7 @@ export async function getDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       question TEXT,
       options TEXT, -- JSON string
+      votes TEXT DEFAULT '[]', -- JSON string of {email, phone, date, optionId}
       totalVotes INTEGER DEFAULT 0,
       active INTEGER DEFAULT 1
     );
@@ -122,7 +130,7 @@ export async function getDb() {
   const adminUser = await db.get('SELECT * FROM users LIMIT 1');
   if (!adminUser) {
     await db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
-      ['admin', 'admin', 'Presidente']);
+      ['admin', 'admin', 'Amministratore']);
   }
 
   return db;

@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import multer from 'multer';
 import { getDb } from './db';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -138,14 +139,18 @@ async function startServer() {
   // Polls API
   app.get('/api/polls', async (req, res) => {
     const polls = await db.all('SELECT * FROM polls ORDER BY id DESC');
-    res.json(polls.map(p => ({ ...p, options: JSON.parse(p.options) })));
+    res.json(polls.map(p => ({ 
+      ...p, 
+      options: JSON.parse(p.options),
+      votes: JSON.parse(p.votes || '[]')
+    })));
   });
 
   app.post('/api/polls', async (req, res) => {
     const { question, options } = req.body;
     const result = await db.run(
-      'INSERT INTO polls (question, options) VALUES (?, ?)',
-      [question, JSON.stringify(options)]
+      'INSERT INTO polls (question, options, votes) VALUES (?, ?, ?)',
+      [question, JSON.stringify(options), JSON.stringify([])]
     );
     res.json({ id: result.lastID });
   });
@@ -160,14 +165,28 @@ async function startServer() {
   });
 
   app.post('/api/polls/:id/vote', async (req, res) => {
-    const { optionIndex } = req.body;
+    const { optionIndex, email, phone } = req.body;
     const poll = await db.get('SELECT * FROM polls WHERE id = ?', [req.params.id]);
     if (poll) {
       const options = JSON.parse(poll.options);
-      options[optionIndex].votes += 1;
+      const votes = JSON.parse(poll.votes || '[]');
+      
+      // Update option vote count
+      if (options[optionIndex]) {
+        options[optionIndex].votes = (options[optionIndex].votes || 0) + 1;
+      }
+
+      // Add detailed vote
+      votes.push({
+        email,
+        phone,
+        date: new Date().toISOString(),
+        optionId: options[optionIndex]?.id
+      });
+
       await db.run(
-        'UPDATE polls SET options = ?, totalVotes = totalVotes + 1 WHERE id = ?',
-        [JSON.stringify(options), req.params.id]
+        'UPDATE polls SET options = ?, votes = ?, totalVotes = totalVotes + 1 WHERE id = ?',
+        [JSON.stringify(options), JSON.stringify(votes), req.params.id]
       );
       res.json({ success: true });
     } else {
@@ -300,6 +319,29 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Logo Upload API
+  const publicDir = path.join(process.cwd(), 'public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'public/');
+    },
+    filename: (req, file, cb) => {
+      cb(null, 'logo.png');
+    }
+  });
+  const upload = multer({ storage });
+
+  app.post('/api/upload-logo', upload.single('logo'), (req: any, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nessun file caricato' });
+    }
+    res.json({ success: true, path: '/logo.png' });
+  });
+
   // 1. Percorsi Assoluti Certi
   const rootPath = __dirname;
   const distPath = path.join(rootPath, 'dist');
@@ -321,9 +363,11 @@ async function startServer() {
   app.get('/logo.png', (req, res) => {
     const fileP = path.join(publicPath, 'logo.png');
     const fileD = path.join(distPath, 'logo.png');
+    const fileR = path.join(rootPath, 'logo.png');
     
     if (fs.existsSync(fileP)) return res.sendFile(fileP);
     if (fs.existsSync(fileD)) return res.sendFile(fileD);
+    if (fs.existsSync(fileR)) return res.sendFile(fileR);
     
     res.status(404).send('Logo non trovato sul disco');
   });
