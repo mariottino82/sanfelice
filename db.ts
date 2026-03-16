@@ -118,5 +118,12 @@ export async function getDb() {
       [0, 1, '', '', JSON.stringify([]), JSON.stringify([])]);
   }
 
+  // Seed default admin if no users exist
+  const adminUser = await db.get('SELECT * FROM users LIMIT 1');
+  if (!adminUser) {
+    await db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
+      ['admin', 'admin', 'Presidente']);
+  }
+
   return db;
 }
