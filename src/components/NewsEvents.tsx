@@ -6,10 +6,16 @@ export function NewsEvents({ onNewsClick }: { onNewsClick: (news: any) => void }
   const [news, setNews] = React.useState<any[]>([]);
 
   React.useEffect(() => {
-    const savedNews = localStorage.getItem('news');
-    if (savedNews) {
-      setNews(JSON.parse(savedNews));
-    }
+    const fetchNews = async () => {
+      try {
+        const response = await fetch('/api/news');
+        const data = await response.json();
+        setNews(data);
+      } catch (error) {
+        console.error('Error fetching news:', error);
+      }
+    };
+    fetchNews();
   }, []);
 
   const displayNews = news.length > 0 

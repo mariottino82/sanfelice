@@ -7,21 +7,29 @@ export function Gallery() {
   const [selectedItem, setSelectedItem] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const savedGallery = localStorage.getItem('gallery');
-    if (savedGallery) {
-      setMedia(JSON.parse(savedGallery));
-    } else {
-      // Fallback to default if nothing in localStorage
-      const defaultMedia = [
-        { id: 1, type: 'image', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800' },
-        { id: 2, type: 'image', url: 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?auto=format&fit=crop&q=80&w=800' },
-        { id: 3, type: 'video', url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=800' },
-        { id: 4, type: 'image', url: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800' },
-        { id: 5, type: 'image', url: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&q=80&w=800' },
-        { id: 6, type: 'video', url: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&q=80&w=800' },
-      ];
-      setMedia(defaultMedia);
-    }
+    const fetchGallery = async () => {
+      try {
+        const response = await fetch('/api/gallery');
+        const data = await response.json();
+        if (data.length > 0) {
+          setMedia(data);
+        } else {
+          // Fallback to default if nothing in database
+          const defaultMedia = [
+            { id: 1, type: 'image', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800' },
+            { id: 2, type: 'image', url: 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?auto=format&fit=crop&q=80&w=800' },
+            { id: 3, type: 'video', url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=800' },
+            { id: 4, type: 'image', url: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800' },
+            { id: 5, type: 'image', url: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&q=80&w=800' },
+            { id: 6, type: 'video', url: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&q=80&w=800' },
+          ];
+          setMedia(defaultMedia);
+        }
+      } catch (error) {
+        console.error('Error fetching gallery:', error);
+      }
+    };
+    fetchGallery();
   }, []);
 
   const handleDownload = async (url: string) => {

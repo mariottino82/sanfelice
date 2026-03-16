@@ -24,39 +24,45 @@ export function PollSection() {
   const [voted, setVoted] = React.useState(false);
 
   React.useEffect(() => {
-    const savedPoll = localStorage.getItem('poll');
-    if (savedPoll) {
-      setPoll(JSON.parse(savedPoll));
-    }
+    const fetchPoll = async () => {
+      try {
+        const response = await fetch('/api/polls');
+        const data = await response.json();
+        if (data.length > 0) {
+          const activePoll = data.find((p: any) => p.active) || data[0];
+          setPoll(activePoll);
+        }
+      } catch (error) {
+        console.error('Error fetching poll:', error);
+      }
+    };
+    fetchPoll();
   }, []);
 
-  const handleVote = (e: React.FormEvent) => {
+  const handleVote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!poll || !selectedOption) return;
 
-    const newVote = {
-      email,
-      phone,
-      optionId: selectedOption.id,
-      date: new Date().toISOString()
-    };
+    try {
+      const optionIndex = poll.options.findIndex(o => o.id === selectedOption.id);
+      await fetch(`/api/polls/${poll.id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ optionIndex, email, phone })
+      });
 
-    const updatedPoll = {
-      ...poll,
-      votes: [...(poll.votes || []), newVote]
-    };
-
-    setPoll(updatedPoll);
-    localStorage.setItem('poll', JSON.stringify(updatedPoll));
-    setVoted(true);
-    
-    setTimeout(() => {
-      setShowVoteModal(false);
-      setVoted(false);
-      setEmail('');
-      setPhone('');
-      setSelectedOption(null);
-    }, 2000);
+      setVoted(true);
+      
+      setTimeout(() => {
+        setShowVoteModal(false);
+        setVoted(false);
+        setEmail('');
+        setPhone('');
+        setSelectedOption(null);
+      }, 2000);
+    } catch (error) {
+      console.error('Error voting:', error);
+    }
   };
 
   if (!poll || !poll.active || !poll.showOnHomepage) return null;

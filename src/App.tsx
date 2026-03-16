@@ -16,49 +16,50 @@ import { X, LogIn, Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-  const [user, setUser] = React.useState<any>(null);
+  const [isLoggedIn, setIsLoggedIn] = React.useState(() => {
+    return localStorage.getItem('session_user') !== null;
+  });
+  const [user, setUser] = React.useState<any>(() => {
+    const saved = localStorage.getItem('session_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [selectedNews, setSelectedNews] = React.useState<any>(null);
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check admin accounts from localStorage
-    const savedAccounts = localStorage.getItem('accounts');
-    const accounts = savedAccounts ? JSON.parse(savedAccounts) : [
-      { id: 1, username: 'admin', password: 'admin', role: 'Amministratore' }
-    ];
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
 
-    const adminUser = accounts.find((a: any) => a.username === username && (a.password === password || password === 'admin'));
-    
-    if (adminUser) {
-      setUser(adminUser);
-      setIsLoggedIn(true);
-      setShowLoginModal(false);
-      return;
-    }
+      const data = await response.json();
 
-    // Check members from localStorage
-    const savedMembers = localStorage.getItem('members');
-    const members = savedMembers ? JSON.parse(savedMembers) : [];
-    
-    const memberUser = members.find((m: any) => m.email === username);
-    
-    // For demo purposes, any member can login with password "socio" or their email
-    if (memberUser && (password === 'socio' || password === memberUser.email)) {
-      setUser({ ...memberUser, username: memberUser.name, role: memberUser.role || 'Socio' });
-      setIsLoggedIn(true);
-      setShowLoginModal(false);
-    } else {
-      alert('Credenziali errate. Per i soci: usa la tua email come username e "socio" come password.');
+      if (data.success) {
+        setUser(data.user);
+        setIsLoggedIn(true);
+        setShowLoginModal(false);
+        localStorage.setItem('session_user', JSON.stringify(data.user));
+      } else {
+        alert(data.message || 'Credenziali errate. Per i soci: usa la tua email come username e "socio" come password.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Errore durante il login. Riprova più tardi.');
     }
   };
 
   if (isLoggedIn) {
-    return <Dashboard user={user} onLogout={() => { setIsLoggedIn(false); setUser(null); }} />;
+    return <Dashboard user={user} onLogout={() => { 
+      setIsLoggedIn(false); 
+      setUser(null); 
+      localStorage.removeItem('session_user');
+    }} />;
   }
 
   if (selectedNews) {

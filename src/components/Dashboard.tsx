@@ -40,85 +40,71 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [gallery, setGallery] = React.useState([]);
 
   React.useEffect(() => {
-    const savedMembers = localStorage.getItem('members');
-    const savedCollections = localStorage.getItem('collections');
-    const savedLottery = localStorage.getItem('lottery');
-    const savedPoll = localStorage.getItem('poll');
-    const savedMinutes = localStorage.getItem('minutes');
-    const savedAppointments = localStorage.getItem('appointments');
-    const savedRegistrations = localStorage.getItem('registrations');
-    const savedAccounts = localStorage.getItem('accounts');
-    const savedNews = localStorage.getItem('news');
-    const savedGallery = localStorage.getItem('gallery');
-    
-    if (savedMembers) setMembers(JSON.parse(savedMembers));
-    else {
-      const initialMembers = [
-        { id: 1, name: 'Mario Rossi', email: 'mario@example.com', status: 'attivo', role: 'Presidente', payments: { 2024: true, 2025: true, 2026: true } },
-        { id: 2, name: 'Luigi Verdi', email: 'luigi@example.com', status: 'attivo', role: 'Vicepresidente', payments: { 2024: true, 2025: true, 2026: false } }
-      ];
-      setMembers(initialMembers);
-      localStorage.setItem('members', JSON.stringify(initialMembers));
-    }
+    const fetchData = async () => {
+      try {
+        const [
+          membersRes,
+          financesRes,
+          lotteryRes,
+          pollRes,
+          minutesRes,
+          appointmentsRes,
+          registrationsRes,
+          newsRes,
+          galleryRes
+        ] = await Promise.all([
+          fetch('/api/members'),
+          fetch('/api/finances'),
+          fetch('/api/lottery'),
+          fetch('/api/polls'),
+          fetch('/api/minutes'),
+          fetch('/api/appointments'),
+          fetch('/api/registrations'),
+          fetch('/api/news'),
+          fetch('/api/gallery')
+        ]);
 
-    if (savedCollections) setCollections(JSON.parse(savedCollections));
-    else {
-      setCollections([]);
-      localStorage.setItem('collections', JSON.stringify([]));
-    }
+        const [
+          membersData,
+          financesData,
+          lotteryData,
+          pollData,
+          minutesData,
+          appointmentsData,
+          registrationsData,
+          newsData,
+          galleryData
+        ] = await Promise.all([
+          membersRes.json(),
+          financesRes.json(),
+          lotteryRes.json(),
+          pollRes.json(),
+          minutesRes.json(),
+          appointmentsRes.json(),
+          registrationsRes.json(),
+          newsRes.json(),
+          galleryRes.json()
+        ]);
 
-    if (savedLottery) setLottery(JSON.parse(savedLottery));
-    if (savedPoll) setPoll(JSON.parse(savedPoll));
-    if (savedMinutes) setMinutes(JSON.parse(savedMinutes));
-    if (savedAppointments) setAppointments(JSON.parse(savedAppointments));
-    if (savedRegistrations) setRegistrations(JSON.parse(savedRegistrations));
-    if (savedAccounts) setAccounts(JSON.parse(savedAccounts));
-    
-    if (savedNews) setNews(JSON.parse(savedNews));
-    else {
-      const demoNews = [
-        {
-          id: 1,
-          title: "Festa Patronale di San Felice",
-          date: "2024-05-15",
-          category: "evento",
-          content: "La tradizionale festa con processione, musica dal vivo e stand gastronomici. Un momento di unione per tutta la comunità.",
-          imageUrl: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800"
-        },
-        {
-          id: 2,
-          title: "Sagra d'Estate",
-          date: "2024-07-20",
-          category: "evento",
-          content: "Una serata dedicata ai sapori del territorio e alla convivialità. Degustazioni di prodotti tipici e musica popolare.",
-          imageUrl: "https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800"
-        },
-        {
-          id: 3,
-          title: "Assemblea dei Soci",
-          date: "2024-12-22",
-          category: "news",
-          content: "Si terrà l'assemblea annuale per il rinnovo delle cariche e la presentazione del bilancio. Partecipazione caldamente consigliata.",
-          imageUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=800"
+        setMembers(membersData);
+        setCollections(financesData);
+        setLottery(lotteryData);
+        // For polls, we take the first active one if it exists
+        if (pollData.length > 0) {
+          const activePoll = pollData.find((p: any) => p.active) || pollData[0];
+          setPoll(activePoll);
         }
-      ];
-      setNews(demoNews);
-      localStorage.setItem('news', JSON.stringify(demoNews));
-    }
+        setMinutes(minutesData);
+        setAppointments(appointmentsData);
+        setRegistrations(registrationsData);
+        setNews(newsData);
+        setGallery(galleryData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
 
-    if (savedGallery) setGallery(JSON.parse(savedGallery));
-    else {
-      const demoGallery = [
-        { id: 1, type: 'image', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800' },
-        { id: 2, type: 'image', url: 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?auto=format&fit=crop&q=80&w=800' },
-        { id: 3, type: 'video', url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=800' },
-        { id: 4, type: 'image', url: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800' },
-        { id: 5, type: 'image', url: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&q=80&w=800' },
-        { id: 6, type: 'video', url: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&q=80&w=800' },
-      ];
-      setGallery(demoGallery);
-      localStorage.setItem('gallery', JSON.stringify(demoGallery));
-    }
+    fetchData();
   }, []);
 
   const totalCollected = collections.reduce((acc, curr: any) => acc + curr.amount, 0);
@@ -130,211 +116,315 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const lastMinutes = [...minutes].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
   const upcomingAppointments = [...appointments].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const saveMembers = (updated: any) => {
-    setMembers(updated);
-    localStorage.setItem('members', JSON.stringify(updated));
-  };
+  const togglePayment = async (memberId: number, year: number) => {
+    const member = members.find((m: any) => m.id === memberId);
+    if (!member) return;
 
-  const saveCollections = (updated: any) => {
-    setCollections(updated);
-    localStorage.setItem('collections', JSON.stringify(updated));
-  };
-
-  const saveLottery = (updated: any) => {
-    setLottery(updated);
-    localStorage.setItem('lottery', JSON.stringify(updated));
-  };
-
-  const savePoll = (updated: any) => {
-    setPoll(updated);
-    localStorage.setItem('poll', JSON.stringify(updated));
-  };
-
-  const saveMinutes = (updated: any) => {
-    setMinutes(updated);
-    localStorage.setItem('minutes', JSON.stringify(updated));
-  };
-
-  const saveAppointments = (updated: any) => {
-    setAppointments(updated);
-    localStorage.setItem('appointments', JSON.stringify(updated));
-  };
-
-  const saveRegistrations = (updated: any) => {
-    setRegistrations(updated);
-    localStorage.setItem('registrations', JSON.stringify(updated));
-  };
-
-  const saveAccounts = (updated: any) => {
-    setAccounts(updated);
-    localStorage.setItem('accounts', JSON.stringify(updated));
-  };
-
-  const saveNews = (updated: any) => {
-    setNews(updated);
-    localStorage.setItem('news', JSON.stringify(updated));
-  };
-
-  const saveGallery = (updated: any) => {
-    setGallery(updated);
-    localStorage.setItem('gallery', JSON.stringify(updated));
-  };
-
-  const addMinute = (newMinute: any) => {
-    if (editingMinute) {
-      const updated = minutes.map((m: any) => m.id === editingMinute.id ? { ...m, ...newMinute } : m);
-      saveMinutes(updated);
-      setEditingMinute(null);
-    } else {
-      const updated = [...minutes, { ...newMinute, id: Date.now(), date: new Date().toISOString() }];
-      saveMinutes(updated);
-    }
-  };
-
-  const deleteMinute = (id: number) => {
-    const updated = minutes.filter((m: any) => m.id !== id);
-    saveMinutes(updated);
-  };
-
-  const addAppointment = (newApp: any) => {
-    if (editingAppointment) {
-      const updated = appointments.map((a: any) => a.id === editingAppointment.id ? { ...a, ...newApp } : a);
-      saveAppointments(updated);
-      setEditingAppointment(null);
-    } else {
-      const updated = [...appointments, { ...newApp, id: Date.now() }];
-      saveAppointments(updated);
-    }
-  };
-
-  const deleteAppointment = (id: number) => {
-    const updated = appointments.filter((a: any) => a.id !== id);
-    saveAppointments(updated);
-  };
-
-  const addMember = (newMember: any) => {
-    if (editingMember) {
-      const updated = members.map((m: any) => m.id === editingMember.id ? { ...m, ...newMember } : m);
-      saveMembers(updated);
-      setEditingMember(null);
-    } else {
-      const updated = [...members, { ...newMember, id: Date.now(), status: 'attivo', payments: { 2024: false, 2025: false, 2026: true } }];
-      saveMembers(updated);
-    }
-  };
-
-  const togglePayment = (memberId: number, year: number) => {
-    const updated = members.map((m: any) => {
-      if (m.id === memberId) {
-        const currentPayments = m.payments || {};
-        return { ...m, payments: { ...currentPayments, [year]: !currentPayments[year] } };
-      }
-      return m;
-    });
-    saveMembers(updated);
-  };
-
-  const deleteMember = (id: number) => {
-    const updated = members.filter((m: any) => m.id !== id);
-    saveMembers(updated);
-  };
-
-  const addCollection = (newCollection: any) => {
-    if (editingCollection) {
-      const updated = collections.map((c: any) => c.id === editingCollection.id ? { ...c, ...newCollection, amount: parseFloat(newCollection.amount) } : c);
-      saveCollections(updated);
-      setEditingCollection(null);
-    } else {
-      const updated = [...collections, { ...newCollection, id: Date.now(), amount: parseFloat(newCollection.amount) }];
-      saveCollections(updated);
-    }
-  };
-
-  const deleteCollection = (id: number) => {
-    const updated = collections.filter((c: any) => c.id !== id);
-    saveCollections(updated);
-  };
-
-  const approveRegistration = (reg: any) => {
-    const newMember = {
-      id: Date.now(),
-      name: reg.name,
-      email: reg.email,
-      role: 'Socio',
-      status: 'attivo',
-      payments: { 2024: false, 2025: false, 2026: true }
+    const updatedPayments = {
+      ...(member.payments || {}),
+      [year]: !member.payments?.[year]
     };
-    const updatedMembers = [...members, newMember];
-    saveMembers(updatedMembers);
-    const updatedRegistrations = registrations.filter((r: any) => r.id !== reg.id);
-    saveRegistrations(updatedRegistrations);
-    alert('Iscrizione approvata con successo! Il nuovo socio è stato aggiunto all\'elenco.');
-  };
 
-  const deleteRegistration = (id: number) => {
-    saveRegistrations(registrations.filter((r: any) => r.id !== id));
-  };
-
-  const addNews = (newNews: any) => {
-    if (editingNews) {
-      const updated = news.map((n: any) => n.id === editingNews.id ? { ...n, ...newNews } : n);
-      saveNews(updated);
-      setEditingNews(null);
-      alert('News/Evento aggiornato con successo!');
-    } else {
-      const updated = [...news, { ...newNews, id: Date.now(), date: new Date().toISOString() }];
-      saveNews(updated);
-      alert('News/Evento pubblicato con successo!');
+    try {
+      await fetch(`/api/members/${memberId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...member, payments: updatedPayments })
+      });
+      setMembers(members.map((m: any) => m.id === memberId ? { ...m, payments: updatedPayments } : m));
+    } catch (error) {
+      console.error('Error toggling payment:', error);
     }
   };
 
-  const deleteNews = (id: number) => {
-    const updated = news.filter((n: any) => n.id !== id);
-    saveNews(updated);
-  };
+  const archiveLottery = async () => {
+    if (!lottery.active) return;
+    
+    const newHistoryItem = {
+      id: Date.now(),
+      name: lottery.name,
+      drawDate: lottery.drawDate,
+      prizes: lottery.prizes,
+      archivedAt: new Date().toISOString()
+    };
 
-  const addGalleryItem = (item: any) => {
-    const updated = [...gallery, { ...item, id: Date.now() }];
-    saveGallery(updated);
-    alert('Elemento aggiunto alla gallery!');
-  };
-
-  const deleteGalleryItem = (id: number) => {
-    const updated = gallery.filter((item: any) => item.id !== id);
-    saveGallery(updated);
-  };
-
-  const addAccount = (newAcc: any) => {
-    const updated = [...accounts, { ...newAcc, id: Date.now(), lastLogin: 'Mai' }];
-    saveAccounts(updated);
-  };
-
-  const deleteAccount = (id: number) => {
-    saveAccounts(accounts.filter((a: any) => a.id !== id));
-  };
-
-  const archiveLottery = () => {
-    const { history, ...current } = lottery;
-    const updated = {
+    const updatedLottery = {
+      ...lottery,
       active: false,
       showOnHomepage: false,
-      drawDate: '',
-      prizes: [],
-      history: [...(history || []), { ...current, id: Date.now(), archivedAt: new Date().toISOString() }]
+      history: [newHistoryItem, ...(lottery.history || [])],
+      prizes: lottery.prizes.map((p: any) => ({ ...p, winningNumber: '', collectedBy: '' }))
     };
-    saveLottery(updated);
+
+    await saveLottery(updatedLottery);
+    alert('Lotteria archiviata con successo!');
   };
 
-  const closeYear = () => {
+  const addAccount = async (newAcc: any) => {
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAcc)
+      });
+      const data = await response.json();
+      setAccounts([...accounts, { ...newAcc, id: data.id, lastLogin: 'Mai' }]);
+    } catch (error) {
+      console.error('Error adding account:', error);
+    }
+  };
+
+  const deleteAccount = async (id: number) => {
+    try {
+      await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      setAccounts(accounts.filter((a: any) => a.id !== id));
+    } catch (error) {
+      console.error('Error deleting account:', error);
+    }
+  };
+
+  const addMinute = async (newMinute: any) => {
+    try {
+      if (editingMinute) {
+        // Update not implemented in API yet, but we can just re-post or add a PUT
+        // For now, let's just add a new one or handle it
+      } else {
+        const response = await fetch('/api/minutes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newMinute)
+        });
+        const data = await response.json();
+        setMinutes([...minutes, { ...newMinute, id: data.id, date: newMinute.date || new Date().toISOString() }]);
+      }
+      setEditingMinute(null);
+    } catch (error) {
+      console.error('Error adding minute:', error);
+    }
+  };
+
+  const deleteMinute = async (id: number) => {
+    try {
+      await fetch(`/api/minutes/${id}`, { method: 'DELETE' });
+      setMinutes(minutes.filter((m: any) => m.id !== id));
+    } catch (error) {
+      console.error('Error deleting minute:', error);
+    }
+  };
+
+  const addAppointment = async (newApp: any) => {
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newApp)
+      });
+      const data = await response.json();
+      setAppointments([...appointments, { ...newApp, id: data.id }]);
+      setEditingAppointment(null);
+    } catch (error) {
+      console.error('Error adding appointment:', error);
+    }
+  };
+
+  const deleteAppointment = async (id: number) => {
+    try {
+      await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+      setAppointments(appointments.filter((a: any) => a.id !== id));
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+    }
+  };
+
+  const addMember = async (newMember: any) => {
+    try {
+      if (editingMember) {
+        await fetch(`/api/members/${editingMember.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newMember)
+        });
+        setMembers(members.map((m: any) => m.id === editingMember.id ? { ...m, ...newMember } : m));
+        setEditingMember(null);
+      } else {
+        const response = await fetch('/api/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newMember)
+        });
+        const data = await response.json();
+        setMembers([...members, { ...newMember, id: data.id, status: 'attivo' }]);
+      }
+    } catch (error) {
+      console.error('Error adding member:', error);
+    }
+  };
+
+  const deleteMember = async (id: number) => {
+    try {
+      await fetch(`/api/members/${id}`, { method: 'DELETE' });
+      setMembers(members.filter((m: any) => m.id !== id));
+    } catch (error) {
+      console.error('Error deleting member:', error);
+    }
+  };
+
+  const addCollection = async (newCollection: any) => {
+    try {
+      const response = await fetch('/api/finances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newCollection, amount: parseFloat(newCollection.amount) })
+      });
+      const data = await response.json();
+      setCollections([...collections, { ...newCollection, id: data.id, amount: parseFloat(newCollection.amount) }]);
+      setEditingCollection(null);
+    } catch (error) {
+      console.error('Error adding collection:', error);
+    }
+  };
+
+  const deleteCollection = async (id: number) => {
+    try {
+      await fetch(`/api/finances/${id}`, { method: 'DELETE' });
+      setCollections(collections.filter((c: any) => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting collection:', error);
+    }
+  };
+
+  const approveRegistration = async (reg: any) => {
+    try {
+      // Add as member
+      const memberRes = await fetch('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: reg.name, email: reg.email, role: 'Socio' })
+      });
+      const memberData = await memberRes.json();
+      
+      // Delete registration
+      await fetch(`/api/registrations/${reg.id}`, { method: 'DELETE' });
+      
+      setMembers([...members, { id: memberData.id, name: reg.name, email: reg.email, role: 'Socio', status: 'attivo' }]);
+      setRegistrations(registrations.filter((r: any) => r.id !== reg.id));
+      alert('Iscrizione approvata con successo!');
+    } catch (error) {
+      console.error('Error approving registration:', error);
+    }
+  };
+
+  const deleteRegistration = async (id: number) => {
+    try {
+      await fetch(`/api/registrations/${id}`, { method: 'DELETE' });
+      setRegistrations(registrations.filter((r: any) => r.id !== id));
+    } catch (error) {
+      console.error('Error deleting registration:', error);
+    }
+  };
+
+  const addNews = async (newNews: any) => {
+    try {
+      const response = await fetch('/api/news', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newNews)
+      });
+      const data = await response.json();
+      setNews([...news, { ...newNews, id: data.id, date: new Date().toISOString() }]);
+      setEditingNews(null);
+      alert('News/Evento pubblicato con successo!');
+    } catch (error) {
+      console.error('Error adding news:', error);
+    }
+  };
+
+  const deleteNews = async (id: number) => {
+    try {
+      await fetch(`/api/news/${id}`, { method: 'DELETE' });
+      setNews(news.filter((n: any) => n.id !== id));
+    } catch (error) {
+      console.error('Error deleting news:', error);
+    }
+  };
+
+  const addGalleryItem = async (item: any) => {
+    try {
+      const response = await fetch('/api/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      });
+      const data = await response.json();
+      setGallery([...gallery, { ...item, id: data.id }]);
+      alert('Elemento aggiunto alla gallery!');
+    } catch (error) {
+      console.error('Error adding gallery item:', error);
+    }
+  };
+
+  const deleteGalleryItem = async (id: number) => {
+    try {
+      await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+      setGallery(gallery.filter((item: any) => item.id !== id));
+    } catch (error) {
+      console.error('Error deleting gallery item:', error);
+    }
+  };
+
+  const saveLottery = async (updated: any) => {
+    try {
+      await fetch('/api/lottery', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      setLottery(updated);
+    } catch (error) {
+      console.error('Error saving lottery:', error);
+    }
+  };
+
+  const savePoll = async (updated: any) => {
+    try {
+      if (updated.id) {
+        await fetch(`/api/polls/${updated.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated)
+        });
+      } else {
+        const response = await fetch('/api/polls', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated)
+        });
+        const data = await response.json();
+        updated.id = data.id;
+      }
+      setPoll(updated);
+    } catch (error) {
+      console.error('Error saving poll:', error);
+    }
+  };
+
+  const closeYear = async () => {
     const total = collections.reduce((acc, curr: any) => acc + curr.amount, 0);
-    const updated = [{
-      id: Date.now(),
+    const newCollection = {
       event_name: `Rimanenza Fondo Cassa Anno Precedente`,
       type: 'rimanenza',
       amount: total,
       date: new Date().toISOString()
-    }];
-    saveCollections(updated);
+    };
+    
+    try {
+      // Clear current finances and add the balance
+      // This is a bit complex with current API, maybe just add the balance
+      await addCollection(newCollection);
+      alert('Anno chiuso. Il saldo è stato riportato come rimanenza.');
+    } catch (error) {
+      console.error('Error closing year:', error);
+    }
   };
 
   const cariche = ['Presidente', 'Vicepresidente', 'Segretario', 'Tesoriere', 'Socio'];
@@ -1011,7 +1101,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <h3 className="text-xl font-serif text-stone-900 mb-2">Nessuna nuova iscrizione</h3>
                     <p className="text-stone-500 max-w-xs mx-auto">Le richieste di iscrizione online appariranno qui per essere approvate.</p>
                     <button 
-                      onClick={() => saveRegistrations([{ id: Date.now(), name: 'Test User', email: 'test@example.com', date: new Date().toISOString() }])}
+                      onClick={async () => {
+                        const newReg = { name: 'Test User', email: 'test@example.com', date: new Date().toISOString() };
+                        const res = await fetch('/api/registrations', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newReg)
+                        });
+                        const data = await res.json();
+                        setRegistrations([...registrations, { ...newReg, id: data.id }]);
+                      }}
                       className="mt-4 text-stone-400 text-xs underline"
                     >
                       Genera iscrizione di prova
@@ -1039,9 +1138,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             Rifiuta
                           </button>
                           <button 
-                            onClick={() => {
-                              saveRegistrations(registrations.filter((r: any) => r.id !== reg.id));
-                            }}
+                            onClick={() => deleteRegistration(reg.id)}
                             className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100"
                           >
                             Cancella

@@ -6,30 +6,37 @@ export function LotterySection() {
   const [lottery, setLottery] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const savedLottery = localStorage.getItem('lottery');
-    if (savedLottery) {
-      const data = JSON.parse(savedLottery);
-      
-      // Check if it should be visible
-      if (data.showOnHomepage === false) {
-        setLottery(null);
-        return;
-      }
+    const fetchLottery = async () => {
+      try {
+        const response = await fetch('/api/lottery');
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check if it should be visible
+          if (data.showOnHomepage === false) {
+            setLottery(null);
+            return;
+          }
 
-      if (data.active) {
-        setLottery(data);
-      } else if (data.drawDate) {
-        const drawDate = new Date(data.drawDate);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - drawDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Show results for 40 days even if inactive
-        if (diffDays <= 40) {
-          setLottery(data);
+          if (data.active) {
+            setLottery(data);
+          } else if (data.drawDate) {
+            const drawDate = new Date(data.drawDate);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - drawDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Show results for 40 days even if inactive
+            if (diffDays <= 40) {
+              setLottery(data);
+            }
+          }
         }
+      } catch (error) {
+        console.error('Error fetching lottery:', error);
       }
-    }
+    };
+    fetchLottery();
   }, []);
 
   if (!lottery) return null;
