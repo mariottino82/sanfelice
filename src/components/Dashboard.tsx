@@ -928,7 +928,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <input 
                           type="text" 
                           value={lottery.name || ''}
-                          onChange={(e) => saveLottery({ ...lottery, name: e.target.value })}
+                          onChange={(e) => setLottery({ ...lottery, name: e.target.value })}
                           placeholder="es. Lotteria di Primavera 2026"
                           className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm"
                         />
@@ -938,7 +938,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <input 
                           type="date" 
                           value={lottery.drawDate}
-                          onChange={(e) => saveLottery({ ...lottery, drawDate: e.target.value })}
+                          onChange={(e) => setLottery({ ...lottery, drawDate: e.target.value })}
                           className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm"
                         />
                       </div>
@@ -950,7 +950,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             const formData = new FormData(e.currentTarget);
                             const name = formData.get('prize_name') as string;
                             const newPrize = { id: Date.now(), name, winningNumber: '', collectedBy: '' };
-                            saveLottery({ ...lottery, prizes: [...lottery.prizes, newPrize] });
+                            setLottery({ ...lottery, prizes: [...lottery.prizes, newPrize] });
                             e.currentTarget.reset();
                           }}
                           className="flex gap-2"
@@ -960,6 +960,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <Plus className="w-5 h-5" />
                           </button>
                         </form>
+                      </div>
+
+                      <div className="pt-4 border-t border-stone-100 flex justify-end">
+                        <button 
+                          onClick={() => {
+                            saveLottery(lottery);
+                            alert('Lotteria salvata con successo!');
+                          }}
+                          className="bg-stone-900 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:shadow-lg transition-all active:scale-95"
+                        >
+                          Salva Configurazione
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -977,7 +989,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <button 
                               onClick={() => {
                                 const updated = lottery.prizes.filter((p: any) => p.id !== prize.id);
-                                saveLottery({ ...lottery, prizes: updated });
+                                setLottery({ ...lottery, prizes: updated });
                               }}
                               className="text-stone-300 hover:text-red-500"
                             >
@@ -992,7 +1004,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 value={prize.winningNumber}
                                 onChange={(e) => {
                                   const updated = lottery.prizes.map((p: any) => p.id === prize.id ? { ...p, winningNumber: e.target.value } : p);
-                                  saveLottery({ ...lottery, prizes: updated });
+                                  setLottery({ ...lottery, prizes: updated });
                                 }}
                                 className="w-full px-3 py-1 rounded-lg border border-stone-100 text-sm font-mono"
                                 placeholder="---"
@@ -1005,7 +1017,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 value={prize.collectedBy}
                                 onChange={(e) => {
                                   const updated = lottery.prizes.map((p: any) => p.id === prize.id ? { ...p, collectedBy: e.target.value } : p);
-                                  saveLottery({ ...lottery, prizes: updated });
+                                  setLottery({ ...lottery, prizes: updated });
                                 }}
                                 className="w-full px-3 py-1 rounded-lg border border-stone-100 text-sm"
                                 placeholder="Nome..."
@@ -1515,7 +1527,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Testo della Domanda</label>
                           <textarea 
                             value={poll.question}
-                            onChange={(e) => savePoll({ ...poll, question: e.target.value })}
+                            onChange={(e) => setPoll({ ...poll, question: e.target.value })}
                             placeholder="Cosa ne pensi delle nuove attività dell'associazione?"
                             className="w-full px-4 py-3 rounded-2xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all h-24"
                           />
@@ -1530,14 +1542,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 value={option.text}
                                 onChange={(e) => {
                                   const updated = poll.options.map((o: any) => o.id === option.id ? { ...o, text: e.target.value } : o);
-                                  savePoll({ ...poll, options: updated });
+                                  setPoll({ ...poll, options: updated });
                                 }}
                                 className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm"
                               />
                               <button 
                                 onClick={() => {
                                   const updated = poll.options.filter((o: any) => o.id !== option.id);
-                                  savePoll({ ...poll, options: updated });
+                                  setPoll({ ...poll, options: updated });
                                 }}
                                 className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors"
                               >
@@ -1551,7 +1563,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               const formData = new FormData(e.currentTarget);
                               const text = formData.get('option_text') as string;
                               const newOption = { id: Date.now(), text };
-                              savePoll({ ...poll, options: [...poll.options, newOption] });
+                              setPoll({ ...poll, options: [...poll.options, newOption] });
                               e.currentTarget.reset();
                             }}
                             className="flex gap-2"
@@ -1561,6 +1573,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               Aggiungi
                             </button>
                           </form>
+                        </div>
+
+                        <div className="pt-6 border-t border-stone-100 flex justify-end">
+                          <button 
+                            onClick={() => {
+                              savePoll(poll);
+                              alert('Sondaggio salvato con successo!');
+                            }}
+                            className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:shadow-lg transition-all active:scale-95"
+                          >
+                            Salva Modifiche Sondaggio
+                          </button>
                         </div>
                       </div>
                     </div>
