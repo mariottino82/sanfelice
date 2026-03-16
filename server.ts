@@ -150,20 +150,30 @@ async function startServer() {
 
   app.post('/api/polls', async (req, res) => {
     const { question, options, active, showOnHomepage } = req.body;
-    const result = await db.run(
-      'INSERT INTO polls (question, options, votes, active, showOnHomepage) VALUES (?, ?, ?, ?, ?)',
-      [question, JSON.stringify(options), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0]
-    );
-    res.json({ id: result.lastID });
+    try {
+      const result = await db.run(
+        'INSERT INTO polls (question, options, votes, active, showOnHomepage) VALUES (?, ?, ?, ?, ?)',
+        [question, JSON.stringify(options), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0]
+      );
+      res.json({ success: true, id: result.lastID });
+    } catch (error) {
+      console.error('Error creating poll:', error);
+      res.status(500).json({ success: false, error: 'Errore durante la creazione del sondaggio' });
+    }
   });
 
   app.put('/api/polls/:id', async (req, res) => {
     const { question, options, active, showOnHomepage } = req.body;
-    await db.run(
-      'UPDATE polls SET question = ?, options = ?, active = ?, showOnHomepage = ? WHERE id = ?',
-      [question, JSON.stringify(options), active ? 1 : 0, showOnHomepage ? 1 : 0, req.params.id]
-    );
-    res.json({ success: true });
+    try {
+      await db.run(
+        'UPDATE polls SET question = ?, options = ?, active = ?, showOnHomepage = ? WHERE id = ?',
+        [question, JSON.stringify(options), active ? 1 : 0, showOnHomepage ? 1 : 0, req.params.id]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error updating poll:', error);
+      res.status(500).json({ success: false, error: 'Errore durante il salvataggio del sondaggio' });
+    }
   });
 
   app.post('/api/polls/:id/vote', async (req, res) => {

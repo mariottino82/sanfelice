@@ -29,13 +29,16 @@ export function PollSection() {
       try {
         const response = await fetch('/api/polls');
         const data = await response.json();
-        if (data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           // Find the poll specifically marked for the homepage
           const homepagePoll = data.find((p: any) => p.showOnHomepage);
           setPoll(homepagePoll || null);
+        } else {
+          setPoll(null);
         }
       } catch (error) {
         console.error('Error fetching poll:', error);
+        setPoll(null);
       }
     };
     fetchPoll();

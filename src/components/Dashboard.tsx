@@ -399,23 +399,27 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const savePoll = async (updated: any) => {
     try {
       if (updated.id) {
-        await fetch(`/api/polls/${updated.id}`, {
+        const response = await fetch(`/api/polls/${updated.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updated)
         });
+        if (!response.ok) throw new Error('Errore durante il salvataggio');
       } else {
         const response = await fetch('/api/polls', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updated)
         });
+        if (!response.ok) throw new Error('Errore durante la creazione');
         const data = await response.json();
         updated.id = data.id;
       }
-      setPoll(updated);
+      setPoll({ ...updated });
+      return true;
     } catch (error) {
       console.error('Error saving poll:', error);
+      return false;
     }
   };
 
@@ -1577,9 +1581,13 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                         <div className="pt-6 border-t border-stone-100 flex justify-end">
                           <button 
-                            onClick={() => {
-                              savePoll(poll);
-                              alert('Sondaggio salvato con successo!');
+                            onClick={async () => {
+                              const success = await savePoll(poll);
+                              if (success) {
+                                alert('Sondaggio salvato con successo!');
+                              } else {
+                                alert('Errore durante il salvataggio del sondaggio. Riprova.');
+                              }
                             }}
                             className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:shadow-lg transition-all active:scale-95"
                           >
