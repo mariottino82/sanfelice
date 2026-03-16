@@ -14,11 +14,37 @@ async function startServer() {
   const PORT = 3000;
   const db = await getDb();
 
+  // Database write test
+  try {
+    await db.run('CREATE TABLE IF NOT EXISTS _write_test (id INTEGER PRIMARY KEY, val TEXT)');
+    await db.run('INSERT INTO _write_test (val) VALUES (?)', ['test_' + Date.now()]);
+    console.log('Database write test successful');
+  } catch (e) {
+    console.error('DATABASE WRITE TEST FAILED! Database might be read-only.', e);
+  }
+
   app.use(express.json());
 
   // Health check
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
+  app.get('/api/health', async (req, res) => {
+    let dbStatus = 'unknown';
+    let dbError = null;
+    try {
+      await db.run('CREATE TABLE IF NOT EXISTS _write_test (id INTEGER PRIMARY KEY, val TEXT)');
+      await db.run('INSERT INTO _write_test (val) VALUES (?)', ['health_check_' + Date.now()]);
+      dbStatus = 'writable';
+    } catch (e: any) {
+      dbStatus = 'error';
+      dbError = e.message;
+      console.error('Health check DB error:', e);
+    }
+    res.json({ 
+      status: 'ok', 
+      time: new Date().toISOString(),
+      database: dbStatus,
+      databaseError: dbError,
+      env: process.env.NODE_ENV || 'development'
+    });
   });
 
   // Auth API
@@ -138,41 +164,56 @@ async function startServer() {
 
   // Polls API
   app.get('/api/polls', async (req, res) => {
-    const polls = await db.all('SELECT * FROM polls ORDER BY id DESC');
-    res.json(polls.map(p => ({ 
-      ...p, 
-      options: JSON.parse(p.options),
-      votes: JSON.parse(p.votes || '[]'),
-      active: !!p.active,
-      showOnHomepage: !!p.showOnHomepage
-    })));
+    try {
+      const polls = await db.all('SELECT * FROM polls ORDER BY id DESC');
+      res.json(polls.map(p => ({ 
+        ...p, 
+        options: JSON.parse(p.options || '[]'),
+        votes: JSON.parse(p.votes || '[]'),
+        active: !!p.active,
+        showOnHomepage: !!p.showOnHomepage
+      })));
+    } catch (error) {
+      console.error('Error fetching polls:', error);
+      res.status(500).json({ error: 'Errore durante il caricamento dei sondaggi' });
+    }
   });
 
   app.post('/api/polls', async (req, res) => {
     const { question, options, active, showOnHomepage } = req.body;
+    console.log('Creating new poll:', { question, active, showOnHomepage });
     try {
       const result = await db.run(
         'INSERT INTO polls (question, options, votes, active, showOnHomepage) VALUES (?, ?, ?, ?, ?)',
-        [question, JSON.stringify(options), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0]
+        [question || '', JSON.stringify(options || []), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0]
       );
+      console.log('Poll created successfully, ID:', result.lastID);
       res.json({ success: true, id: result.lastID });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating poll:', error);
-      res.status(500).json({ success: false, error: 'Errore durante la creazione del sondaggio' });
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Errore durante la creazione del sondaggio' 
+      });
     }
   });
 
   app.put('/api/polls/:id', async (req, res) => {
     const { question, options, active, showOnHomepage } = req.body;
+    console.log(`Updating poll ${req.params.id}:`, { question, active, showOnHomepage });
     try {
-      await db.run(
+      const result = await db.run(
         'UPDATE polls SET question = ?, options = ?, active = ?, showOnHomepage = ? WHERE id = ?',
-        [question, JSON.stringify(options), active ? 1 : 0, showOnHomepage ? 1 : 0, req.params.id]
+        [question || '', JSON.stringify(options || []), active ? 1 : 0, showOnHomepage ? 1 : 0, req.params.id]
       );
+      console.log(`Poll ${req.params.id} updated successfully. Changes:`, result.changes);
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating poll:', error);
-      res.status(500).json({ success: false, error: 'Errore durante il salvataggio del sondaggio' });
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Errore durante il salvataggio del sondaggio' 
+      });
     }
   });
 

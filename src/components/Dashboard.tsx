@@ -38,8 +38,23 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [appointments, setAppointments] = React.useState([]);
   const [registrations, setRegistrations] = React.useState([]);
   const [gallery, setGallery] = React.useState([]);
+  const [dbStatus, setDbStatus] = React.useState<string>('checking...');
+  const [dbError, setDbError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        setDbStatus(data.database);
+        setDbError(data.databaseError || null);
+      } catch (e) {
+        setDbStatus('error');
+        setDbError('Impossibile connettersi alle API di controllo');
+      }
+    };
+    checkHealth();
+    
     const fetchData = async () => {
       try {
         const [
@@ -404,22 +419,28 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updated)
         });
-        if (!response.ok) throw new Error('Errore durante il salvataggio');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Errore durante il salvataggio');
+        }
       } else {
         const response = await fetch('/api/polls', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updated)
         });
-        if (!response.ok) throw new Error('Errore durante la creazione');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Errore durante la creazione');
+        }
         const data = await response.json();
         updated.id = data.id;
       }
       setPoll({ ...updated });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving poll:', error);
-      return false;
+      throw error;
     }
   };
 
@@ -540,7 +561,21 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           )}
         </nav>
 
-        <div className="p-4 border-t border-stone-800">
+        <div className="p-4 border-t border-stone-800 space-y-4">
+          <div className="px-4 py-2 bg-stone-800/50 rounded-xl border border-stone-700/50">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Database Status</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'writable' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`} />
+            </div>
+            <span className={`text-[10px] font-mono block truncate ${dbStatus === 'writable' ? 'text-emerald-400/80' : 'text-red-400/80'}`}>
+              {dbStatus}
+            </span>
+            {dbError && (
+              <span className="text-[9px] text-red-400/60 block mt-1 leading-tight break-words">
+                {dbError}
+              </span>
+            )}
+          </div>
           <button 
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors"
@@ -1582,11 +1617,13 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <div className="pt-6 border-t border-stone-100 flex justify-end">
                           <button 
                             onClick={async () => {
-                              const success = await savePoll(poll);
-                              if (success) {
-                                alert('Sondaggio salvato con successo!');
-                              } else {
-                                alert('Errore durante il salvataggio del sondaggio. Riprova.');
+                              try {
+                                const success = await savePoll(poll);
+                                if (success) {
+                                  alert('Sondaggio salvato con successo!');
+                                }
+                              } catch (err: any) {
+                                alert('Errore durante il salvataggio: ' + err.message);
                               }
                             }}
                             className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:shadow-lg transition-all active:scale-95"

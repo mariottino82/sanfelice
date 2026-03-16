@@ -28,10 +28,12 @@ export function PollSection() {
     const fetchPoll = async () => {
       try {
         const response = await fetch('/api/polls');
+        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
           // Find the poll specifically marked for the homepage
-          const homepagePoll = data.find((p: any) => p.showOnHomepage);
+          // Ensure we compare with boolean true or integer 1
+          const homepagePoll = data.find((p: any) => p.showOnHomepage === true || p.showOnHomepage === 1 || !!p.showOnHomepage);
           setPoll(homepagePoll || null);
         } else {
           setPoll(null);
