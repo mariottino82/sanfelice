@@ -892,7 +892,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-stone-400 uppercase">Visibile in Home:</span>
                       <button 
-                        onClick={() => saveLottery({ ...lottery, showOnHomepage: !lottery.showOnHomepage })}
+                        onClick={() => setLottery({ ...lottery, showOnHomepage: !lottery.showOnHomepage })}
                         className={`w-10 h-5 rounded-full transition-colors relative ${lottery.showOnHomepage ? 'bg-stone-900' : 'bg-stone-200'}`}
                       >
                         <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${lottery.showOnHomepage ? 'left-6' : 'left-1'}`} />
@@ -901,7 +901,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-stone-400 uppercase">Stato:</span>
                       <button 
-                        onClick={() => saveLottery({ ...lottery, active: !lottery.active })}
+                        onClick={() => setLottery({ ...lottery, active: !lottery.active })}
                         className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                           lottery.active ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
                         }`}
@@ -1498,7 +1498,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-stone-400 uppercase">Visibile in Home:</span>
                       <button 
-                        onClick={() => savePoll({ ...poll, showOnHomepage: !poll.showOnHomepage })}
+                        onClick={() => setPoll({ ...poll, showOnHomepage: !poll.showOnHomepage })}
                         className={`w-10 h-5 rounded-full transition-colors relative ${poll.showOnHomepage ? 'bg-stone-900' : 'bg-stone-200'}`}
                       >
                         <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${poll.showOnHomepage ? 'left-6' : 'left-1'}`} />
@@ -1507,7 +1507,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-stone-400 uppercase">Stato:</span>
                       <button 
-                        onClick={() => savePoll({ ...poll, active: !poll.active })}
+                        onClick={() => setPoll({ ...poll, active: !poll.active })}
                         className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                           poll.active ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
                         }`}

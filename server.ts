@@ -147,10 +147,10 @@ async function startServer() {
   });
 
   app.post('/api/polls', async (req, res) => {
-    const { question, options } = req.body;
+    const { question, options, active, showOnHomepage } = req.body;
     const result = await db.run(
-      'INSERT INTO polls (question, options, votes) VALUES (?, ?, ?)',
-      [question, JSON.stringify(options), JSON.stringify([])]
+      'INSERT INTO polls (question, options, votes, active, showOnHomepage) VALUES (?, ?, ?, ?, ?)',
+      [question, JSON.stringify(options), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0]
     );
     res.json({ id: result.lastID });
   });
