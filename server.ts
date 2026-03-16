@@ -32,9 +32,11 @@ async function startServer() {
   });
 
   // Serve static files from dist if it exists
-  const distPath = path.join(__dirname, 'dist');
-  const publicPath = path.join(__dirname, 'public');
+  const distPath = path.resolve(process.cwd(), 'dist');
+  const publicPath = path.resolve(process.cwd(), 'public');
   
+  console.log('Static paths:', { distPath, publicPath });
+
   app.use(express.static(publicPath));
   app.use(express.static(distPath));
 
