@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X } from 'lucide-react';
+import logoImg from '../logo.png';
 
 export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void }) {
   const isAdmin = user?.role === 'Amministratore';
@@ -344,7 +345,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       {/* Mobile Header */}
       <div className="lg:hidden bg-stone-900 text-white p-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+          <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain" />
           <span className="font-serif font-bold">Pro San Felice</span>
         </div>
         <button 
@@ -364,7 +365,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         <div className="p-6 flex items-center gap-3">
           <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
             <img 
-              src="/logo.png" 
+              src={logoImg} 
               alt="Logo" 
               className="w-full h-full object-contain" 
               referrerPolicy="no-referrer"

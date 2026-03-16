@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import logoImg from '../logo.png';
 
 export function Navbar({ onLoginClick }: { onLoginClick: () => void }) {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -19,7 +20,7 @@ export function Navbar({ onLoginClick }: { onLoginClick: () => void }) {
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
               <img 
-                src="/logo.png" 
+                src={logoImg} 
                 alt="Logo Pro San Felice" 
                 className="w-full h-full object-contain" 
                 referrerPolicy="no-referrer"

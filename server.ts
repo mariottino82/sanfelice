@@ -31,8 +31,15 @@ async function startServer() {
     res.json([]);
   });
 
+  // Serve static files from dist if it exists
+  const distPath = path.join(__dirname, 'dist');
+  const publicPath = path.join(__dirname, 'public');
+  
+  app.use(express.static(publicPath));
+  app.use(express.static(distPath));
+
   // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {
     console.log('Starting Vite in middleware mode...');
     try {
       const vite = await createViteServer({
@@ -40,17 +47,24 @@ async function startServer() {
         appType: 'spa',
       });
       app.use(vite.middlewares);
-      console.log('Vite middleware attached.');
     } catch (e) {
       console.error('Vite failed to start:', e);
     }
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
   }
+
+  // SPA fallback - must be last
+  app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) return next();
+    
+    const indexPath = path.join(distPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        // If dist/index.html doesn't exist, we are probably in dev mode
+        res.status(404).send('Not found');
+      }
+    });
+  });
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
