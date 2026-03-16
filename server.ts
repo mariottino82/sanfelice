@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,10 +33,33 @@ async function startServer() {
   });
 
   // Serve static files from dist if it exists
-  const distPath = path.resolve(process.cwd(), 'dist');
-  const publicPath = path.resolve(process.cwd(), 'public');
+  const rootPath = process.cwd();
+  const distPath = path.resolve(rootPath, 'dist');
+  const publicPath = path.resolve(rootPath, 'public');
   
-  console.log('Static paths:', { distPath, publicPath });
+  console.log('Server Info:', {
+    cwd: rootPath,
+    __dirname,
+    distPath,
+    publicPath,
+    env: process.env.NODE_ENV
+  });
+
+  // Explicit route for logo.png to debug
+  app.get('/logo.png', (req, res, next) => {
+    const locations = [
+      path.join(publicPath, 'logo.png'),
+      path.join(distPath, 'logo.png'),
+      path.join(rootPath, 'logo.png')
+    ];
+    
+    for (const loc of locations) {
+      if (fs.existsSync(loc)) {
+        return res.sendFile(loc);
+      }
+    }
+    next();
+  });
 
   app.use(express.static(publicPath));
   app.use(express.static(distPath));
