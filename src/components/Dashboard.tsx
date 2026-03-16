@@ -704,6 +704,64 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   )}
                 </div>
               </div>
+
+              {/* Risultati Sondaggi per i Soci */}
+              <div className="bg-stone-900 p-8 rounded-3xl shadow-sm text-white md:col-span-2">
+                <div className="flex items-center gap-3 text-stone-400 mb-8">
+                  <Vote className="w-5 h-5" />
+                  <span className="text-xs font-bold uppercase tracking-widest">Risultati Sondaggio Attivo</span>
+                </div>
+                
+                {poll && poll.question ? (
+                  <div className="space-y-8">
+                    <div>
+                      <h4 className="text-xl font-serif mb-2">{poll.question}</h4>
+                      <p className="text-stone-500 text-xs italic">La tua opinione aiuta l'associazione a crescere.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        {poll.options.map((option: any) => {
+                          const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
+                          const totalVotes = poll.votes?.length || 0;
+                          const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
+                          
+                          return (
+                            <div key={option.id} className="space-y-2">
+                              <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+                                <span className="text-stone-400">{option.text}</span>
+                                <span>{percentage}%</span>
+                              </div>
+                              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${percentage}%` }}
+                                  className="h-full bg-white"
+                                />
+                              </div>
+                              <p className="text-[10px] text-stone-500">{optionVotes} voti</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="bg-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center border border-white/10">
+                        <div className="text-4xl font-serif mb-2">{poll.votes?.length || 0}</div>
+                        <p className="text-stone-400 text-xs uppercase tracking-widest font-bold">Voti Totali</p>
+                        <div className="mt-6 w-12 h-1 bg-stone-700 rounded-full" />
+                        <p className="mt-4 text-[10px] text-stone-500 leading-relaxed">
+                          I risultati sono aggiornati in tempo reale. <br />
+                          Grazie per la partecipazione!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-stone-500 italic">Nessun sondaggio attivo al momento.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

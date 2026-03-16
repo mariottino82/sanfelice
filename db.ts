@@ -121,10 +121,20 @@ export async function getDb() {
   `);
 
   // Migrations
-  try {
-    await db.run('ALTER TABLE polls ADD COLUMN showOnHomepage INTEGER DEFAULT 0');
-  } catch (e) {
-    // Column might already exist
+  const migrations = [
+    'ALTER TABLE polls ADD COLUMN votes TEXT DEFAULT "[]"',
+    'ALTER TABLE polls ADD COLUMN active INTEGER DEFAULT 1',
+    'ALTER TABLE polls ADD COLUMN showOnHomepage INTEGER DEFAULT 0',
+    'ALTER TABLE polls ADD COLUMN totalVotes INTEGER DEFAULT 0'
+  ];
+
+  for (const migration of migrations) {
+    try {
+      await db.run(migration);
+      console.log('Migration successful:', migration);
+    } catch (e) {
+      // Column might already exist or other error
+    }
   }
 
   // Seed lottery if not exists
