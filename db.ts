@@ -73,7 +73,8 @@ export async function getDb() {
       options TEXT, -- JSON string
       votes TEXT DEFAULT '[]', -- JSON string of {email, phone, date, optionId}
       totalVotes INTEGER DEFAULT 0,
-      active INTEGER DEFAULT 1
+      active INTEGER DEFAULT 1,
+      showOnHomepage INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS minutes (
@@ -118,6 +119,13 @@ export async function getDb() {
       history TEXT -- JSON string
     );
   `);
+
+  // Migrations
+  try {
+    await db.run('ALTER TABLE polls ADD COLUMN showOnHomepage INTEGER DEFAULT 0');
+  } catch (e) {
+    // Column might already exist
+  }
 
   // Seed lottery if not exists
   const lottery = await db.get('SELECT * FROM lottery LIMIT 1');

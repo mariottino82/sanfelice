@@ -160,6 +160,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     alert('Lotteria archiviata con successo!');
   };
 
+  const deleteHistoryItem = async (historyId: number) => {
+    if (!confirm('Sei sicuro di voler eliminare questa lotteria dall\'archivio?')) return;
+    
+    const updatedLottery = {
+      ...lottery,
+      history: lottery.history.filter((h: any) => h.id !== historyId)
+    };
+
+    await saveLottery(updatedLottery);
+  };
+
   const addAccount = async (newAcc: any) => {
     try {
       const response = await fetch('/api/users', {
@@ -1022,7 +1033,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               <p className="text-xs text-stone-500">Estrazione del {new Date(old.drawDate).toLocaleDateString('it-IT')}</p>
                               <p className="text-xs text-stone-500">Archiviata il {new Date(old.archivedAt).toLocaleDateString('it-IT')}</p>
                             </div>
-                            <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{old.prizes.length} Premi</span>
+                            <div className="flex items-center gap-4">
+                              <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{old.prizes.length} Premi</span>
+                              <button
+                                onClick={() => deleteHistoryItem(old.id)}
+                                className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                                title="Elimina dall'archivio"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {old.prizes.map((p: any) => (
