@@ -62,79 +62,38 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   React.useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [
-          membersRes,
-          financesRes,
-          lotteryRes,
-          pollRes,
-          minutesRes,
-          appointmentsRes,
-          registrationsRes,
-          newsRes,
-          galleryRes,
-          usersRes,
-          socialLinksRes
-        ] = await Promise.all([
-          fetch('/api/members'),
-          fetch('/api/finances'),
-          fetch('/api/lottery'),
-          fetch('/api/polls'),
-          fetch('/api/minutes'),
-          fetch('/api/appointments'),
-          fetch('/api/registrations'),
-          fetch('/api/news'),
-          fetch('/api/gallery'),
-          fetch('/api/users'),
-          fetch('/api/settings/social_links')
-        ]);
+      const endpoints = [
+        { key: 'members', url: '/api/members', setter: setMembers },
+        { key: 'finances', url: '/api/finances', setter: setCollections },
+        { key: 'lottery', url: '/api/lottery', setter: setLottery },
+        { key: 'polls', url: '/api/polls', setter: setPolls },
+        { key: 'minutes', url: '/api/minutes', setter: setMinutes },
+        { key: 'appointments', url: '/api/appointments', setter: setAppointments },
+        { key: 'registrations', url: '/api/registrations', setter: setRegistrations },
+        { key: 'news', url: '/api/news', setter: setNews },
+        { key: 'gallery', url: '/api/gallery', setter: setGallery },
+        { key: 'users', url: '/api/users', setter: setAccounts },
+        { key: 'social_links', url: '/api/settings/social_links', setter: (data: any) => data?.value && setSocialLinks(data.value) }
+      ];
 
-        const [
-          membersData,
-          financesData,
-          lotteryData,
-          pollData,
-          minutesData,
-          appointmentsData,
-          registrationsData,
-          newsData,
-          galleryData,
-          usersData,
-          socialLinksData
-        ] = await Promise.all([
-          membersRes.json(),
-          financesRes.json(),
-          lotteryRes.json(),
-          pollRes.json(),
-          minutesRes.json(),
-          appointmentsRes.json(),
-          registrationsRes.json(),
-          newsRes.json(),
-          galleryRes.json(),
-          usersRes.json(),
-          socialLinksRes.json()
-        ]);
-
-        setMembers(membersData);
-        setCollections(financesData);
-        setLottery(lotteryData);
-        setPolls(pollData);
-        // For current active poll in management
-        if (pollData.length > 0) {
-          const activePoll = pollData.find((p: any) => p.active) || pollData[0];
-          setPoll(activePoll);
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(endpoint.url);
+          if (res.ok) {
+            const data = await res.json();
+            endpoint.setter(data);
+            
+            // Special handling for polls to set the active one
+            if (endpoint.key === 'polls' && data.length > 0) {
+              const activePoll = data.find((p: any) => p.active) || data[0];
+              setPoll(activePoll);
+            }
+          } else {
+            console.error(`Failed to fetch ${endpoint.key}: ${res.status}`);
+          }
+        } catch (error) {
+          console.error(`Error fetching ${endpoint.key}:`, error);
         }
-        setMinutes(minutesData);
-        setAppointments(appointmentsData);
-        setRegistrations(registrationsData);
-        setNews(newsData);
-        setGallery(galleryData);
-        setAccounts(usersData);
-        if (socialLinksData && socialLinksData.value) {
-          setSocialLinks(socialLinksData.value);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
       }
     };
 
@@ -222,10 +181,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const handleVote = async (optionIndex: number) => {
-    if (!poll || !poll.id) return;
+  const handleVote = async (pollId: number, optionIndex: number) => {
+    if (!pollId) return;
     try {
-      const response = await fetch(`/api/polls/${poll.id}/vote`, {
+      const response = await fetch(`/api/polls/${pollId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -238,11 +197,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         // Refresh poll data
         const pollRes = await fetch('/api/polls');
         const pollData = await pollRes.json();
-        if (pollData.length > 0) {
-          const activePoll = pollData.find((p: any) => p.id === poll.id) || pollData[0];
-          setPoll(activePoll);
+        setPolls(pollData);
+        
+        // If the voted poll is the one currently being viewed/edited, update it too
+        if (poll?.id === pollId) {
+          const updatedPoll = pollData.find((p: any) => p.id === pollId);
+          setPoll(updatedPoll);
         }
         alert('Voto registrato con successo!');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert('Errore durante la votazione: ' + (errorData.error || 'Errore sconosciuto'));
       }
     } catch (error) {
       console.error('Error voting:', error);
@@ -830,7 +795,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               return (
                                 <button
                                   key={option.id}
-                                  onClick={() => handleVote(idx)}
+                                  onClick={() => handleVote(p.id, idx)}
                                   className="w-full text-left p-4 rounded-2xl border border-white/10 hover:bg-white/5 hover:border-white/30 transition-all group"
                                 >
                                   <div className="flex items-center justify-between">

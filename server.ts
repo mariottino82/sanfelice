@@ -19,6 +19,13 @@ async function startServer() {
     await db.run('CREATE TABLE IF NOT EXISTS _write_test (id INTEGER PRIMARY KEY, val TEXT)');
     await db.run('INSERT INTO _write_test (val) VALUES (?)', ['test_' + Date.now()]);
     console.log('Database write test successful');
+    
+    // Ensure totalVotes is initialized to 0 for existing polls
+    try {
+      await db.run('UPDATE polls SET totalVotes = 0 WHERE totalVotes IS NULL');
+    } catch (e) {
+      console.error('Error initializing totalVotes:', e);
+    }
   } catch (e) {
     console.error('DATABASE WRITE TEST FAILED! Database might be read-only.', e);
   }
@@ -166,13 +173,28 @@ async function startServer() {
   app.get('/api/polls', async (req, res) => {
     try {
       const polls = await db.all('SELECT * FROM polls ORDER BY id DESC');
-      res.json(polls.map(p => ({ 
-        ...p, 
-        options: JSON.parse(p.options || '[]'),
-        votes: JSON.parse(p.votes || '[]'),
-        active: !!p.active,
-        showOnHomepage: !!p.showOnHomepage
-      })));
+      res.json(polls.map(p => {
+        let options = [];
+        let votes = [];
+        try {
+          options = JSON.parse(p.options || '[]');
+        } catch (e) {
+          console.error(`Error parsing options for poll ${p.id}:`, e);
+        }
+        try {
+          votes = JSON.parse(p.votes || '[]');
+        } catch (e) {
+          console.error(`Error parsing votes for poll ${p.id}:`, e);
+        }
+        return { 
+          ...p, 
+          options,
+          votes,
+          totalVotes: p.totalVotes || 0,
+          active: !!p.active,
+          showOnHomepage: !!p.showOnHomepage
+        };
+      }));
     } catch (error) {
       console.error('Error fetching polls:', error);
       res.status(500).json({ error: 'Errore durante il caricamento dei sondaggi' });
@@ -239,14 +261,18 @@ async function startServer() {
           email,
           phone,
           date: new Date().toISOString(),
-          optionId: options[optionIndex].id
+          optionId: options[optionIndex].id,
+          optionText: options[optionIndex].text
         });
 
+        const currentTotalVotes = (poll.totalVotes || 0) + 1;
+
         await db.run(
-          'UPDATE polls SET options = ?, votes = ?, totalVotes = totalVotes + 1 WHERE id = ?',
-          [JSON.stringify(options), JSON.stringify(votes), req.params.id]
+          'UPDATE polls SET options = ?, votes = ?, totalVotes = ? WHERE id = ?',
+          [JSON.stringify(options), JSON.stringify(votes), currentTotalVotes, req.params.id]
         );
-        console.log('Vote recorded successfully');
+        
+        console.log(`Vote recorded successfully for poll ${req.params.id}. New total: ${currentTotalVotes}`);
         res.json({ success: true });
       } else {
         res.status(404).json({ error: 'Sondaggio non trovato' });
