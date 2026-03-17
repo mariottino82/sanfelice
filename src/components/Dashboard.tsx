@@ -3,8 +3,12 @@ import { motion } from 'motion/react';
 import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X } from 'lucide-react';
 
 export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void }) {
-  const isAdmin = user?.role === 'Amministratore' || user?.role === 'Presidente' || user?.role === 'Operatore';
-  const [activeTab, setActiveTab] = React.useState(isAdmin ? 'members' : 'member-home');
+  const isSuperAdmin = user?.role === 'Amministratore' || user?.role === 'Presidente';
+  const isOperator = user?.role === 'Operatore';
+  const isStaff = isSuperAdmin || isOperator;
+  const isMember = user?.role === 'Socio';
+  
+  const [activeTab, setActiveTab] = React.useState(isStaff ? (isSuperAdmin ? 'members' : 'appointments') : 'member-home');
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [members, setMembers] = React.useState([]);
   const [collections, setCollections] = React.useState([]);
@@ -103,7 +107,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const totalCollected = collections.reduce((acc, curr: any) => acc + curr.amount, 0);
 
   // Find current member data if not admin
-  const currentMember = !isAdmin ? members.find((m: any) => m.email === user?.email) : null;
+  const currentMember = isMember ? members.find((m: any) => m.email === user?.email) : null;
   const isFeePaid = currentMember?.payments?.[2026];
 
   const lastMinutes = [...minutes].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
@@ -547,20 +551,24 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         </div>
         
         <nav className="flex-1 px-4 space-y-1">
-          {isAdmin ? (
+          {isStaff ? (
             <>
               {[
-                { id: 'members', label: 'Soci & Cariche', icon: Users },
-                { id: 'registrations', label: 'Iscrizioni', icon: UserPlus },
-                { id: 'finances', label: 'Contabilità', icon: Euro },
-                { id: 'lottery', label: 'Lotteria', icon: Ticket },
-                { id: 'minutes', label: 'Verbali', icon: FileText },
-                { id: 'appointments', label: 'Agenda', icon: Calendar },
-                { id: 'news', label: 'News & Eventi', icon: Newspaper },
-                { id: 'poll', label: 'Sondaggi', icon: Vote },
-                { id: 'gallery', label: 'Foto & Video', icon: ImageIcon },
-                { id: 'accounts', label: 'Account & Sicurezza', icon: Shield },
-              ].map((tab) => (
+                { id: 'members', label: 'Soci & Cariche', icon: Users, minRole: 'SuperAdmin' },
+                { id: 'registrations', label: 'Iscrizioni', icon: UserPlus, minRole: 'SuperAdmin' },
+                { id: 'finances', label: 'Contabilità', icon: Euro, minRole: 'SuperAdmin' },
+                { id: 'lottery', label: 'Lotteria', icon: Ticket, minRole: 'Operator' },
+                { id: 'minutes', label: 'Verbali', icon: FileText, minRole: 'Operator' },
+                { id: 'appointments', label: 'Agenda', icon: Calendar, minRole: 'Operator' },
+                { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
+                { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
+                { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
+                { id: 'accounts', label: 'Account & Sicurezza', icon: Shield, minRole: 'SuperAdmin' },
+              ].filter(tab => {
+                if (isSuperAdmin) return true;
+                if (isOperator && tab.minRole === 'Operator') return true;
+                return false;
+              }).map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => {
@@ -633,7 +641,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'member-home' && `Benvenuto, ${user?.username}`}
             </h1>
             <p className="text-stone-500 text-sm mt-1">
-              {isAdmin ? 'Pannello di controllo amministrativo' : `Profilo ${user?.role}`}
+              {isStaff ? 'Pannello di controllo amministrativo' : `Profilo ${user?.role}`}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -642,13 +650,13 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               <p className="text-xs text-stone-500">{user?.email || 'admin@prosanfelice.it'}</p>
             </div>
             <div className="w-10 h-10 bg-stone-200 rounded-full flex items-center justify-center">
-              <Shield className={`w-5 h-5 ${isAdmin ? 'text-amber-600' : 'text-stone-600'}`} />
+              <Shield className={`w-5 h-5 ${isStaff ? 'text-amber-600' : 'text-stone-600'}`} />
             </div>
           </div>
         </header>
 
         {/* Member View Home */}
-        {!isAdmin && activeTab === 'member-home' && (
+        {isMember && activeTab === 'member-home' && (
           <div className="space-y-8">
             {/* Alerts */}
             {!isFeePaid && (
@@ -839,7 +847,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         )}
 
         {/* Stats Overview */}
-        {isAdmin && (activeTab === 'members' || activeTab === 'finances') && (
+        {isSuperAdmin && (activeTab === 'members' || activeTab === 'finances') && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200">
               <div className="flex items-center gap-3 text-stone-500 mb-2">
@@ -868,7 +876,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         {/* Tab Content */}
         <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
           <div className="p-8">
-            {isAdmin && activeTab === 'members' && (
+            {isSuperAdmin && activeTab === 'members' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Elenco Soci e Cariche</h2>
@@ -965,7 +973,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isAdmin && activeTab === 'finances' && (
+            {isSuperAdmin && activeTab === 'finances' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Registro Contabile</h2>
@@ -1053,7 +1061,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isAdmin && activeTab === 'lottery' && (
+            {isStaff && activeTab === 'lottery' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Gestione Lotteria</h2>
@@ -1256,7 +1264,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isAdmin && activeTab === 'accounts' && (
+            {isSuperAdmin && activeTab === 'accounts' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Gestione Account</h2>
@@ -1270,12 +1278,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     addAccount(data);
                     e.currentTarget.reset();
                   }}
-                  className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
+                  className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                 >
                   <input name="username" placeholder="Username" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
+                  <input name="email" type="email" placeholder="Email (per Soci)" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
                   <select name="role" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none">
                     <option value="Amministratore">Amministratore</option>
                     <option value="Operatore">Operatore</option>
+                    <option value="Socio">Socio</option>
                   </select>
                   <button type="submit" className="bg-stone-900 text-white px-6 py-2 rounded-xl text-sm font-bold">Aggiungi Account</button>
                 </form>
@@ -1289,7 +1299,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </div>
                         <div>
                           <p className="font-bold text-stone-900">{acc.username}</p>
-                          <p className="text-xs text-stone-500">{acc.role} • Ultimo accesso: {acc.lastLogin}</p>
+                          <p className="text-xs text-stone-500">{acc.email || 'Nessuna email'}</p>
+                          <p className="text-[10px] text-stone-400 font-bold uppercase mt-1">{acc.role} • Accesso: {acc.lastLogin || 'Mai'}</p>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -1435,7 +1446,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isAdmin && activeTab === 'registrations' && (
+            {isSuperAdmin && activeTab === 'registrations' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Nuove Iscrizioni</h2>
@@ -1499,31 +1510,33 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isAdmin && activeTab === 'minutes' && (
+            {(isStaff || isMember) && activeTab === 'minutes' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Archivio Verbali</h2>
                 </div>
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const title = formData.get('title') as string;
-                    addMinute({ title });
-                    e.currentTarget.reset();
-                  }}
-                  className="flex gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
-                >
-                  <input name="title" defaultValue={editingMinute?.title} placeholder="Titolo Verbale / Assemblea" className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
-                  <button type="submit" className="bg-stone-900 text-white px-6 py-2 rounded-xl text-sm font-bold">
-                    {editingMinute ? 'Salva' : 'Carica'}
-                  </button>
-                  {editingMinute && (
-                    <button type="button" onClick={() => setEditingMinute(null)} className="bg-stone-200 text-stone-600 px-6 py-2 rounded-xl text-sm font-bold">
-                      Annulla
+                {isStaff && (
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const title = formData.get('title') as string;
+                      addMinute({ title });
+                      e.currentTarget.reset();
+                    }}
+                    className="flex gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
+                  >
+                    <input name="title" defaultValue={editingMinute?.title} placeholder="Titolo Verbale / Assemblea" className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
+                    <button type="submit" className="bg-stone-900 text-white px-6 py-2 rounded-xl text-sm font-bold">
+                      {editingMinute ? 'Salva' : 'Carica'}
                     </button>
-                  )}
-                </form>
+                    {editingMinute && (
+                      <button type="button" onClick={() => setEditingMinute(null)} className="bg-stone-200 text-stone-600 px-6 py-2 rounded-xl text-sm font-bold">
+                        Annulla
+                      </button>
+                    )}
+                  </form>
+                )}
                 <div className="space-y-3">
                   {minutes.map((m: any) => (
                     <div key={m.id} className="flex items-center justify-between p-4 bg-white border border-stone-200 rounded-2xl">
@@ -1535,12 +1548,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => setEditingMinute(m)} className="text-stone-300 hover:text-stone-900">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => deleteMinute(m.id)} className="text-stone-300 hover:text-red-500">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isStaff && (
+                          <>
+                            <button onClick={() => setEditingMinute(m)} className="text-stone-300 hover:text-stone-900">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => deleteMinute(m.id)} className="text-stone-300 hover:text-red-500">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1548,32 +1565,34 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isAdmin && activeTab === 'appointments' && (
+            {(isStaff || isMember) && activeTab === 'appointments' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Agenda Appuntamenti</h2>
                 </div>
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const data = Object.fromEntries(formData);
-                    addAppointment(data);
-                    e.currentTarget.reset();
-                  }}
-                  className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
-                >
-                  <input name="title" defaultValue={editingAppointment?.title} placeholder="Titolo Appuntamento" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
-                  <input name="date" defaultValue={editingAppointment?.date} type="datetime-local" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
-                  <button type="submit" className="bg-stone-900 text-white px-6 py-2 rounded-xl text-sm font-bold">
-                    {editingAppointment ? 'Salva' : 'Aggiungi'}
-                  </button>
-                  {editingAppointment && (
-                    <button type="button" onClick={() => setEditingAppointment(null)} className="bg-stone-200 text-stone-600 px-6 py-2 rounded-xl text-sm font-bold">
-                      Annulla
+                {isStaff && (
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const data = Object.fromEntries(formData);
+                      addAppointment(data);
+                      e.currentTarget.reset();
+                    }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
+                  >
+                    <input name="title" defaultValue={editingAppointment?.title} placeholder="Titolo Appuntamento" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
+                    <input name="date" defaultValue={editingAppointment?.date} type="datetime-local" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
+                    <button type="submit" className="bg-stone-900 text-white px-6 py-2 rounded-xl text-sm font-bold">
+                      {editingAppointment ? 'Salva' : 'Aggiungi'}
                     </button>
-                  )}
-                </form>
+                    {editingAppointment && (
+                      <button type="button" onClick={() => setEditingAppointment(null)} className="bg-stone-200 text-stone-600 px-6 py-2 rounded-xl text-sm font-bold">
+                        Annulla
+                      </button>
+                    )}
+                  </form>
+                )}
                 <div className="space-y-3">
                   {appointments.map((a: any) => (
                     <div key={a.id} className="flex items-center justify-between p-4 bg-white border border-stone-200 rounded-2xl">
@@ -1585,12 +1604,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => setEditingAppointment(a)} className="text-stone-300 hover:text-stone-900">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => deleteAppointment(a.id)} className="text-stone-300 hover:text-red-500">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isStaff && (
+                          <>
+                            <button onClick={() => setEditingAppointment(a)} className="text-stone-300 hover:text-stone-900">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => deleteAppointment(a.id)} className="text-stone-300 hover:text-red-500">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1603,7 +1626,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">News & Eventi</h2>
                 </div>
-                {isAdmin && (
+                {isStaff && (
                   <form 
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -1670,7 +1693,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </div>
                         <h3 className="font-serif text-lg text-stone-900 mb-2">{n.title}</h3>
                         <p className="text-sm text-stone-500 line-clamp-2 mb-4">{n.content}</p>
-                        {isAdmin && (
+                        {isStaff && (
                           <div className="flex justify-end gap-2">
                             <button onClick={() => setEditingNews(n)} className="p-2 text-stone-400 hover:text-stone-900 bg-stone-100 rounded-lg transition-colors" title="Modifica">
                               <Edit2 className="w-4 h-4" />
@@ -1693,7 +1716,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   <h2 className="text-xl font-serif text-stone-900">Foto & Video Gallery</h2>
                 </div>
 
-                {isAdmin && (
+                {isStaff && (
                   <form 
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -1721,7 +1744,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       <img src={item.url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         {item.type === 'video' && <Video className="w-6 h-6 text-white" />}
-                        {isAdmin && (
+                        {isStaff && (
                           <button 
                             onClick={() => deleteGalleryItem(item.id)}
                             className="p-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-lg flex items-center gap-2"
@@ -1744,17 +1767,21 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isAdmin && activeTab === 'poll' && (
+            {(isStaff || isMember) && activeTab === 'poll' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-serif text-stone-900">Gestione Sondaggi</h2>
-                  <button 
-                    onClick={createNewPoll}
-                    className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:shadow-lg transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Nuovo Sondaggio
-                  </button>
+                  <h2 className="text-xl font-serif text-stone-900">
+                    {isStaff ? 'Gestione Sondaggi' : 'Risultati Sondaggi'}
+                  </h2>
+                  {isStaff && (
+                    <button 
+                      onClick={createNewPoll}
+                      className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:shadow-lg transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Nuovo Sondaggio
+                    </button>
+                  )}
                 </div>
 
                 {/* Poll List */}
@@ -1792,17 +1819,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <span className={`text-[10px] uppercase tracking-widest ${poll?.id === p.id ? 'text-stone-400' : 'text-stone-500'}`}>
                           {p.votes?.length || 0} voti
                         </span>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deletePoll(p.id);
-                          }}
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            poll?.id === p.id ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-red-50 text-stone-400 hover:text-red-500'
-                          }`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isStaff && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deletePoll(p.id);
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              poll?.id === p.id ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-red-50 text-stone-400 hover:text-red-500'
+                            }`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1811,35 +1840,38 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="pt-8 border-t border-stone-200">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-serif text-stone-900">
-                      {poll?.id ? 'Modifica Sondaggio' : 'Nuovo Sondaggio'}
+                      {isStaff ? (poll?.id ? 'Modifica Sondaggio' : 'Nuovo Sondaggio') : 'Dettagli Risultati'}
                     </h3>
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-stone-400 uppercase">Visibile in Home:</span>
-                        <button 
-                          onClick={() => setPoll({ ...poll, showOnHomepage: !poll.showOnHomepage })}
-                          className={`w-10 h-5 rounded-full transition-colors relative ${poll.showOnHomepage ? 'bg-stone-900' : 'bg-stone-200'}`}
-                        >
-                          <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${poll.showOnHomepage ? 'left-6' : 'left-1'}`} />
-                        </button>
+                    {isStaff && (
+                      <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-stone-400 uppercase">Visibile in Home:</span>
+                          <button 
+                            onClick={() => setPoll({ ...poll, showOnHomepage: !poll.showOnHomepage })}
+                            className={`w-10 h-5 rounded-full transition-colors relative ${poll.showOnHomepage ? 'bg-stone-900' : 'bg-stone-200'}`}
+                          >
+                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${poll.showOnHomepage ? 'left-6' : 'left-1'}`} />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-stone-400 uppercase">Stato:</span>
+                          <button 
+                            onClick={() => setPoll({ ...poll, active: !poll.active })}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                              poll.active ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
+                            }`}
+                          >
+                            {poll.active ? 'Attivo' : 'Disattivato'}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-stone-400 uppercase">Stato:</span>
-                        <button 
-                          onClick={() => setPoll({ ...poll, active: !poll.active })}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                            poll.active ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
-                          }`}
-                        >
-                          {poll.active ? 'Attivo' : 'Disattivato'}
-                        </button>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-6">
-                      <div className="p-8 bg-stone-50 rounded-3xl border border-stone-200">
+                      {isStaff ? (
+                        <div className="p-8 bg-stone-50 rounded-3xl border border-stone-200">
                         <h3 className="font-serif text-lg text-stone-900 mb-6">Configurazione Domanda</h3>
                         <div className="space-y-4">
                           <div>
@@ -1926,6 +1958,31 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           </div>
                         </div>
                       </div>
+                    ) : (
+                      <div className="p-8 bg-stone-50 rounded-3xl border border-stone-200">
+                        <h3 className="font-serif text-lg text-stone-900 mb-6">Dettagli Sondaggio</h3>
+                        <div className="space-y-6">
+                          <div>
+                            <p className="text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Domanda</p>
+                            <p className="text-xl font-serif text-stone-900 bg-white p-6 rounded-2xl border border-stone-100">{poll.question}</p>
+                          </div>
+                          <div className="space-y-3">
+                            <p className="text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Opzioni</p>
+                            {poll.options.map((option: any) => (
+                              <div key={option.id} className="p-4 bg-white rounded-xl border border-stone-100 text-sm text-stone-700">
+                                {option.text}
+                              </div>
+                            ))}
+                          </div>
+                          {poll.endDate && (
+                            <div>
+                              <p className="text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Data Termine</p>
+                              <p className="text-sm text-stone-700">{new Date(poll.endDate).toLocaleString('it-IT')}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     </div>
 
                     <div className="space-y-6">

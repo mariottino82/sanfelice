@@ -61,7 +61,7 @@ async function startServer() {
     // Check users table (admins)
     const user = await db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
     if (user) {
-      return res.json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
+      return res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, email: user.email } });
     }
 
     // Check members table (soci)
@@ -419,15 +419,15 @@ async function startServer() {
 
   // Users API
   app.get('/api/users', async (req, res) => {
-    const users = await db.all('SELECT id, username, role, lastLogin FROM users');
+    const users = await db.all('SELECT id, username, email, role, lastLogin FROM users');
     res.json(users);
   });
 
   app.post('/api/users', async (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password, role, email } = req.body;
     const result = await db.run(
-      'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-      [username, password || 'admin', role || 'Operatore']
+      'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
+      [username, password || 'admin', role || 'Operatore', email]
     );
     res.json({ id: result.lastID });
   });

@@ -24,6 +24,7 @@ export async function getDb() {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
+      email TEXT,
       password TEXT,
       role TEXT
     );
@@ -132,7 +133,8 @@ export async function getDb() {
     'ALTER TABLE polls ADD COLUMN active INTEGER DEFAULT 1',
     'ALTER TABLE polls ADD COLUMN showOnHomepage INTEGER DEFAULT 0',
     'ALTER TABLE polls ADD COLUMN totalVotes INTEGER DEFAULT 0',
-    'ALTER TABLE polls ADD COLUMN endDate TEXT'
+    'ALTER TABLE polls ADD COLUMN endDate TEXT',
+    'ALTER TABLE users ADD COLUMN email TEXT'
   ];
 
   for (const migration of migrations) {
