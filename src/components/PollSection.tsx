@@ -149,7 +149,7 @@ export function PollSection() {
               <div className="space-y-6">
                 <div className="flex items-center gap-2 text-stone-500 mb-6 justify-center">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Sondaggio Terminato - Risultati</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Sondaggio Chiuso - Risultati Finali</span>
                 </div>
                 {poll.options.map((option) => {
                   const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
@@ -171,13 +171,12 @@ export function PollSection() {
                           className="h-full bg-stone-900"
                         />
                       </div>
-                      <p className="text-[10px] text-stone-400">{optionVotes} voti</p>
                     </div>
                   );
                 })}
                 <div className="pt-6 border-t border-stone-100 text-center">
                   <p className="text-xs text-stone-500 italic">
-                    Totale votanti: <span className="font-bold text-stone-900">{poll.votes?.length || 0}</span>
+                    Grazie a tutti per aver partecipato.
                   </p>
                 </div>
               </div>

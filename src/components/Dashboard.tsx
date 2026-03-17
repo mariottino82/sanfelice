@@ -787,7 +787,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                         className="h-full bg-white"
                                       />
                                     </div>
-                                    <p className="text-[10px] text-stone-500">{optionVotes} voti</p>
                                   </div>
                                 );
                               }
@@ -810,13 +809,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           </div>
 
                           <div className="bg-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center border border-white/10">
-                            <div className="text-4xl font-serif mb-2">{p.votes?.length || 0}</div>
-                            <p className="text-stone-400 text-xs uppercase tracking-widest font-bold">Voti Totali</p>
+                            <div className="text-4xl font-serif mb-2">
+                              {isExpired ? 'CHIUSO' : (p.votes?.length || 0)}
+                            </div>
+                            <p className="text-stone-400 text-xs uppercase tracking-widest font-bold">
+                              {isExpired ? 'Sondaggio Terminato' : 'Voti Totali'}
+                            </p>
                             <div className="mt-6 w-12 h-1 bg-stone-700 rounded-full" />
                             <p className="mt-4 text-[10px] text-stone-500 leading-relaxed">
-                              {showResults
-                                ? 'I risultati sono aggiornati in tempo reale.'
-                                : 'Vota per vedere i risultati in tempo reale.'}
+                              {isExpired 
+                                ? 'Le votazioni per questo sondaggio sono terminate.'
+                                : showResults
+                                  ? 'I risultati sono aggiornati in tempo reale.'
+                                  : 'Vota per vedere i risultati in tempo reale.'}
                             </p>
                           </div>
                         </div>
