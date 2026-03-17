@@ -85,7 +85,8 @@ export async function getDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT,
       date TEXT,
-      content TEXT
+      content TEXT,
+      file_path TEXT
     );
 
     CREATE TABLE IF NOT EXISTS appointments (
@@ -140,7 +141,8 @@ export async function getDb() {
     'ALTER TABLE users ADD COLUMN email TEXT',
     'ALTER TABLE users ADD COLUMN lastLogin TEXT',
     'ALTER TABLE members ADD COLUMN password TEXT',
-    'ALTER TABLE registrations ADD COLUMN password TEXT'
+    'ALTER TABLE registrations ADD COLUMN password TEXT',
+    'ALTER TABLE minutes ADD COLUMN file_path TEXT'
   ];
 
   for (const migration of migrations) {

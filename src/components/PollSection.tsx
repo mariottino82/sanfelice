@@ -223,10 +223,9 @@ export function PollSection() {
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
               >
-                {/* Close Button - Ensuring it's visible and high z-index */}
                 <button
                   onClick={() => setShowVoteModal(false)}
-                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-[110] p-2 hover:bg-stone-100 rounded-full"
+                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                   aria-label="Chiudi"
                 >
                   <X className="w-6 h-6" />
@@ -303,7 +302,8 @@ export function PollSection() {
               )}
             </motion.div>
           </div>
-        )}
+        </div>
+      )}
       </AnimatePresence>
     </section>
   );

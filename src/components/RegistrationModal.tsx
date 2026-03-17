@@ -63,7 +63,7 @@ export function RegistrationModal({ isOpen, onClose }: RegistrationModalProps) {
             >
               <button 
                 onClick={onClose}
-                className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-10 p-2 hover:bg-stone-100 rounded-full"
+                className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -166,7 +166,8 @@ export function RegistrationModal({ isOpen, onClose }: RegistrationModalProps) {
             )}
           </motion.div>
         </div>
-      )}
+      </div>
+    )}
     </AnimatePresence>
   );
 }

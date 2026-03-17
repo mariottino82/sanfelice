@@ -305,12 +305,35 @@ async function startServer() {
   });
 
   app.post('/api/minutes', async (req, res) => {
-    const { title, date, content } = req.body;
+    const { title, date, content, file_path } = req.body;
     const result = await db.run(
-      'INSERT INTO minutes (title, date, content) VALUES (?, ?, ?)',
-      [title, date || new Date().toISOString(), content]
+      'INSERT INTO minutes (title, date, content, file_path) VALUES (?, ?, ?, ?)',
+      [title, date || new Date().toISOString(), content, file_path || null]
     );
     res.json({ id: result.lastID });
+  });
+
+  const minutesStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = 'public/minutes/';
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `verbale_${Date.now()}_${file.originalname}`);
+    }
+  });
+  const uploadMinutes = multer({ storage: minutesStorage });
+
+  app.post('/api/minutes/:id/upload', uploadMinutes.single('file'), async (req: any, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nessun file caricato' });
+    }
+    const filePath = `/minutes/${req.file.filename}`;
+    await db.run('UPDATE minutes SET file_path = ? WHERE id = ?', [filePath, req.params.id]);
+    res.json({ success: true, path: filePath });
   });
 
   app.delete('/api/minutes/:id', async (req, res) => {

@@ -112,10 +112,10 @@ export function Gallery() {
               >
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="absolute -top-12 right-0 md:-right-12 md:top-0 text-white hover:text-stone-300 transition-colors p-2 bg-white/10 rounded-full backdrop-blur-md"
+                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                   aria-label="Chiudi"
                 >
-                  <X className="w-8 h-8" />
+                  <X className="w-6 h-6" />
                 </button>
 
                 <div className="w-full rounded-2xl overflow-hidden bg-stone-900 flex items-center justify-center shadow-2xl border border-white/10">
@@ -156,8 +156,9 @@ export function Gallery() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
-        )}
+          </div>
+        </motion.div>
+      )}
       </AnimatePresence>
     </section>
   );
