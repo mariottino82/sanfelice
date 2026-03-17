@@ -1180,7 +1180,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] font-bold text-stone-400 uppercase">Ritirato da</label>
+                              <label className="block text-[10px] font-bold text-stone-400 uppercase flex items-center gap-1">
+                                Ritirato da <span className="text-[8px] lowercase font-normal">(solo interno)</span>
+                              </label>
                               <input 
                                 type="text"
                                 value={prize.collectedBy}
@@ -1197,6 +1199,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       ))}
                       {lottery.prizes.length === 0 && (
                         <p className="text-center text-stone-400 italic py-8">Nessun premio configurato</p>
+                      )}
+                      
+                      {lottery.drawDate && new Date(lottery.drawDate) <= new Date() && lottery.prizes.length > 0 && (
+                        <button 
+                          onClick={() => {
+                            saveLottery(lottery);
+                            alert('Risultati dell\'estrazione pubblicati con successo sulla homepage!');
+                          }}
+                          className="w-full mt-4 bg-emerald-500 text-white py-3 rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          Pubblica Risultati Estrazione
+                        </button>
                       )}
                     </div>
                   </div>

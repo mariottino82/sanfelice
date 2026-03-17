@@ -83,7 +83,7 @@ export function LotterySection() {
                   {prize.collectedBy && (
                     <div className="flex items-center gap-2 text-stone-500 text-sm italic">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      Ritirato da {prize.collectedBy}
+                      Premio ritirato
                     </div>
                   )}
                 </div>
