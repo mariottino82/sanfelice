@@ -10,6 +10,14 @@ interface MeetingMinutesWizardProps {
   onSuccess: () => void;
 }
 
+interface Attendee {
+  id: string;
+  name: string;
+  role: string;
+  opinion: string;
+  present: boolean;
+}
+
 interface AgendaItem {
   id: string;
   title: string;
@@ -29,9 +37,31 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
     type: 'Assemblea Ordinaria',
     president: 'Presidente in carica',
     secretary: '',
-    attendees: '',
+    attendees: [] as Attendee[],
     agenda: [] as AgendaItem[],
   });
+
+  const addAttendee = () => {
+    const newAttendee: Attendee = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: '',
+      role: 'Socio',
+      opinion: '',
+      present: true,
+    };
+    setFormData({ ...formData, attendees: [...formData.attendees, newAttendee] });
+  };
+
+  const removeAttendee = (id: string) => {
+    setFormData({ ...formData, attendees: formData.attendees.filter(a => a.id !== id) });
+  };
+
+  const updateAttendee = (id: string, field: keyof Attendee, value: any) => {
+    setFormData({
+      ...formData,
+      attendees: formData.attendees.map(a => a.id === id ? { ...a, [field]: value } : a)
+    });
+  };
 
   const addAgendaItem = () => {
     const newItem: AgendaItem = {
@@ -60,25 +90,34 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
     let y = 20;
 
     // Header
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, 35, 190, 35);
+    
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
     doc.text('PRO SAN FELICE 2023', 105, y, { align: 'center' });
     y += 10;
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Associazione di Promozione Sociale', 105, y, { align: 'center' });
-    y += 5;
-    doc.text('San Felice del Molise (CB)', 105, y, { align: 'center' });
+    doc.setTextColor(100, 100, 100);
+    doc.text('Associazione di Promozione Sociale - San Felice del Molise (CB)', 105, y, { align: 'center' });
     y += 15;
 
-    // Title
+    // Title Box
+    doc.setFillColor(245, 245, 240);
+    doc.rect(margin, y - 5, 170, 25, 'F');
+    doc.setDrawColor(40, 40, 40);
+    doc.rect(margin, y - 5, 170, 25, 'S');
+    
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('VERBALE DI ADUNANZA', 105, y, { align: 'center' });
-    y += 10;
     doc.setFontSize(14);
-    doc.text(formData.title.toUpperCase(), 105, y, { align: 'center' });
-    y += 15;
+    doc.setTextColor(0, 0, 0);
+    doc.text('VERBALE DI ADUNANZA', 105, y + 5, { align: 'center' });
+    y += 12;
+    doc.setFontSize(12);
+    doc.text(formData.title.toUpperCase(), 105, y + 5, { align: 'center' });
+    y += 25;
 
     // General Info
     doc.setFontSize(11);
@@ -100,13 +139,36 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
     y += 10;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Presenti:', margin, y);
-    y += 6;
-    doc.setFont('helvetica', 'normal');
-    const attendeesText = formData.attendees || 'Tutti i soci regolarmente iscritti.';
-    const splitAttendees = doc.splitTextToSize(attendeesText, 170);
-    doc.text(splitAttendees, margin, y);
-    y += (splitAttendees.length * 6) + 10;
+    doc.text('Presenti e Interventi:', margin, y);
+    y += 8;
+    
+    if (formData.attendees.length > 0) {
+      formData.attendees.forEach((attendee) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text(`${attendee.name} (${attendee.role})`, margin + 5, y);
+        y += 5;
+        if (attendee.opinion) {
+          doc.setFont('helvetica', 'italic');
+          const opinionText = `Nota/Parere: ${attendee.opinion}`;
+          const splitOpinion = doc.splitTextToSize(opinionText, 160);
+          doc.text(splitOpinion, margin + 10, y);
+          y += (splitOpinion.length * 5) + 2;
+        } else {
+          y += 2;
+        }
+      });
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.text('Tutti i soci regolarmente iscritti.', margin + 5, y);
+      y += 10;
+    }
+    y += 5;
+    doc.setFontSize(11);
 
     // Agenda
     doc.setFont('helvetica', 'bold');
@@ -316,15 +378,56 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Soci Presenti</label>
-                      <textarea 
-                        value={formData.attendees}
-                        onChange={e => setFormData({...formData, attendees: e.target.value})}
-                        rows={4}
-                        className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none resize-none"
-                        placeholder="Elenca i soci presenti o scrivi 'Tutti i soci'..."
-                      />
+                    
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Soci Presenti e Pareri</label>
+                        <button 
+                          onClick={addAttendee}
+                          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
+                        >
+                          <Plus className="w-4 h-4" /> Aggiungi Socio
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {formData.attendees.map((attendee) => (
+                          <div key={attendee.id} className="p-4 bg-stone-50 rounded-xl border border-stone-200 relative">
+                            <button 
+                              onClick={() => removeAttendee(attendee.id)}
+                              className="absolute top-2 right-2 text-stone-300 hover:text-red-500"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                              <input 
+                                value={attendee.name}
+                                onChange={e => updateAttendee(attendee.id, 'name', e.target.value)}
+                                className="bg-white px-3 py-2 rounded-lg border border-stone-200 text-sm outline-none"
+                                placeholder="Nome Socio"
+                              />
+                              <input 
+                                value={attendee.role}
+                                onChange={e => updateAttendee(attendee.id, 'role', e.target.value)}
+                                className="bg-white px-3 py-2 rounded-lg border border-stone-200 text-sm outline-none"
+                                placeholder="Ruolo (es: Socio, Consigliere)"
+                              />
+                            </div>
+                            <textarea 
+                              value={attendee.opinion}
+                              onChange={e => updateAttendee(attendee.id, 'opinion', e.target.value)}
+                              rows={2}
+                              className="w-full bg-white px-3 py-2 rounded-lg border border-stone-200 text-sm outline-none resize-none"
+                              placeholder="Parere o intervento del socio..."
+                            />
+                          </div>
+                        ))}
+                        {formData.attendees.length === 0 && (
+                          <p className="text-center py-4 text-stone-400 text-sm italic border-2 border-dashed border-stone-100 rounded-xl">
+                            Nessun socio aggiunto individualmente. Verrà indicato "Tutti i soci".
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}

@@ -579,7 +579,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'accounts', label: 'Account & Sicurezza', icon: Shield, minRole: 'SuperAdmin' },
               ].filter(tab => {
                 if (isSuperAdmin) return true;
-                if (isOperator && tab.minRole === 'Operator') return true;
+                if (isStaff && tab.minRole === 'Operator') return true;
+                if (isMember && ['minutes', 'appointments', 'news', 'gallery'].includes(tab.id)) return true;
                 return false;
               }).map((tab: any) => (
                 <button
@@ -610,6 +611,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             <>
               {[
                 { id: 'member-home', label: 'Home Socio', icon: UserCheck },
+                { id: 'minutes', label: 'Verbali', icon: FileText },
                 { id: 'news', label: 'News & Eventi', icon: Newspaper },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon },
               ].map((tab) => (
@@ -1541,7 +1543,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       onClick={() => setShowWizard(true)}
                       className="flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
                     >
-                      <Wand2 className="w-5 h-5" /> Crea Verbale (Wizard)
+                      <Wand2 className="w-5 h-5" /> Genera Verbale
                     </button>
                   )}
                 </div>
@@ -1575,7 +1577,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 )}
 
                 <div className="space-y-3">
-                  {minutes.map((m: any) => (
+                  {minutes.length > 0 ? minutes.map((m: any) => (
                     <div key={m.id} className="flex items-center justify-between p-4 bg-white border border-stone-200 rounded-2xl group hover:border-stone-400 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-stone-50 rounded-xl flex items-center justify-center">
@@ -1637,25 +1639,34 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 let y = 20;
 
                                 // Header
+                                doc.setDrawColor(200, 200, 200);
+                                doc.line(margin, 35, 190, 35);
+                                
                                 doc.setFont('helvetica', 'bold');
-                                doc.setFontSize(18);
+                                doc.setFontSize(20);
+                                doc.setTextColor(40, 40, 40);
                                 doc.text('PRO SAN FELICE 2023', 105, y, { align: 'center' });
                                 y += 10;
-                                doc.setFontSize(12);
+                                doc.setFontSize(10);
                                 doc.setFont('helvetica', 'normal');
-                                doc.text('Associazione di Promozione Sociale', 105, y, { align: 'center' });
-                                y += 5;
-                                doc.text('San Felice del Molise (CB)', 105, y, { align: 'center' });
+                                doc.setTextColor(100, 100, 100);
+                                doc.text('Associazione di Promozione Sociale - San Felice del Molise (CB)', 105, y, { align: 'center' });
                                 y += 15;
 
-                                // Title
+                                // Title Box
+                                doc.setFillColor(245, 245, 240);
+                                doc.rect(margin, y - 5, 170, 25, 'F');
+                                doc.setDrawColor(40, 40, 40);
+                                doc.rect(margin, y - 5, 170, 25, 'S');
+                                
                                 doc.setFont('helvetica', 'bold');
-                                doc.setFontSize(16);
-                                doc.text('VERBALE DI ADUNANZA', 105, y, { align: 'center' });
-                                y += 10;
                                 doc.setFontSize(14);
-                                doc.text(data.title.toUpperCase(), 105, y, { align: 'center' });
-                                y += 15;
+                                doc.setTextColor(0, 0, 0);
+                                doc.text('VERBALE DI ADUNANZA', 105, y + 5, { align: 'center' });
+                                y += 12;
+                                doc.setFontSize(12);
+                                doc.text(data.title.toUpperCase(), 105, y + 5, { align: 'center' });
+                                y += 25;
 
                                 // General Info
                                 doc.setFontSize(11);
@@ -1677,13 +1688,38 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 y += 10;
 
                                 doc.setFont('helvetica', 'bold');
-                                doc.text('Presenti:', margin, y);
-                                y += 6;
-                                doc.setFont('helvetica', 'normal');
-                                const attendeesText = data.attendees || 'Tutti i soci regolarmente iscritti.';
-                                const splitAttendees = doc.splitTextToSize(attendeesText, 170);
-                                doc.text(splitAttendees, margin, y);
-                                y += (splitAttendees.length * 6) + 10;
+                                doc.text('Presenti e Interventi:', margin, y);
+                                y += 8;
+                                
+                                if (Array.isArray(data.attendees)) {
+                                  data.attendees.forEach((attendee: any) => {
+                                    if (y > 270) {
+                                      doc.addPage();
+                                      y = 20;
+                                    }
+                                    doc.setFont('helvetica', 'bold');
+                                    doc.setFontSize(10);
+                                    doc.text(`${attendee.name} (${attendee.role})`, margin + 5, y);
+                                    y += 5;
+                                    if (attendee.opinion) {
+                                      doc.setFont('helvetica', 'italic');
+                                      const opinionText = `Nota/Parere: ${attendee.opinion}`;
+                                      const splitOpinion = doc.splitTextToSize(opinionText, 160);
+                                      doc.text(splitOpinion, margin + 10, y);
+                                      y += (splitOpinion.length * 5) + 2;
+                                    } else {
+                                      y += 2;
+                                    }
+                                  });
+                                } else {
+                                  doc.setFont('helvetica', 'normal');
+                                  const attendeesText = data.attendees || 'Tutti i soci regolarmente iscritti.';
+                                  const splitAttendees = doc.splitTextToSize(attendeesText, 170);
+                                  doc.text(splitAttendees, margin + 5, y);
+                                  y += (splitAttendees.length * 6) + 10;
+                                }
+                                y += 5;
+                                doc.setFontSize(11);
 
                                 // Agenda
                                 doc.setFont('helvetica', 'bold');
@@ -1765,7 +1801,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         )}
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-12 border-2 border-dashed border-stone-100 rounded-[2rem]">
+                      <FileText className="w-12 h-12 text-stone-100 mx-auto mb-4" />
+                      <p className="text-stone-400">Nessun verbale presente in archivio.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
