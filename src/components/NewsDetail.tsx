@@ -118,23 +118,24 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
                 </div>
               </div>
 
-              <div className="p-8 bg-stone-900 rounded-[2rem] text-white shadow-xl shadow-stone-900/20 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-                <div className="relative z-10">
-                  <h4 className="font-serif text-2xl mb-4">Partecipa anche tu</h4>
-                  <p className="text-stone-400 text-sm mb-8 leading-relaxed">
-                    Unisciti alla nostra associazione per sostenere il territorio e non perdere i prossimi eventi esclusivi.
-                  </p>
+              <div className="p-8 bg-stone-900 rounded-[2.5rem] text-white shadow-2xl shadow-stone-900/40 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
+                <div className="relative z-10 space-y-6">
+                  <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                    <UserPlus className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif text-2xl mb-2">Partecipa anche tu</h4>
+                    <p className="text-stone-400 text-sm leading-relaxed">
+                      Unisciti alla nostra associazione per sostenere il territorio e non perdere i prossimi eventi esclusivi.
+                    </p>
+                  </div>
                   <button 
                     onClick={onRegisterClick}
                     className="w-full bg-white text-stone-900 py-4 rounded-2xl font-bold text-sm hover:bg-stone-100 transition-all transform active:scale-95 shadow-lg shadow-white/10 flex items-center justify-center gap-2"
                   >
-                    <UserPlus className="w-4 h-4" />
                     Diventa Socio Ora
                   </button>
-                  <p className="mt-4 text-[10px] text-stone-500 text-center uppercase tracking-widest font-bold">
-                    Quota associativa 2026: € 100,00
-                  </p>
                 </div>
               </div>
             </div>

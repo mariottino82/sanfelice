@@ -86,7 +86,19 @@ export default function App() {
   }
 
   if (selectedNews) {
-    return <NewsDetail item={selectedNews} onBack={() => setSelectedNews(null)} onRegisterClick={() => setShowRegistrationModal(true)} />;
+    return (
+      <>
+        <NewsDetail 
+          item={selectedNews} 
+          onBack={() => setSelectedNews(null)} 
+          onRegisterClick={() => setShowRegistrationModal(true)} 
+        />
+        <RegistrationModal 
+          isOpen={showRegistrationModal} 
+          onClose={() => setShowRegistrationModal(false)} 
+        />
+      </>
+    );
   }
 
   return (

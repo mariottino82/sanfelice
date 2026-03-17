@@ -131,11 +131,6 @@ export function RegistrationModal({ isOpen, onClose }: RegistrationModalProps) {
                     />
                   </div>
 
-                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-500 uppercase tracking-widest">Quota Associativa 2026</span>
-                    <span className="text-lg font-serif text-stone-900">€ 100,00</span>
-                  </div>
-
                   {error && (
                     <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
                       {error}
