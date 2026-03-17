@@ -358,7 +358,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       const memberRes = await fetch('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: reg.name, email: reg.email, role: 'Socio' })
+        body: JSON.stringify({ 
+          name: reg.name, 
+          email: reg.email, 
+          role: 'Socio',
+          password: reg.password // Pass the password from registration
+        })
       });
       const memberData = await memberRes.json();
       
@@ -1278,10 +1283,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     addAccount(data);
                     e.currentTarget.reset();
                   }}
-                  className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
+                  className="grid grid-cols-1 md:grid-cols-5 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                 >
                   <input name="username" placeholder="Username" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
                   <input name="email" type="email" placeholder="Email (per Soci)" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
+                  <input name="password" type="password" placeholder="Password" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
                   <select name="role" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none">
                     <option value="Amministratore">Amministratore</option>
                     <option value="Operatore">Operatore</option>

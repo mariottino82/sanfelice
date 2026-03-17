@@ -12,6 +12,7 @@ import { Dashboard } from './components/Dashboard';
 import { LotterySection } from './components/LotterySection';
 import { PollSection } from './components/PollSection';
 import { NewsDetail } from './components/NewsDetail';
+import { RegistrationModal } from './components/RegistrationModal';
 import { X, LogIn, Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -24,6 +25,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [showLoginModal, setShowLoginModal] = React.useState(false);
+  const [showRegistrationModal, setShowRegistrationModal] = React.useState(false);
   const [selectedNews, setSelectedNews] = React.useState<any>(null);
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -84,12 +86,12 @@ export default function App() {
   }
 
   if (selectedNews) {
-    return <NewsDetail item={selectedNews} onBack={() => setSelectedNews(null)} />;
+    return <NewsDetail item={selectedNews} onBack={() => setSelectedNews(null)} onRegisterClick={() => setShowRegistrationModal(true)} />;
   }
 
   return (
     <div className="min-h-screen bg-stone-50 font-sans text-stone-900 selection:bg-stone-200">
-      <Navbar onLoginClick={() => setShowLoginModal(true)} />
+      <Navbar onLoginClick={() => setShowLoginModal(true)} onRegisterClick={() => setShowRegistrationModal(true)} />
       <main>
         <Hero />
         <PollSection />
@@ -97,6 +99,11 @@ export default function App() {
         <NewsEvents onNewsClick={(item) => setSelectedNews(item)} />
         <Gallery />
       </main>
+      
+      <RegistrationModal 
+        isOpen={showRegistrationModal} 
+        onClose={() => setShowRegistrationModal(false)} 
+      />
       
       <footer className="bg-stone-900 text-stone-400 py-12 border-t border-stone-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

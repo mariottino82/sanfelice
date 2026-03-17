@@ -26,7 +26,8 @@ export async function getDb() {
       username TEXT UNIQUE,
       email TEXT,
       password TEXT,
-      role TEXT
+      role TEXT,
+      lastLogin TEXT
     );
 
     CREATE TABLE IF NOT EXISTS members (
@@ -35,6 +36,7 @@ export async function getDb() {
       email TEXT UNIQUE,
       phone TEXT,
       address TEXT,
+      password TEXT,
       status TEXT DEFAULT 'attivo',
       role TEXT DEFAULT 'Socio',
       joinDate TEXT
@@ -99,6 +101,7 @@ export async function getDb() {
       name TEXT,
       email TEXT,
       phone TEXT,
+      password TEXT,
       message TEXT,
       date TEXT
     );
@@ -134,7 +137,10 @@ export async function getDb() {
     'ALTER TABLE polls ADD COLUMN showOnHomepage INTEGER DEFAULT 0',
     'ALTER TABLE polls ADD COLUMN totalVotes INTEGER DEFAULT 0',
     'ALTER TABLE polls ADD COLUMN endDate TEXT',
-    'ALTER TABLE users ADD COLUMN email TEXT'
+    'ALTER TABLE users ADD COLUMN email TEXT',
+    'ALTER TABLE users ADD COLUMN lastLogin TEXT',
+    'ALTER TABLE members ADD COLUMN password TEXT',
+    'ALTER TABLE registrations ADD COLUMN password TEXT'
   ];
 
   for (const migration of migrations) {

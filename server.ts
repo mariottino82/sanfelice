@@ -56,24 +56,29 @@ async function startServer() {
 
   // Auth API
   app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    
-    // Check users table (admins)
-    const user = await db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
-    if (user) {
-      return res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, email: user.email } });
-    }
+    try {
+      const { username, password } = req.body;
+      
+      // Check users table (admins)
+      const user = await db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
+      if (user) {
+        return res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, email: user.email } });
+      }
 
-    // Check members table (soci)
-    const member = await db.get('SELECT * FROM members WHERE email = ?', [username]);
-    if (member && (password === 'socio' || password === member.email)) {
-      return res.json({ 
-        success: true, 
-        user: { id: member.id, username: member.name, role: member.role || 'Socio', email: member.email } 
-      });
-    }
+      // Check members table (soci)
+      const member = await db.get('SELECT * FROM members WHERE email = ? AND password = ?', [username, password]);
+      if (member) {
+        return res.json({ 
+          success: true, 
+          user: { id: member.id, username: member.name, role: member.role || 'Socio', email: member.email } 
+        });
+      }
 
-    res.status(401).json({ success: false, message: 'Credenziali errate' });
+      res.status(401).json({ success: false, message: 'Credenziali errate' });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   // Members API
@@ -83,11 +88,11 @@ async function startServer() {
   });
 
   app.post('/api/members', async (req, res) => {
-    const { name, email, phone, address, role, status, joinDate } = req.body;
+    const { name, email, phone, address, role, status, joinDate, password } = req.body;
     try {
       const result = await db.run(
-        'INSERT INTO members (name, email, phone, address, role, status, joinDate) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [name, email, phone, address, role || 'Socio', status || 'attivo', joinDate || new Date().toISOString()]
+        'INSERT INTO members (name, email, phone, address, role, status, joinDate, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, email, phone, address, role || 'Socio', status || 'attivo', joinDate || new Date().toISOString(), password]
       );
       res.json({ id: result.lastID });
     } catch (e) {
@@ -96,10 +101,10 @@ async function startServer() {
   });
 
   app.put('/api/members/:id', async (req, res) => {
-    const { name, email, phone, address, role, status } = req.body;
+    const { name, email, phone, address, role, status, password } = req.body;
     await db.run(
-      'UPDATE members SET name = ?, email = ?, phone = ?, address = ?, role = ?, status = ? WHERE id = ?',
-      [name, email, phone, address, role, status, req.params.id]
+      'UPDATE members SET name = ?, email = ?, phone = ?, address = ?, role = ?, status = ?, password = ? WHERE id = ?',
+      [name, email, phone, address, role, status, password, req.params.id]
     );
     res.json({ success: true });
   });
@@ -340,10 +345,10 @@ async function startServer() {
   });
 
   app.post('/api/registrations', async (req, res) => {
-    const { name, email, phone, message } = req.body;
+    const { name, email, phone, message, password } = req.body;
     const result = await db.run(
-      'INSERT INTO registrations (name, email, phone, message, date) VALUES (?, ?, ?, ?, ?)',
-      [name, email, phone, message, new Date().toISOString()]
+      'INSERT INTO registrations (name, email, phone, message, date, password) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, phone, message, new Date().toISOString(), password]
     );
     res.json({ id: result.lastID });
   });
@@ -400,36 +405,56 @@ async function startServer() {
 
   // Settings API
   app.get('/api/settings/:key', async (req, res) => {
-    const setting = await db.get('SELECT * FROM settings WHERE key = ?', [req.params.key]);
-    if (setting) {
-      res.json({ value: JSON.parse(setting.value) });
-    } else {
-      res.status(404).json({ error: 'Impostazione non trovata' });
+    try {
+      const setting = await db.get('SELECT * FROM settings WHERE key = ?', [req.params.key]);
+      if (setting) {
+        res.json({ value: JSON.parse(setting.value) });
+      } else {
+        res.status(404).json({ error: 'Impostazione non trovata' });
+      }
+    } catch (error) {
+      console.error('Error fetching setting:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
   app.post('/api/settings/:key', async (req, res) => {
-    const { value } = req.body;
-    await db.run(
-      'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
-      [req.params.key, JSON.stringify(value)]
-    );
-    res.json({ success: true });
+    try {
+      const { value } = req.body;
+      await db.run(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        [req.params.key, JSON.stringify(value)]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error saving setting:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   // Users API
   app.get('/api/users', async (req, res) => {
-    const users = await db.all('SELECT id, username, email, role, lastLogin FROM users');
-    res.json(users);
+    try {
+      const users = await db.all('SELECT id, username, email, role, lastLogin FROM users');
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   app.post('/api/users', async (req, res) => {
-    const { username, password, role, email } = req.body;
-    const result = await db.run(
-      'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
-      [username, password || 'admin', role || 'Operatore', email]
-    );
-    res.json({ id: result.lastID });
+    try {
+      const { username, password, role, email } = req.body;
+      const result = await db.run(
+        'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
+        [username, password || 'admin', role || 'Operatore', email]
+      );
+      res.json({ id: result.lastID });
+    } catch (error) {
+      console.error('Error creating user:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   app.delete('/api/users/:id', async (req, res) => {

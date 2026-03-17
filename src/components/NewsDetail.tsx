@@ -5,9 +5,10 @@ import { ArrowLeft, Calendar, Share2, Facebook, Twitter, Link as LinkIcon, PlayC
 interface NewsDetailProps {
   item: any;
   onBack: () => void;
+  onRegisterClick: () => void;
 }
 
-export function NewsDetail({ item, onBack }: NewsDetailProps) {
+export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
   React.useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -120,7 +121,10 @@ export function NewsDetail({ item, onBack }: NewsDetailProps) {
               <div className="p-6 bg-stone-900 rounded-3xl text-white">
                 <h4 className="font-serif text-xl mb-4">Partecipa anche tu</h4>
                 <p className="text-stone-400 text-sm mb-6">Unisciti alla nostra associazione per non perdere i prossimi eventi.</p>
-                <button className="w-full bg-white text-stone-900 py-3 rounded-xl font-bold text-sm hover:bg-stone-100 transition-colors">
+                <button 
+                  onClick={onRegisterClick}
+                  className="w-full bg-white text-stone-900 py-3 rounded-xl font-bold text-sm hover:bg-stone-100 transition-colors"
+                >
                   Diventa Socio
                 </button>
               </div>

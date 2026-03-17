@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-export function Navbar({ onLoginClick }: { onLoginClick: () => void }) {
+export function Navbar({ onLoginClick, onRegisterClick }: { onLoginClick: () => void, onRegisterClick: () => void }) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const navItems = [
@@ -39,13 +39,21 @@ export function Navbar({ onLoginClick }: { onLoginClick: () => void }) {
                 {item.name}
               </a>
             ))}
-            <button 
-              onClick={onLoginClick}
-              className="bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-800 transition-colors flex items-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              Accedi
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={onRegisterClick}
+                className="text-stone-900 border border-stone-900 px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-50 transition-colors"
+              >
+                Diventa Socio
+              </button>
+              <button 
+                onClick={onLoginClick}
+                className="bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-800 transition-colors flex items-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Accedi
+              </button>
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -78,6 +86,15 @@ export function Navbar({ onLoginClick }: { onLoginClick: () => void }) {
                 {item.name}
               </a>
             ))}
+            <button 
+              onClick={() => {
+                setIsOpen(false);
+                onRegisterClick();
+              }}
+              className="w-full text-left px-3 py-2 text-stone-900 font-bold flex items-center gap-2"
+            >
+              Diventa Socio
+            </button>
             <button 
               onClick={() => {
                 setIsOpen(false);
