@@ -63,6 +63,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [appointments, setAppointments] = React.useState([]);
   const [registrations, setRegistrations] = React.useState([]);
   const [gallery, setGallery] = React.useState([]);
+  const [selectedRegistration, setSelectedRegistration] = React.useState<any>(null);
+  const [showEmailConfirmation, setShowEmailConfirmation] = React.useState<any>(null);
+  const [membershipFees, setMembershipFees] = React.useState<Record<number, number>>({ 2024: 100, 2025: 100, 2026: 100 });
+  const [showFeeSettings, setShowFeeSettings] = React.useState(false);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -77,7 +81,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         { key: 'news', url: '/api/news', setter: setNews },
         { key: 'gallery', url: '/api/gallery', setter: setGallery },
         { key: 'users', url: '/api/users', setter: setAccounts },
-        { key: 'social_links', url: '/api/settings/social_links', setter: (data: any) => data?.value && setSocialLinks(data.value) }
+        { key: 'social_links', url: '/api/settings/social_links', setter: (data: any) => data?.value && setSocialLinks(data.value) },
+        { key: 'membership_fees', url: '/api/settings/membership_fees', setter: (data: any) => data?.value && setMembershipFees(data.value) }
       ];
 
       for (const endpoint of endpoints) {
@@ -372,7 +377,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       
       setMembers([...members, { id: memberData.id, name: reg.name, email: reg.email, role: 'Socio', status: 'attivo' }]);
       setRegistrations(registrations.filter((r: any) => r.id !== reg.id));
-      alert('Iscrizione approvata con successo!');
+      setShowEmailConfirmation(reg);
     } catch (error) {
       console.error('Error approving registration:', error);
     }
@@ -560,7 +565,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             <>
               {[
                 { id: 'members', label: 'Soci & Cariche', icon: Users, minRole: 'SuperAdmin' },
-                { id: 'registrations', label: 'Iscrizioni', icon: UserPlus, minRole: 'SuperAdmin' },
+                { id: 'registrations', label: 'Iscrizioni', icon: UserPlus, minRole: 'SuperAdmin', badge: registrations.length > 0 ? registrations.length : null },
                 { id: 'finances', label: 'Contabilità', icon: Euro, minRole: 'SuperAdmin' },
                 { id: 'lottery', label: 'Lotteria', icon: Ticket, minRole: 'Operator' },
                 { id: 'minutes', label: 'Verbali', icon: FileText, minRole: 'Operator' },
@@ -573,21 +578,28 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 if (isSuperAdmin) return true;
                 if (isOperator && tab.minRole === 'Operator') return true;
                 return false;
-              }).map((tab) => (
+              }).map((tab: any) => (
                 <button
                   key={tab.id}
                   onClick={() => {
                     setActiveTab(tab.id);
                     setIsSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     activeTab === tab.id
                       ? 'bg-white text-stone-900 shadow-lg'
                       : 'hover:bg-stone-800 hover:text-white'
                   }`}
                 >
-                  <tab.icon className="w-5 h-5" />
-                  {tab.label}
+                  <div className="flex items-center gap-3">
+                    <tab.icon className="w-5 h-5" />
+                    {tab.label}
+                  </div>
+                  {tab.badge && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </>
@@ -675,7 +687,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
                 <div>
                   <p className="font-bold">Quota 2026 non versata</p>
-                  <p className="text-sm">Ti ricordiamo di regolarizzare la tua quota associativa per l'anno in corso.</p>
+                  <p className="text-sm">Ti ricordiamo di regolarizzare la tua quota associativa di € {membershipFees[2026] || 100} per l'anno in corso.</p>
                 </div>
               </motion.div>
             )}
@@ -687,7 +699,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
                 <div>
                   <p className="font-bold">Quota 2026 in regola</p>
-                  <p className="text-sm">Grazie per il tuo sostegno! La tua iscrizione è attiva per tutto l'anno 2026.</p>
+                  <p className="text-sm">Grazie per il tuo sostegno! La tua iscrizione di € {membershipFees[2026] || 100} è attiva per tutto l'anno 2026.</p>
                 </div>
               </div>
             )}
@@ -884,7 +896,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             {isSuperAdmin && activeTab === 'members' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-serif text-stone-900">Elenco Soci e Cariche</h2>
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-serif text-stone-900">Elenco Soci e Cariche</h2>
+                    <button 
+                      onClick={() => setShowFeeSettings(true)}
+                      className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all"
+                      title="Imposta Quote Associative"
+                    >
+                      <Settings className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <form 
@@ -1465,31 +1486,25 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </div>
                     <h3 className="text-xl font-serif text-stone-900 mb-2">Nessuna nuova iscrizione</h3>
                     <p className="text-stone-500 max-w-xs mx-auto">Le richieste di iscrizione online appariranno qui per essere approvate.</p>
-                    <button 
-                      onClick={async () => {
-                        const newReg = { name: 'Test User', email: 'test@example.com', date: new Date().toISOString() };
-                        const res = await fetch('/api/registrations', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(newReg)
-                        });
-                        const data = await res.json();
-                        setRegistrations([...registrations, { ...newReg, id: data.id }]);
-                      }}
-                      className="mt-4 text-stone-400 text-xs underline"
-                    >
-                      Genera iscrizione di prova
-                    </button>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {registrations.map((reg: any) => (
-                      <div key={reg.id} className="p-6 bg-stone-50 border border-stone-200 rounded-3xl flex items-center justify-between">
-                        <div>
-                          <p className="font-bold text-stone-900">{reg.name}</p>
-                          <p className="text-sm text-stone-500">{reg.email} • {new Date(reg.date).toLocaleDateString('it-IT')}</p>
+                      <div 
+                        key={reg.id} 
+                        onClick={() => setSelectedRegistration(reg)}
+                        className="p-6 bg-stone-50 border border-stone-200 rounded-3xl flex items-center justify-between cursor-pointer hover:bg-stone-100 transition-colors group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <UserPlus className="w-6 h-6 text-stone-900" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-stone-900">{reg.name}</p>
+                            <p className="text-sm text-stone-500">{reg.email} • {new Date(reg.date).toLocaleDateString('it-IT')}</p>
+                          </div>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
                           <button 
                             onClick={() => approveRegistration(reg)}
                             className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-600 transition-colors"
@@ -1502,15 +1517,234 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           >
                             Rifiuta
                           </button>
-                          <button 
-                            onClick={() => deleteRegistration(reg.id)}
-                            className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100"
-                          >
-                            Cancella
-                          </button>
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Registration Detail Modal */}
+                {selectedRegistration && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRegistration(null)} />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="relative bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-lg w-full"
+                    >
+                      <button 
+                        onClick={() => setSelectedRegistration(null)}
+                        className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+
+                      <div className="mb-8">
+                        <h3 className="text-2xl font-serif text-stone-900 mb-2">Dettagli Iscrizione</h3>
+                        <p className="text-stone-500 text-sm">Richiesta inviata il {new Date(selectedRegistration.date).toLocaleDateString('it-IT')}</p>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                            <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Nome</label>
+                            <p className="text-stone-900 font-medium">{selectedRegistration.name}</p>
+                          </div>
+                          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                            <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Email</label>
+                            <p className="text-stone-900 font-medium">{selectedRegistration.email}</p>
+                          </div>
+                          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                            <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Telefono</label>
+                            <p className="text-stone-900 font-medium">{selectedRegistration.phone || 'Non fornito'}</p>
+                          </div>
+                          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                            <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Password Scelta</label>
+                            <p className="text-stone-900 font-mono text-xs">********</p>
+                          </div>
+                        </div>
+
+                        <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100">
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2">Messaggio / Motivazione</label>
+                          <p className="text-stone-600 text-sm leading-relaxed italic">
+                            "{selectedRegistration.message || 'Nessun messaggio fornito.'}"
+                          </p>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
+                          <button 
+                            onClick={() => {
+                              approveRegistration(selectedRegistration);
+                              setSelectedRegistration(null);
+                            }}
+                            className="flex-1 bg-emerald-500 text-white py-4 rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
+                          >
+                            Approva Iscrizione
+                          </button>
+                          <button 
+                            onClick={() => {
+                              deleteRegistration(selectedRegistration.id);
+                              setSelectedRegistration(null);
+                            }}
+                            className="flex-1 bg-stone-100 text-stone-600 py-4 rounded-xl font-bold hover:bg-stone-200 transition-all"
+                          >
+                            Rifiuta
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+
+                {/* Email Confirmation Modal */}
+                {showEmailConfirmation && (
+                  <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEmailConfirmation(null)} />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="relative bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
+                    >
+                      <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
+                      
+                      <button 
+                        onClick={() => setShowEmailConfirmation(null)}
+                        className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+
+                      <div className="flex items-center gap-4 mb-8">
+                        <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center">
+                          <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-serif text-stone-900">Iscrizione Approvata</h3>
+                          <p className="text-stone-500 text-sm">Email di benvenuto inviata con successo</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-stone-50 rounded-3xl border border-stone-200 overflow-hidden">
+                        <div className="bg-stone-100 px-6 py-3 border-b border-stone-200 flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Anteprima Email Inviata</span>
+                          <span className="text-[10px] text-stone-400 italic">Destinatario: {showEmailConfirmation.email}</span>
+                        </div>
+                        <div className="p-8 space-y-6 text-stone-700">
+                          <p className="font-serif text-xl text-stone-900">Benvenuto in Pro San Felice, {showEmailConfirmation.name}!</p>
+                          
+                          <p className="text-sm leading-relaxed">
+                            Siamo felici di comunicarti che la tua richiesta di iscrizione è stata approvata dal consiglio direttivo. 
+                            Da questo momento sei ufficialmente un socio della nostra associazione.
+                          </p>
+
+                          <div className="p-6 bg-white rounded-2xl border border-stone-200 space-y-4">
+                            <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest">I tuoi dati di accesso:</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-[10px] text-stone-400 uppercase">Username / Email</label>
+                                <p className="text-sm font-medium">{showEmailConfirmation.email}</p>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-stone-400 uppercase">Password</label>
+                                <p className="text-sm font-mono">******** (quella scelta da te)</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest">Istruzioni per il versamento:</h4>
+                            <p className="text-sm leading-relaxed">
+                              Per completare l'attivazione, è necessario versare la quota associativa annuale di <strong>€ {membershipFees[2026] || 100},00</strong>. 
+                              Puoi effettuare il versamento tramite:
+                            </p>
+                            <ul className="text-sm space-y-2 list-disc pl-5 text-stone-600">
+                              <li>Bonifico Bancario: IT 00 X 00000 00000 000000000000</li>
+                              <li>Presso la nostra sede negli orari di apertura</li>
+                              <li>Durante il prossimo evento associativo</li>
+                            </ul>
+                          </div>
+
+                          <p className="text-xs text-stone-400 pt-4 border-t border-stone-100">
+                            Questa è una simulazione dell'email che verrebbe inviata al socio.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => setShowEmailConfirmation(null)}
+                        className="w-full mt-8 bg-stone-900 text-white py-4 rounded-xl font-bold hover:bg-stone-800 transition-all"
+                      >
+                        Ho capito, chiudi
+                      </button>
+                    </motion.div>
+                  </div>
+                )}
+
+                {/* Fee Settings Modal */}
+                {showFeeSettings && (
+                  <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFeeSettings(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="relative bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full"
+                    >
+                      <button 
+                        onClick={() => setShowFeeSettings(false)}
+                        className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+
+                      <div className="mb-8">
+                        <div className="w-12 h-12 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
+                          <Settings className="w-6 h-6 text-stone-900" />
+                        </div>
+                        <h3 className="text-2xl font-serif text-stone-900 mb-2">Quote Associative</h3>
+                        <p className="text-stone-500 text-sm">Imposta la quota stabilita per ogni anno sociale. Ogni modifica verrà notificata ai nuovi iscritti.</p>
+                      </div>
+
+                      <div className="space-y-4">
+                        {[2024, 2025, 2026].map(year => (
+                          <div key={year} className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                            <span className="font-bold text-stone-900">Anno {year}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-stone-400 font-medium">€</span>
+                              <input 
+                                type="number" 
+                                value={membershipFees[year]} 
+                                onChange={(e) => setMembershipFees({ ...membershipFees, [year]: parseInt(e.target.value) || 0 })}
+                                className="w-20 px-3 py-2 rounded-xl border border-stone-200 text-right font-bold text-stone-900 focus:ring-2 focus:ring-stone-900 outline-none"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-8 space-y-3">
+                        <button 
+                          onClick={async () => {
+                            try {
+                              await fetch('/api/settings/membership_fees', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ value: membershipFees })
+                              });
+                              setShowFeeSettings(false);
+                              alert('Quote associative salvate con successo. È stato generato un riferimento nel verbale di oggi.');
+                            } catch (error) {
+                              console.error('Error saving fees:', error);
+                            }
+                          }}
+                          className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                        >
+                          Salva e Notifica
+                        </button>
+                        <p className="text-[10px] text-stone-400 text-center uppercase tracking-widest font-bold">
+                          La quota per il 2026 è attualmente di € {membershipFees[2026]},00
+                        </p>
+                      </div>
+                    </motion.div>
                   </div>
                 )}
               </div>

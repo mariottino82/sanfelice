@@ -178,5 +178,12 @@ export async function getDb() {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['social_links', JSON.stringify(defaultLinks)]);
   }
 
+  // Seed membership fees if not exists
+  const membershipFees = await db.get('SELECT * FROM settings WHERE key = ?', ['membership_fees']);
+  if (!membershipFees) {
+    const defaultFees = { 2024: 100, 2025: 100, 2026: 100 };
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['membership_fees', JSON.stringify(defaultFees)]);
+  }
+
   return db;
 }

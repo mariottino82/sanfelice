@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Calendar, Share2, Facebook, Twitter, Link as LinkIcon, PlayCircle, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Share2, Facebook, Twitter, Link as LinkIcon, PlayCircle, X, UserPlus } from 'lucide-react';
 
 interface NewsDetailProps {
   item: any;
@@ -118,15 +118,24 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
                 </div>
               </div>
 
-              <div className="p-6 bg-stone-900 rounded-3xl text-white">
-                <h4 className="font-serif text-xl mb-4">Partecipa anche tu</h4>
-                <p className="text-stone-400 text-sm mb-6">Unisciti alla nostra associazione per non perdere i prossimi eventi.</p>
-                <button 
-                  onClick={onRegisterClick}
-                  className="w-full bg-white text-stone-900 py-3 rounded-xl font-bold text-sm hover:bg-stone-100 transition-colors"
-                >
-                  Diventa Socio
-                </button>
+              <div className="p-8 bg-stone-900 rounded-[2rem] text-white shadow-xl shadow-stone-900/20 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+                <div className="relative z-10">
+                  <h4 className="font-serif text-2xl mb-4">Partecipa anche tu</h4>
+                  <p className="text-stone-400 text-sm mb-8 leading-relaxed">
+                    Unisciti alla nostra associazione per sostenere il territorio e non perdere i prossimi eventi esclusivi.
+                  </p>
+                  <button 
+                    onClick={onRegisterClick}
+                    className="w-full bg-white text-stone-900 py-4 rounded-2xl font-bold text-sm hover:bg-stone-100 transition-all transform active:scale-95 shadow-lg shadow-white/10 flex items-center justify-center gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Diventa Socio Ora
+                  </button>
+                  <p className="mt-4 text-[10px] text-stone-500 text-center uppercase tracking-widest font-bold">
+                    Quota associativa 2026: € 100,00
+                  </p>
+                </div>
               </div>
             </div>
           </div>

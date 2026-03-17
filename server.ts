@@ -410,7 +410,8 @@ async function startServer() {
       if (setting) {
         res.json({ value: JSON.parse(setting.value) });
       } else {
-        res.status(404).json({ error: 'Impostazione non trovata' });
+        // Return a default empty object or null instead of 404 for settings
+        res.json({ value: null });
       }
     } catch (error) {
       console.error('Error fetching setting:', error);
