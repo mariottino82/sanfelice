@@ -46,26 +46,27 @@ export function RegistrationModal({ isOpen, onClose }: RegistrationModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative bg-white p-6 md:p-10 rounded-[2.5rem] shadow-2xl max-w-lg w-full overflow-hidden"
-          >
-            <button 
-              onClick={onClose}
-              className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors z-10 p-2 hover:bg-stone-100 rounded-full"
+          <div className="flex min-h-full items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-lg w-full overflow-hidden"
             >
-              <X className="w-6 h-6" />
-            </button>
+              <button 
+                onClick={onClose}
+                className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-10 p-2 hover:bg-stone-100 rounded-full"
+              >
+                <X className="w-6 h-6" />
+              </button>
 
             {step === 'form' ? (
               <>

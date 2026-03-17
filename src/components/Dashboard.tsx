@@ -1525,19 +1525,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                 {/* Registration Detail Modal */}
                 {selectedRegistration && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRegistration(null)} />
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      className="relative bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-lg w-full"
-                    >
-                      <button 
-                        onClick={() => setSelectedRegistration(null)}
-                        className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
+                  <div className="fixed inset-0 z-[100] overflow-y-auto p-4 md:p-8">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRegistration(null)} />
+                    <div className="flex min-h-full items-center justify-center">
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="relative bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-lg w-full"
                       >
-                        <X className="w-6 h-6" />
-                      </button>
+                        <button 
+                          onClick={() => setSelectedRegistration(null)}
+                          className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors p-2 hover:bg-stone-100 rounded-full"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
 
                       <div className="mb-8">
                         <h3 className="text-2xl font-serif text-stone-900 mb-2">Dettagli Iscrizione</h3>
@@ -1598,21 +1599,22 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                 {/* Email Confirmation Modal */}
                 {showEmailConfirmation && (
-                  <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEmailConfirmation(null)} />
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      className="relative bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
-                    >
-                      <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
-                      
-                      <button 
-                        onClick={() => setShowEmailConfirmation(null)}
-                        className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
+                  <div className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEmailConfirmation(null)} />
+                    <div className="flex min-h-full items-center justify-center">
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="relative bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
                       >
-                        <X className="w-6 h-6" />
-                      </button>
+                        <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
+                        
+                        <button 
+                          onClick={() => setShowEmailConfirmation(null)}
+                          className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors p-2 hover:bg-stone-100 rounded-full"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
 
                       <div className="flex items-center gap-4 mb-8">
                         <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center">
@@ -1682,19 +1684,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                 {/* Fee Settings Modal */}
                 {showFeeSettings && (
-                  <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFeeSettings(false)} />
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      className="relative bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full"
-                    >
-                      <button 
-                        onClick={() => setShowFeeSettings(false)}
-                        className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
+                  <div className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFeeSettings(false)} />
+                    <div className="flex min-h-full items-center justify-center">
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="relative bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full"
                       >
-                        <X className="w-6 h-6" />
-                      </button>
+                        <button 
+                          onClick={() => setShowFeeSettings(false)}
+                          className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors p-2 hover:bg-stone-100 rounded-full"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
 
                       <div className="mb-8">
                         <div className="w-12 h-12 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">

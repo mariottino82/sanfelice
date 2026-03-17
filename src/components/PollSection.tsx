@@ -208,28 +208,29 @@ export function PollSection() {
       {/* Vote Modal */}
       <AnimatePresence>
         {showVoteModal && (
-          <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 md:p-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-stone-900/80 backdrop-blur-md"
+              className="fixed inset-0 bg-stone-900/80 backdrop-blur-md"
               onClick={() => !voted && setShowVoteModal(false)}
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
-            >
-              {/* Close Button - Ensuring it's visible and high z-index */}
-              <button
-                onClick={() => setShowVoteModal(false)}
-                className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors z-[110] p-2 hover:bg-stone-100 rounded-full"
-                aria-label="Chiudi"
+            <div className="flex min-h-full items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
               >
-                <X className="w-6 h-6" />
-              </button>
+                {/* Close Button - Ensuring it's visible and high z-index */}
+                <button
+                  onClick={() => setShowVoteModal(false)}
+                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-[110] p-2 hover:bg-stone-100 rounded-full"
+                  aria-label="Chiudi"
+                >
+                  <X className="w-6 h-6" />
+                </button>
 
               {voted ? (
                 <div className="text-center py-12">

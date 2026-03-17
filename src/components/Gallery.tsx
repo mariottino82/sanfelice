@@ -99,24 +99,26 @@ export function Gallery() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/95 backdrop-blur-sm"
+            className="fixed inset-0 z-50 overflow-y-auto p-4 md:p-8 bg-stone-950/95 backdrop-blur-sm"
             onClick={() => setSelectedItem(null)}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setSelectedItem(null)}
-                className="absolute -top-12 right-0 text-white hover:text-stone-300 transition-colors"
+            <div className="flex min-h-full items-center justify-center">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative max-w-5xl w-full flex flex-col items-center"
+                onClick={(e) => e.stopPropagation()}
               >
-                <X className="w-8 h-8" />
-              </button>
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="absolute -top-12 right-0 md:-right-12 md:top-0 text-white hover:text-stone-300 transition-colors p-2 bg-white/10 rounded-full backdrop-blur-md"
+                  aria-label="Chiudi"
+                >
+                  <X className="w-8 h-8" />
+                </button>
 
-              <div className="w-full h-full rounded-2xl overflow-hidden bg-stone-900 flex items-center justify-center shadow-2xl border border-white/10">
+                <div className="w-full rounded-2xl overflow-hidden bg-stone-900 flex items-center justify-center shadow-2xl border border-white/10">
                 {selectedItem.type === 'video' ? (
                   <div className="relative w-full aspect-video">
                     {/* Assuming YouTube/Vimeo or direct URL. For demo we just show the image with a play button if it's not a real video URL */}

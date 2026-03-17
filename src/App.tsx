@@ -168,72 +168,74 @@ export default function App() {
 
       <AnimatePresence>
         {showLoginModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 md:p-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLoginModal(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white p-6 md:p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
-            >
-              <button 
-                onClick={() => setShowLoginModal(false)}
-                className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors z-10 p-2 hover:bg-stone-100 rounded-full"
-                aria-label="Chiudi"
+            <div className="flex min-h-full items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
               >
-                <X className="w-6 h-6" />
-              </button>
-              
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-100 rounded-2xl mb-4">
-                  <LogIn className="w-8 h-8 text-stone-900" />
-                </div>
-                <h3 className="text-2xl font-serif text-stone-900">Area Riservata</h3>
-                <p className="text-stone-500 text-sm mt-2">Accedi per gestire l'associazione</p>
-                {apiStatus === 'error' && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
-                    Attenzione: Il server non risponde. Verifica la connessione.
-                  </div>
-                )}
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Username</label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="admin"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold hover:bg-stone-800 transition-all transform active:scale-95 shadow-lg shadow-stone-900/20"
+                <button 
+                  onClick={() => setShowLoginModal(false)}
+                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-10 p-2 hover:bg-stone-100 rounded-full"
+                  aria-label="Chiudi"
                 >
-                  Accedi ora
+                  <X className="w-6 h-6" />
                 </button>
-              </form>
-            </motion.div>
+                
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-100 rounded-2xl mb-4">
+                    <LogIn className="w-8 h-8 text-stone-900" />
+                  </div>
+                  <h3 className="text-2xl font-serif text-stone-900">Area Riservata</h3>
+                  <p className="text-stone-500 text-sm mt-2">Accedi per gestire l'associazione</p>
+                  {apiStatus === 'error' && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
+                      Attenzione: Il server non risponde. Verifica la connessione.
+                    </div>
+                  )}
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Username</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="admin"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Password</label>
+                    <input
+                      type="password"
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold hover:bg-stone-800 transition-all transform active:scale-95 shadow-lg shadow-stone-900/20"
+                  >
+                    Accedi ora
+                  </button>
+                </form>
+              </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>
