@@ -219,31 +219,51 @@ async function startServer() {
 
   app.post('/api/polls/:id/vote', async (req, res) => {
     const { optionIndex, email, phone } = req.body;
-    const poll = await db.get('SELECT * FROM polls WHERE id = ?', [req.params.id]);
-    if (poll) {
-      const options = JSON.parse(poll.options);
-      const votes = JSON.parse(poll.votes || '[]');
-      
-      // Update option vote count
-      if (options[optionIndex]) {
+    console.log(`Vote request for poll ${req.params.id}:`, { optionIndex, email, phone });
+    try {
+      const poll = await db.get('SELECT * FROM polls WHERE id = ?', [req.params.id]);
+      if (poll) {
+        const options = JSON.parse(poll.options || '[]');
+        const votes = JSON.parse(poll.votes || '[]');
+        
+        if (optionIndex === undefined || optionIndex < 0 || optionIndex >= options.length) {
+          console.error('Invalid option index:', optionIndex);
+          return res.status(400).json({ error: 'Indice opzione non valido' });
+        }
+
+        // Update option vote count
         options[optionIndex].votes = (options[optionIndex].votes || 0) + 1;
+
+        // Add detailed vote
+        votes.push({
+          email,
+          phone,
+          date: new Date().toISOString(),
+          optionId: options[optionIndex].id
+        });
+
+        await db.run(
+          'UPDATE polls SET options = ?, votes = ?, totalVotes = totalVotes + 1 WHERE id = ?',
+          [JSON.stringify(options), JSON.stringify(votes), req.params.id]
+        );
+        console.log('Vote recorded successfully');
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: 'Sondaggio non trovato' });
       }
+    } catch (error: any) {
+      console.error('Error recording vote:', error);
+      res.status(500).json({ error: 'Errore durante la registrazione del voto: ' + error.message });
+    }
+  });
 
-      // Add detailed vote
-      votes.push({
-        email,
-        phone,
-        date: new Date().toISOString(),
-        optionId: options[optionIndex]?.id
-      });
-
-      await db.run(
-        'UPDATE polls SET options = ?, votes = ?, totalVotes = totalVotes + 1 WHERE id = ?',
-        [JSON.stringify(options), JSON.stringify(votes), req.params.id]
-      );
+  app.delete('/api/polls/:id', async (req, res) => {
+    try {
+      await db.run('DELETE FROM polls WHERE id = ?', [req.params.id]);
       res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'Sondaggio non trovato' });
+    } catch (error: any) {
+      console.error('Error deleting poll:', error);
+      res.status(500).json({ error: 'Errore durante l\'eliminazione del sondaggio' });
     }
   });
 

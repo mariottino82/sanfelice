@@ -53,14 +53,32 @@ export function PollSection() {
 
     try {
       const optionIndex = poll.options.findIndex(o => o.id === selectedOption.id);
-      await fetch(`/api/polls/${poll.id}/vote`, {
+      if (optionIndex === -1) {
+        alert('Opzione non valida.');
+        return;
+      }
+
+      const response = await fetch(`/api/polls/${poll.id}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ optionIndex, email, phone })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Errore durante la registrazione del voto');
+      }
+
       setVoted(true);
       
+      // Refresh poll data to show updated results
+      const pollRes = await fetch('/api/polls');
+      if (pollRes.ok) {
+        const data = await pollRes.json();
+        const updatedPoll = data.find((p: any) => p.id === poll.id);
+        if (updatedPoll) setPoll(updatedPoll);
+      }
+
       setTimeout(() => {
         setShowVoteModal(false);
         setVoted(false);
@@ -68,8 +86,9 @@ export function PollSection() {
         setPhone('');
         setSelectedOption(null);
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error voting:', error);
+      alert(error.message || 'Errore durante la votazione. Riprova più tardi.');
     }
   };
 

@@ -25,6 +25,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     options: [],
     votes: []
   });
+
+  const createNewPoll = () => {
+    setPoll({
+      active: false,
+      showOnHomepage: false,
+      question: '',
+      options: [],
+      votes: []
+    });
+  };
+
+  const selectPoll = (p: any) => {
+    setPoll(p);
+  };
   const [accounts, setAccounts] = React.useState([
     { id: 1, username: 'admin', role: 'Amministratore', lastLogin: '2026-03-15' }
   ]);
@@ -461,6 +475,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
+  const deletePoll = async (id: number) => {
+    if (!confirm('Sei sicuro di voler eliminare questo sondaggio?')) return;
+    try {
+      await fetch(`/api/polls/${id}`, { method: 'DELETE' });
+      setPolls(polls.filter((p: any) => p.id !== id));
+      if (poll?.id === id) {
+        createNewPoll();
+      }
+    } catch (error) {
+      console.error('Error deleting poll:', error);
+    }
+  };
+
   const savePoll = async (updated: any) => {
     try {
       if (updated.id) {
@@ -473,6 +500,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || 'Errore durante il salvataggio');
         }
+        setPolls(polls.map((p: any) => p.id === updated.id ? { ...p, ...updated } : p));
       } else {
         const response = await fetch('/api/polls', {
           method: 'POST',
@@ -484,9 +512,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           throw new Error(errorData.error || 'Errore durante la creazione');
         }
         const data = await response.json();
-        updated.id = data.id;
+        const newPoll = { ...updated, id: data.id };
+        setPolls([newPoll, ...polls]);
+        setPoll(newPoll);
       }
-      setPoll({ ...updated });
       return true;
     } catch (error: any) {
       console.error('Error saving poll:', error);
@@ -1733,170 +1762,236 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             {isAdmin && activeTab === 'poll' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-serif text-stone-900">Gestione Sondaggio</h2>
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-stone-400 uppercase">Visibile in Home:</span>
-                      <button 
-                        onClick={() => setPoll({ ...poll, showOnHomepage: !poll.showOnHomepage })}
-                        className={`w-10 h-5 rounded-full transition-colors relative ${poll.showOnHomepage ? 'bg-stone-900' : 'bg-stone-200'}`}
-                      >
-                        <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${poll.showOnHomepage ? 'left-6' : 'left-1'}`} />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-stone-400 uppercase">Stato:</span>
-                      <button 
-                        onClick={() => setPoll({ ...poll, active: !poll.active })}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                          poll.active ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
-                        }`}
-                      >
-                        {poll.active ? 'Attivo' : 'Disattivato'}
-                      </button>
-                    </div>
-                  </div>
+                  <h2 className="text-xl font-serif text-stone-900">Gestione Sondaggi</h2>
+                  <button 
+                    onClick={createNewPoll}
+                    className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:shadow-lg transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nuovo Sondaggio
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-2 space-y-6">
-                    <div className="p-8 bg-stone-50 rounded-3xl border border-stone-200">
-                      <h3 className="font-serif text-lg text-stone-900 mb-6">Configurazione Domanda</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Testo della Domanda</label>
-                          <textarea 
-                            value={poll.question}
-                            onChange={(e) => setPoll({ ...poll, question: e.target.value })}
-                            placeholder="Cosa ne pensi delle nuove attività dell'associazione?"
-                            className="w-full px-4 py-3 rounded-2xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all h-24"
-                          />
-                        </div>
-                        
-                        <div className="space-y-4">
-                          <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Opzioni di Risposta</label>
-                          {poll.options.map((option: any) => (
-                            <div key={option.id} className="flex gap-2">
-                              <input 
-                                type="text"
-                                value={option.text}
-                                onChange={(e) => {
-                                  const updated = poll.options.map((o: any) => o.id === option.id ? { ...o, text: e.target.value } : o);
-                                  setPoll({ ...poll, options: updated });
-                                }}
-                                className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm"
-                              />
-                              <button 
-                                onClick={() => {
-                                  const updated = poll.options.filter((o: any) => o.id !== option.id);
-                                  setPoll({ ...poll, options: updated });
-                                }}
-                                className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
-                            </div>
-                          ))}
-                          <form 
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              const formData = new FormData(e.currentTarget);
-                              const text = formData.get('option_text') as string;
-                              const newOption = { id: Date.now(), text };
-                              setPoll({ ...poll, options: [...poll.options, newOption] });
-                              e.currentTarget.reset();
-                            }}
-                            className="flex gap-2"
-                          >
-                            <input name="option_text" placeholder="Aggiungi opzione..." className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm" required />
-                            <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold">
-                              Aggiungi
-                            </button>
-                          </form>
-                        </div>
+                {/* Poll List */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {polls.map((p: any) => (
+                    <div 
+                      key={p.id}
+                      onClick={() => selectPoll(p)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                        poll?.id === p.id 
+                          ? 'border-stone-900 bg-stone-900 text-white shadow-lg' 
+                          : 'border-stone-200 bg-white hover:border-stone-400'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+                          p.active 
+                            ? (poll?.id === p.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+                            : (poll?.id === p.id ? 'bg-stone-700 text-stone-400' : 'bg-stone-100 text-stone-500')
+                        }`}>
+                          {p.active ? 'Attivo' : 'Bozza'}
+                        </span>
+                        {p.showOnHomepage && (
+                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+                            poll?.id === p.id ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            In Home
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-sm font-serif line-clamp-2 ${poll?.id === p.id ? 'text-white' : 'text-stone-900'}`}>
+                        {p.question || '(Senza domanda)'}
+                      </p>
+                      <div className="mt-4 flex justify-between items-center">
+                        <span className={`text-[10px] uppercase tracking-widest ${poll?.id === p.id ? 'text-stone-400' : 'text-stone-500'}`}>
+                          {p.votes?.length || 0} voti
+                        </span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deletePoll(p.id);
+                          }}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            poll?.id === p.id ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-red-50 text-stone-400 hover:text-red-500'
+                          }`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Data Termine Sondaggio (Opzionale)</label>
-                            <input 
-                              type="datetime-local"
-                              value={poll.endDate ? poll.endDate.slice(0, 16) : ''}
-                              onChange={(e) => setPoll({ ...poll, endDate: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                              className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
-                            />
-                            <p className="text-[10px] text-stone-400 mt-1 ml-1">Dopo questa data, il sondaggio mostrerà solo i risultati per 5 giorni prima di sparire dalla home.</p>
-                          </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-stone-100 flex justify-end">
-                          <button 
-                            onClick={async () => {
-                              try {
-                                const success = await savePoll(poll);
-                                if (success) {
-                                  alert('Sondaggio salvato con successo!');
-                                }
-                              } catch (err: any) {
-                                alert('Errore durante il salvataggio: ' + err.message);
-                              }
-                            }}
-                            className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:shadow-lg transition-all active:scale-95"
-                          >
-                            Salva Modifiche Sondaggio
-                          </button>
-                        </div>
+                <div className="pt-8 border-t border-stone-200">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-serif text-stone-900">
+                      {poll?.id ? 'Modifica Sondaggio' : 'Nuovo Sondaggio'}
+                    </h3>
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-stone-400 uppercase">Visibile in Home:</span>
+                        <button 
+                          onClick={() => setPoll({ ...poll, showOnHomepage: !poll.showOnHomepage })}
+                          className={`w-10 h-5 rounded-full transition-colors relative ${poll.showOnHomepage ? 'bg-stone-900' : 'bg-stone-200'}`}
+                        >
+                          <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${poll.showOnHomepage ? 'left-6' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-stone-400 uppercase">Stato:</span>
+                        <button 
+                          onClick={() => setPoll({ ...poll, active: !poll.active })}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                            poll.active ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
+                          }`}
+                        >
+                          {poll.active ? 'Attivo' : 'Disattivato'}
+                        </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="p-8 bg-stone-900 rounded-3xl text-white">
-                      <h3 className="font-serif text-lg mb-6">Risultati in tempo reale</h3>
-                      <div className="space-y-6">
-                        {poll.options.map((option: any) => {
-                          const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
-                          const totalVotes = poll.votes?.length || 0;
-                          const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                      <div className="p-8 bg-stone-50 rounded-3xl border border-stone-200">
+                        <h3 className="font-serif text-lg text-stone-900 mb-6">Configurazione Domanda</h3>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Testo della Domanda</label>
+                            <textarea 
+                              value={poll.question}
+                              onChange={(e) => setPoll({ ...poll, question: e.target.value })}
+                              placeholder="Cosa ne pensi delle nuove attività dell'associazione?"
+                              className="w-full px-4 py-3 rounded-2xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all h-24"
+                            />
+                          </div>
                           
-                          return (
-                            <div key={option.id} className="space-y-2">
-                              <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-                                <span className="text-stone-400">{option.text}</span>
-                                <span>{percentage}%</span>
-                              </div>
-                              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${percentage}%` }}
-                                  className="h-full bg-white"
+                          <div className="space-y-4">
+                            <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Opzioni di Risposta</label>
+                            {poll.options.map((option: any) => (
+                              <div key={option.id} className="flex gap-2">
+                                <input 
+                                  type="text"
+                                  value={option.text}
+                                  onChange={(e) => {
+                                    const updated = poll.options.map((o: any) => o.id === option.id ? { ...o, text: e.target.value } : o);
+                                    setPoll({ ...poll, options: updated });
+                                  }}
+                                  className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm"
                                 />
+                                <button 
+                                  onClick={() => {
+                                    const updated = poll.options.filter((o: any) => o.id !== option.id);
+                                    setPoll({ ...poll, options: updated });
+                                  }}
+                                  className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
                               </div>
-                              <p className="text-[10px] text-stone-500">{optionVotes} voti</p>
+                            ))}
+                            <form 
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.currentTarget);
+                                const text = formData.get('option_text') as string;
+                                const newOption = { id: Date.now(), text };
+                                setPoll({ ...poll, options: [...poll.options, newOption] });
+                                e.currentTarget.reset();
+                              }}
+                              className="flex gap-2"
+                            >
+                              <input name="option_text" placeholder="Aggiungi opzione..." className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm" required />
+                              <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold">
+                                Aggiungi
+                              </button>
+                            </form>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Data Termine Sondaggio (Opzionale)</label>
+                              <input 
+                                type="datetime-local"
+                                value={poll.endDate ? poll.endDate.slice(0, 16) : ''}
+                                onChange={(e) => setPoll({ ...poll, endDate: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                              />
+                              <p className="text-[10px] text-stone-400 mt-1 ml-1">Dopo questa data, il sondaggio mostrerà solo i risultati per 5 giorni prima di sparire dalla home.</p>
                             </div>
-                          );
-                        })}
-                        {poll.options.length === 0 && (
-                          <p className="text-stone-500 text-sm italic text-center py-4">Nessuna opzione configurata</p>
-                        )}
-                      </div>
-                      <div className="mt-8 pt-8 border-t border-white/10">
-                        <p className="text-xs text-stone-400">Totale votanti: <span className="text-white font-bold">{poll.votes?.length || 0}</span></p>
+                          </div>
+
+                          <div className="pt-6 border-t border-stone-100 flex justify-end">
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  const success = await savePoll(poll);
+                                  if (success) {
+                                    alert('Sondaggio salvato con successo!');
+                                  }
+                                } catch (err: any) {
+                                  alert('Errore durante il salvataggio: ' + err.message);
+                                }
+                              }}
+                              className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:shadow-lg transition-all active:scale-95"
+                            >
+                              Salva Modifiche Sondaggio
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="p-6 bg-white border border-stone-200 rounded-3xl shadow-sm">
-                      <h3 className="font-serif text-lg text-stone-900 mb-4">Dettaglio Votanti</h3>
-                      <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                        {poll.votes?.map((vote: any, idx: number) => (
-                          <div key={idx} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
-                            <p className="text-xs font-bold text-stone-900 truncate">{vote.email}</p>
-                            <p className="text-[10px] text-stone-500">{vote.phone}</p>
-                            <p className="text-[10px] text-stone-400 mt-1">{new Date(vote.date).toLocaleString('it-IT')}</p>
-                          </div>
-                        ))}
-                        {(!poll.votes || poll.votes.length === 0) && (
-                          <p className="text-stone-400 text-xs italic text-center py-4">Nessun voto registrato</p>
-                        )}
+                    <div className="space-y-6">
+                      <div className="p-8 bg-stone-900 rounded-3xl text-white">
+                        <h3 className="font-serif text-lg mb-6">Risultati in tempo reale</h3>
+                        <div className="space-y-6">
+                          {poll.options.map((option: any) => {
+                            const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
+                            const totalVotes = poll.votes?.length || 0;
+                            const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
+                            
+                            return (
+                              <div key={option.id} className="space-y-2">
+                                <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+                                  <span className="text-stone-400">{option.text}</span>
+                                  <span>{percentage}%</span>
+                                </div>
+                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${percentage}%` }}
+                                    className="h-full bg-white"
+                                  />
+                                </div>
+                                <p className="text-[10px] text-stone-500">{optionVotes} voti</p>
+                              </div>
+                            );
+                          })}
+                          {poll.options.length === 0 && (
+                            <p className="text-stone-500 text-sm italic text-center py-4">Nessuna opzione configurata</p>
+                          )}
+                        </div>
+                        <div className="mt-8 pt-8 border-t border-white/10">
+                          <p className="text-xs text-stone-400">Totale votanti: <span className="text-white font-bold">{poll.votes?.length || 0}</span></p>
+                        </div>
+                      </div>
+
+                      <div className="p-6 bg-white border border-stone-200 rounded-3xl shadow-sm">
+                        <h3 className="font-serif text-lg text-stone-900 mb-4">Dettaglio Votanti</h3>
+                        <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                          {poll.votes?.map((vote: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                              <p className="text-xs font-bold text-stone-900 truncate">{vote.email}</p>
+                              <p className="text-[10px] text-stone-500">{vote.phone}</p>
+                              <p className="text-[10px] text-stone-400 mt-1">{new Date(vote.date).toLocaleString('it-IT')}</p>
+                            </div>
+                          ))}
+                          {(!poll.votes || poll.votes.length === 0) && (
+                            <p className="text-stone-400 text-xs italic text-center py-4">Nessun voto registrato</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
