@@ -173,6 +173,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const [editingMember, setEditingMember] = React.useState<any>(null);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
+  const [showSponsorshipModal, setShowSponsorshipModal] = React.useState(false);
+  const [sponsorshipData, setSponsorshipData] = React.useState<any>({
+    companyName: '',
+    address: '',
+    vatNumber: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'BONIFICO',
+    description: 'Contributo volontario festività San Felice 2026 - Colle d\'Anchise (CB)'
+  });
   const [editingMinute, setEditingMinute] = React.useState<any>(null);
   const [editingAppointment, setEditingAppointment] = React.useState<any>(null);
   const [editingNews, setEditingNews] = React.useState<any>(null);
@@ -360,7 +370,22 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     link.click();
   };
 
-  const totalCollected = collections.reduce((acc, curr: any) => acc + curr.amount, 0);
+  const [selectedYear, setSelectedYear] = React.useState<number | 'all'>('all');
+  const [viewOnlyReceipts, setViewOnlyReceipts] = React.useState(false);
+
+  const filteredCollections = collections.filter((item: any) => {
+    const itemYear = new Date(item.date).getFullYear();
+    const matchesYear = selectedYear === 'all' || itemYear === selectedYear || item.social_year === selectedYear;
+    const matchesReceipt = !viewOnlyReceipts || item.receipt_path;
+    return matchesYear && matchesReceipt;
+  });
+
+  const availableYears = Array.from(new Set([
+    ...collections.map((c: any) => new Date(c.date).getFullYear()),
+    ...collections.map((c: any) => c.social_year).filter(Boolean)
+  ])).sort((a, b) => b - a);
+
+  const totalCollected = filteredCollections.reduce((acc, curr: any) => acc + curr.amount, 0);
 
   // Find current member data if not admin
   const currentMember = isMember ? members.find((m: any) => m.email === user?.email) : null;
@@ -555,16 +580,218 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const addCollection = async (newCollection: any) => {
     try {
+      const amount = parseFloat(newCollection.amount);
+      const payload = { 
+        ...newCollection, 
+        amount: newCollection.type === 'uscita' ? -Math.abs(amount) : Math.abs(amount)
+      };
+      
       const response = await fetch('/api/finances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newCollection, amount: parseFloat(newCollection.amount) })
+        body: JSON.stringify(payload)
       });
       const data = await response.json();
-      setCollections([...collections, { ...newCollection, id: data.id, amount: parseFloat(newCollection.amount) }]);
+      setCollections([{ ...payload, id: data.id }, ...collections]);
       setEditingCollection(null);
+      setNotification({ message: 'Transazione registrata con successo!', type: 'success' });
     } catch (error) {
       console.error('Error adding collection:', error);
+      setNotification({ message: 'Errore durante la registrazione della transazione.', type: 'error' });
+    }
+  };
+
+  const reset2026Payments = async () => {
+    if (!window.confirm('Sei sicuro di voler azzerare tutte le iscrizioni per l\'anno 2026? Questa operazione non è reversibile.')) return;
+    
+    try {
+      const updatedMembers = members.map((m: any) => {
+        const currentPayments = typeof m.payments === 'string' ? JSON.parse(m.payments) : (m.payments || {});
+        return {
+          ...m,
+          payments: { ...currentPayments, '2026': false }
+        };
+      });
+
+      // Update all members on the server
+      for (const member of updatedMembers) {
+        await fetch(`/api/members/${member.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(member)
+        });
+      }
+
+      setMembers(updatedMembers);
+      setNotification({ message: 'Iscrizioni 2026 azzerate con successo!', type: 'success' });
+    } catch (error) {
+      console.error('Error resetting 2026 payments:', error);
+      setNotification({ message: 'Errore durante l\'azzeramento delle iscrizioni.', type: 'error' });
+    }
+  };
+
+  const generateReceiptPDF = async (financeData: any) => {
+    const doc = new jsPDF();
+    const company = typeof financeData.company_details === 'string' ? JSON.parse(financeData.company_details) : financeData.company_details;
+    
+    // Header
+    try {
+      doc.addImage('/logo.png', 'PNG', 15, 10, 35, 35);
+    } catch (e) {
+      console.warn('Logo not found for PDF');
+    }
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(40, 40, 40);
+    doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Via Salita la Chiesa, 19 - 86020 - Colle d\'Anchise (CB)', 200, 26, { align: 'right' });
+    doc.text('Codice Fiscale: 92083740701', 200, 31, { align: 'right' });
+    doc.text('Email: prosanfelice@outlook.it', 200, 36, { align: 'right' });
+    
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(15, 50, 200, 50);
+    
+    // Titolo Ricevuta
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text(`RICEVUTA EROGAZIONE LIBERALE nr. ${financeData.receipt_number}/${financeData.social_year}`, 15, 65);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Data emissione: ${new Date(financeData.date).toLocaleDateString('it-IT')}`, 15, 72);
+    
+    // Destinatario Box
+    doc.setDrawColor(240, 240, 240);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(120, 60, 80, 45, 3, 3, 'FD');
+    
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('SPETT.LE / DESTINATARIO', 125, 68);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.text(company.companyName.toUpperCase(), 125, 75, { maxWidth: 70 });
+    doc.setFont('helvetica', 'normal');
+    doc.text(company.address.toUpperCase(), 125, 85, { maxWidth: 70 });
+    if (company.city) doc.text(company.city.toUpperCase(), 125, 90);
+    doc.text(`P.IVA / C.F. ${company.vatNumber}`, 125, 95);
+    
+    // Corpo
+    doc.setFontSize(11);
+    doc.setTextColor(60, 60, 60);
+    const bodyText = `L'Associazione Pro San Felice dichiara di aver ricevuto in data ${new Date(financeData.date).toLocaleDateString('it-IT')} la somma di € ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })} a titolo di erogazione liberale per il sostegno delle attività istituzionali dell'associazione.`;
+    const splitBody = doc.splitTextToSize(bodyText, 170);
+    doc.text(splitBody, 15, 120);
+    
+    // Table
+    (doc as any).autoTable({
+      startY: 140,
+      head: [['DESCRIZIONE', 'IMPORTO']],
+      body: [[financeData.event_name, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [40, 40, 40], 
+        textColor: [255, 255, 255], 
+        fontSize: 10, 
+        fontStyle: 'bold',
+        cellPadding: 5
+      },
+      bodyStyles: { 
+        textColor: [40, 40, 40], 
+        fontSize: 11,
+        cellPadding: 8
+      },
+      columnStyles: {
+        1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }
+      },
+      margin: { left: 15, right: 15 }
+    });
+    
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    
+    // Payment Info
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DETTAGLI PAGAMENTO', 15, finalY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Metodo: ${company.paymentMethod || 'BONIFICO'}`, 15, finalY + 7);
+    doc.text('IBAN: IT36L0760103800001067338085', 15, finalY + 13);
+    doc.text('Banca: Poste Italiane', 15, finalY + 19);
+    
+    // Signature
+    doc.setFontSize(10);
+    doc.text('Il Presidente', 150, finalY + 10);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Associazione Pro San Felice', 150, finalY + 25);
+    
+    // Legal Note
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    const legalNote = "Il presente contributo, ai sensi dell'art. 83 del D.Lgs. 117/2017 (Codice del Terzo Settore), è deducibile o detraibile nei limiti previsti dalla normativa vigente, a condizione che il versamento sia eseguito tramite sistemi di pagamento tracciabili.";
+    const splitNote = doc.splitTextToSize(legalNote, 170);
+    doc.text(splitNote, 15, 280);
+
+    return doc;
+  };
+
+  const handleSponsorshipSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const year = new Date(sponsorshipData.date).getFullYear();
+    const yearReceipts = collections.filter((c: any) => c.social_year === year && c.receipt_number);
+    const nextNumber = yearReceipts.length + 1;
+    
+    const financeData = {
+      event_name: sponsorshipData.description,
+      type: 'sponsorizzazione',
+      amount: parseFloat(sponsorshipData.amount),
+      date: sponsorshipData.date,
+      company_details: JSON.stringify(sponsorshipData),
+      receipt_number: nextNumber.toString(),
+      social_year: year
+    };
+
+    // Generate PDF
+    const doc = await generateReceiptPDF(financeData);
+    const pdfBlob = doc.output('blob');
+    
+    // Upload PDF
+    const formData = new FormData();
+    formData.append('file', pdfBlob, `ricevuta_${nextNumber}_${year}.pdf`);
+    
+    try {
+      const uploadRes = await fetch('/api/finances/upload-receipt', {
+        method: 'POST',
+        body: formData
+      });
+      const uploadData = await uploadRes.json();
+      
+      // Save to DB
+      const response = await fetch('/api/finances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...financeData, receipt_path: uploadData.path })
+      });
+      
+      if (response.ok) {
+        const dbData = await response.json();
+        setCollections([{ ...financeData, id: dbData.id, receipt_path: uploadData.path }, ...collections]);
+        setShowSponsorshipModal(false);
+        setNotification({ message: 'Sponsorizzazione e ricevuta create con successo!', type: 'success' });
+        
+        // Download PDF for the user
+        doc.save(`ricevuta_${nextNumber}_${year}.pdf`);
+      }
+    } catch (error) {
+      console.error('Error creating sponsorship:', error);
+      setNotification({ message: 'Errore durante la creazione della sponsorizzazione.', type: 'error' });
     }
   };
 
@@ -1075,12 +1302,22 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
               <div className="text-4xl font-serif text-stone-900">€ {totalCollected.toLocaleString('it-IT')}</div>
             </div>
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200 relative group">
               <div className="flex items-center gap-3 text-stone-500 mb-2">
                 <UserCheck className="w-4 h-4" />
                 <span className="text-xs font-semibold uppercase tracking-wider">Iscrizioni 2026</span>
               </div>
-              <div className="text-4xl font-serif text-stone-900">12</div>
+              <div className="flex items-end justify-between">
+                <div className="text-4xl font-serif text-stone-900">{members.filter((m: any) => m.payments?.[2026] || m.payments?.['2026']).length}</div>
+                {members.filter((m: any) => m.payments?.[2026] || m.payments?.['2026']).length > 0 && (
+                  <button 
+                    onClick={reset2026Payments}
+                    className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    Azzera
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1163,7 +1400,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                   key={year}
                                   onClick={() => togglePayment(member.id, year)}
                                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${
-                                    member.payments?.[year]
+                                    (member.payments?.[year] || member.payments?.[year.toString()])
                                       ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                                       : 'bg-stone-100 text-stone-400 border border-stone-200 hover:bg-stone-200'
                                   }`}
@@ -1200,15 +1437,58 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
             {isSuperAdmin && activeTab === 'finances' && (
               <div className="space-y-8">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-serif text-stone-900">Registro Contabile</h2>
-                  <button 
-                    onClick={closeYear}
-                    className="bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-600 transition-colors flex items-center gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Chiusura Anno
-                  </button>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-serif text-stone-900">Registro Contabile</h2>
+                    <p className="text-sm text-stone-500">Gestione entrate, uscite e sponsorizzazioni</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setShowSponsorshipModal(true)}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-900/10"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Nuova Sponsorizzazione
+                    </button>
+                    <button 
+                      onClick={closeYear}
+                      className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Chiusura Anno
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 p-4 bg-stone-50 rounded-2xl border border-stone-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Filtra Anno:</span>
+                    <select 
+                      value={selectedYear} 
+                      onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                      className="px-3 py-1.5 rounded-lg border border-stone-200 text-xs font-bold outline-none focus:ring-2 focus:ring-stone-900"
+                    >
+                      <option value="all">Tutti gli anni</option>
+                      {availableYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Solo con Ricevuta:</span>
+                    <button 
+                      onClick={() => setViewOnlyReceipts(!viewOnlyReceipts)}
+                      className={`w-10 h-5 rounded-full transition-colors relative ${viewOnlyReceipts ? 'bg-emerald-600' : 'bg-stone-200'}`}
+                    >
+                      <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${viewOnlyReceipts ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Saldo Periodo:</span>
+                    <span className={`text-sm font-mono font-bold ${totalCollected >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      € {totalCollected.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
 
                 <form 
@@ -1222,21 +1502,22 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     });
                     e.currentTarget.reset();
                   }}
-                  className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
+                  className="grid grid-cols-1 md:grid-cols-5 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                 >
                   <input name="event_name" defaultValue={editingCollection?.event_name} placeholder="Evento / Causale" className="px-4 py-2 rounded-xl border border-stone-200 text-sm md:col-span-2 focus:ring-2 focus:ring-stone-900 outline-none" required />
-                  <select name="type" defaultValue={editingCollection?.type || 'evento'} className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none">
-                    <option value="evento">Evento</option>
+                  <select name="type" defaultValue={editingCollection?.type || 'entrata'} className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none">
+                    <option value="entrata">Entrata (+)</option>
+                    <option value="uscita">Uscita (-)</option>
+                    <option value="saldo_iniziale">Saldo Iniziale</option>
                     <option value="questua">Questua</option>
                     <option value="tesseramento">Tesseramento</option>
-                    <option value="rimanenza">Rimanenza</option>
                   </select>
                   <input name="amount" defaultValue={editingCollection?.amount} type="number" step="0.01" placeholder="Importo (€)" className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required />
-                  <button type="submit" className="md:col-span-4 bg-stone-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-stone-800 shadow-lg shadow-stone-900/10">
-                    {editingCollection ? 'Salva Modifiche' : 'Registra Transazione'}
+                  <button type="submit" className="bg-stone-900 text-white py-2 rounded-xl text-sm font-bold hover:bg-stone-800 shadow-lg shadow-stone-900/10">
+                    {editingCollection ? 'Salva' : 'Registra'}
                   </button>
                   {editingCollection && (
-                    <button type="button" onClick={() => setEditingCollection(null)} className="md:col-span-4 bg-stone-200 text-stone-600 py-2 rounded-xl text-sm font-medium hover:bg-stone-300">
+                    <button type="button" onClick={() => setEditingCollection(null)} className="bg-stone-200 text-stone-600 py-2 rounded-xl text-sm font-medium hover:bg-stone-300">
                       Annulla
                     </button>
                   )}
@@ -1250,23 +1531,45 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <th className="pb-4 font-semibold">Tipo</th>
                         <th className="pb-4 font-semibold">Data</th>
                         <th className="pb-4 font-semibold text-right">Importo</th>
+                        <th className="pb-4 font-semibold text-right">Ricevuta</th>
                         <th className="pb-4 font-semibold text-right">Azioni</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-50">
-                      {collections.map((item: any) => (
+                      {filteredCollections.map((item: any) => (
                         <tr key={item.id} className="hover:bg-stone-50 transition-colors">
-                          <td className="py-4 font-medium text-stone-900">{item.event_name}</td>
+                          <td className="py-4 font-medium text-stone-900">
+                            {item.event_name}
+                            {item.social_year && (
+                              <span className="ml-2 text-[10px] text-stone-400 font-bold">ANNO {item.social_year}</span>
+                            )}
+                          </td>
                           <td className="py-4">
                             <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
-                              item.type === 'rimanenza' ? 'bg-amber-50 text-amber-600' : 'bg-stone-100 text-stone-600'
+                              item.type === 'uscita' ? 'bg-red-50 text-red-600' : 
+                              item.type === 'entrata' ? 'bg-emerald-50 text-emerald-600' :
+                              item.type === 'saldo_iniziale' ? 'bg-blue-50 text-blue-600' :
+                              'bg-stone-100 text-stone-600'
                             }`}>
-                              {item.type}
+                              {item.type.replace('_', ' ')}
                             </span>
                           </td>
                           <td className="py-4 text-stone-500">{new Date(item.date).toLocaleDateString('it-IT')}</td>
                           <td className={`py-4 text-right font-mono font-bold ${item.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                             € {item.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-4 text-right">
+                            {item.receipt_path ? (
+                              <a 
+                                href={item.receipt_path} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-[10px] uppercase bg-emerald-50 px-2 py-1 rounded-lg"
+                              >
+                                <FileText className="w-3 h-3" />
+                                PDF
+                              </a>
+                            ) : '-'}
                           </td>
                           <td className="py-4 text-right">
                             <div className="flex justify-end gap-2">
@@ -1283,6 +1586,139 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {showSponsorshipModal && (
+              <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden"
+                >
+                  <div className="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                    <div>
+                      <h3 className="text-xl font-serif text-stone-900">Nuova Sponsorizzazione</h3>
+                      <p className="text-xs text-stone-500">Generazione automatica ricevuta erogazione liberale</p>
+                    </div>
+                    <button onClick={() => setShowSponsorshipModal(false)} className="text-stone-400 hover:text-stone-900 transition-colors">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={handleSponsorshipSubmit} className="p-8 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Ragione Sociale / Nome</label>
+                        <input 
+                          required
+                          value={sponsorshipData.companyName}
+                          onChange={e => setSponsorshipData({...sponsorshipData, companyName: e.target.value})}
+                          placeholder="Esempio: Azienda Agricola Rossi S.r.l."
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Indirizzo Sede</label>
+                        <input 
+                          required
+                          value={sponsorshipData.address}
+                          onChange={e => setSponsorshipData({...sponsorshipData, address: e.target.value})}
+                          placeholder="Via, Civico, CAP, Città"
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">P.IVA / C.F.</label>
+                        <input 
+                          required
+                          value={sponsorshipData.vatNumber}
+                          onChange={e => setSponsorshipData({...sponsorshipData, vatNumber: e.target.value})}
+                          placeholder="Partita IVA o Codice Fiscale"
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Importo (€)</label>
+                        <input 
+                          required
+                          type="number"
+                          step="0.01"
+                          value={sponsorshipData.amount}
+                          onChange={e => setSponsorshipData({...sponsorshipData, amount: e.target.value})}
+                          placeholder="0.00"
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm font-mono"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Data Versamento</label>
+                        <input 
+                          required
+                          type="date"
+                          value={sponsorshipData.date}
+                          onChange={e => setSponsorshipData({...sponsorshipData, date: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Metodo di Pagamento</label>
+                        <select 
+                          value={sponsorshipData.paymentMethod}
+                          onChange={e => setSponsorshipData({...sponsorshipData, paymentMethod: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        >
+                          <option value="BONIFICO">Bonifico Bancario</option>
+                          <option value="CONTANTI">Contanti</option>
+                          <option value="ASSEGNO">Assegno</option>
+                          <option value="POS">POS / Carta</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Città (per intestazione)</label>
+                        <input 
+                          value={sponsorshipData.city}
+                          onChange={e => setSponsorshipData({...sponsorshipData, city: e.target.value})}
+                          placeholder="es. 86020 Colle d'Anchise (CB)"
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Descrizione / Causale</label>
+                        <textarea 
+                          required
+                          rows={2}
+                          value={sponsorshipData.description}
+                          onChange={e => setSponsorshipData({...sponsorshipData, description: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm resize-none"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-4 pt-4">
+                      <button 
+                        type="button"
+                        onClick={() => setShowSponsorshipModal(false)}
+                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-100 text-stone-600 font-bold hover:bg-stone-200 transition-colors"
+                      >
+                        Annulla
+                      </button>
+                      <button 
+                        type="submit"
+                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2"
+                      >
+                        <FileText className="w-5 h-5" />
+                        Genera Ricevuta & Salva
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
               </div>
             )}
 
@@ -2349,7 +2785,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
                                 const text = formData.get('option_text') as string;
-                                const newOption = { id: Date.now(), text };
+                                const newOption = { id: Date.now() + Math.random(), text };
                                 setPoll({ ...poll, options: [...poll.options, newOption] });
                                 e.currentTarget.reset();
                               }}
@@ -2585,9 +3021,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         </div>
       </main>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {editingContest && (
-          <div key="contest-modal" className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+          <motion.div 
+            key="contest-modal" 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8"
+          >
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditingContest(null)} />
             <div className="flex min-h-full items-center justify-center">
               <motion.div 
@@ -2749,11 +3191,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </form>
               </motion.div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {showRegistrationDetails && (
-          <div key="registration-list-modal" className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8">
+          <motion.div 
+            key="registration-list-modal" 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8"
+          >
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowRegistrationDetails(null)} />
             <div className="flex min-h-full items-center justify-center">
               <motion.div 
@@ -2852,11 +3300,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
               </motion.div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {selectedRegistration && (
-          <div key="registration-detail-modal" className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8">
+          <motion.div 
+            key="registration-detail-modal" 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8"
+          >
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRegistration(null)} />
             <div className="flex min-h-full items-center justify-center">
               <motion.div 
@@ -2924,13 +3378,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
               </motion.div>
             </div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showEmailConfirmation && (
-          <div key="email-confirmation-modal" className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8">
+          <motion.div 
+            key="email-confirmation-modal" 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8"
+          >
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEmailConfirmation(null)} />
             <div className="flex min-h-full items-center justify-center">
               <motion.div 
@@ -3012,11 +3472,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </button>
               </motion.div>
             </div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showFeeSettings && (
           <motion.div 
             key="fee-settings-modal"
@@ -3089,16 +3549,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
 
-        {/* Modali di Conferma Eliminazione */}
-        <AnimatePresence>
-          {contestToDelete && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-            >
+      {/* Modali di Conferma Eliminazione */}
+      <AnimatePresence mode="wait">
+        {contestToDelete && (
+          <motion.div 
+            key="delete-contest-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          >
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -3150,6 +3612,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
           {registrationToDelete && (
             <motion.div 
+              key="delete-registration-modal"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3203,6 +3666,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
           {lotteryToDelete && (
             <motion.div 
+              key="delete-lottery-modal"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3243,6 +3707,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
           {pollToDelete && (
             <motion.div 
+              key="delete-poll-modal"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3296,14 +3761,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           }}
         />
 
-        <AnimatePresence>
-          {notification && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
-            >
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            key="notification-toast"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
+          >
               <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
                 notification.type === 'success' 
                   ? 'bg-emerald-50 border-emerald-100 text-emerald-900' 
@@ -3324,7 +3790,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
       </AnimatePresence>
     </div>
   );

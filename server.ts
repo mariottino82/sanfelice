@@ -83,30 +83,44 @@ async function startServer() {
 
   // Members API
   app.get('/api/members', async (req, res) => {
-    const members = await db.all('SELECT * FROM members ORDER BY name ASC');
-    res.json(members);
+    try {
+      const members = await db.all('SELECT * FROM members ORDER BY name ASC');
+      res.json(members.map(m => ({
+        ...m,
+        payments: JSON.parse(m.payments || '{}')
+      })));
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   app.post('/api/members', async (req, res) => {
-    const { name, email, phone, address, role, status, joinDate, password } = req.body;
+    const { name, email, phone, address, role, status, joinDate, password, payments } = req.body;
     try {
       const result = await db.run(
-        'INSERT INTO members (name, email, phone, address, role, status, joinDate, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, email, phone, address, role || 'Socio', status || 'attivo', joinDate || new Date().toISOString(), password]
+        'INSERT INTO members (name, email, phone, address, role, status, joinDate, password, payments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, email, phone, address, role || 'Socio', status || 'attivo', joinDate || new Date().toISOString(), password, JSON.stringify(payments || {})]
       );
       res.json({ id: result.lastID });
     } catch (e) {
+      console.error('Error creating member:', e);
       res.status(400).json({ error: 'Email già presente o dati non validi' });
     }
   });
 
   app.put('/api/members/:id', async (req, res) => {
-    const { name, email, phone, address, role, status, password } = req.body;
-    await db.run(
-      'UPDATE members SET name = ?, email = ?, phone = ?, address = ?, role = ?, status = ?, password = ? WHERE id = ?',
-      [name, email, phone, address, role, status, password, req.params.id]
-    );
-    res.json({ success: true });
+    const { name, email, phone, address, role, status, password, payments } = req.body;
+    try {
+      await db.run(
+        'UPDATE members SET name = ?, email = ?, phone = ?, address = ?, role = ?, status = ?, password = ?, payments = ? WHERE id = ?',
+        [name, email, phone, address, role, status, password, JSON.stringify(payments || {}), req.params.id]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error updating member:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   app.delete('/api/members/:id', async (req, res) => {
@@ -388,12 +402,34 @@ async function startServer() {
   });
 
   app.post('/api/finances', async (req, res) => {
-    const { event_name, type, amount, date } = req.body;
+    const { event_name, type, amount, date, company_details, receipt_number, social_year, receipt_path } = req.body;
     const result = await db.run(
-      'INSERT INTO finances (event_name, type, amount, date) VALUES (?, ?, ?, ?)',
-      [event_name, type, amount, date || new Date().toISOString()]
+      'INSERT INTO finances (event_name, type, amount, date, company_details, receipt_number, social_year, receipt_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [event_name, type, amount, date || new Date().toISOString(), company_details || null, receipt_number || null, social_year || null, receipt_path || null]
     );
     res.json({ id: result.lastID });
+  });
+
+  const receiptsStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = 'public/receipts/';
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `ricevuta_${Date.now()}_${file.originalname}`);
+    }
+  });
+  const uploadReceipts = multer({ storage: receiptsStorage });
+
+  app.post('/api/finances/upload-receipt', uploadReceipts.single('file'), (req: any, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nessun file caricato' });
+    }
+    const filePath = `/receipts/${req.file.filename}`;
+    res.json({ success: true, path: filePath });
   });
 
   app.delete('/api/finances/:id', async (req, res) => {

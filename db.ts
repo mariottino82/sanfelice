@@ -39,7 +39,8 @@ export async function getDb() {
       password TEXT,
       status TEXT DEFAULT 'attivo',
       role TEXT DEFAULT 'Socio',
-      joinDate TEXT
+      joinDate TEXT,
+      payments TEXT DEFAULT '{}' -- JSON string of {year: boolean}
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -112,7 +113,11 @@ export async function getDb() {
       event_name TEXT,
       type TEXT,
       amount REAL,
-      date TEXT
+      date TEXT,
+      company_details TEXT, -- JSON string
+      receipt_number TEXT,
+      social_year INTEGER,
+      receipt_path TEXT
     );
 
     CREATE TABLE IF NOT EXISTS contests (
@@ -172,7 +177,12 @@ export async function getDb() {
     'ALTER TABLE users ADD COLUMN lastLogin TEXT',
     'ALTER TABLE members ADD COLUMN password TEXT',
     'ALTER TABLE registrations ADD COLUMN password TEXT',
-    'ALTER TABLE minutes ADD COLUMN file_path TEXT'
+    'ALTER TABLE minutes ADD COLUMN file_path TEXT',
+    'ALTER TABLE finances ADD COLUMN company_details TEXT',
+    'ALTER TABLE finances ADD COLUMN receipt_number TEXT',
+    'ALTER TABLE finances ADD COLUMN social_year INTEGER',
+    'ALTER TABLE finances ADD COLUMN receipt_path TEXT',
+    'ALTER TABLE members ADD COLUMN payments TEXT DEFAULT "{}"'
   ];
 
   for (const migration of migrations) {
