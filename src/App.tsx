@@ -144,9 +144,10 @@ export default function App() {
             <div>
               <h5 className="text-white font-semibold mb-4 uppercase text-xs tracking-widest">Contatti</h5>
               <ul className="space-y-2 text-sm">
-                <li>Email: info@prosanfelice.it</li>
+                <li>Email: sanfeliceassociazione@gmail.com</li>
                 <li>Tel: +39 3476799004</li>
-                <li>Sede: Via Salita la chiesa, 18 - Colle d'Anchise (CB)</li>
+                <li>Sede: Via Salita la chiesa, 19 - Colle d'Anchise (CB)</li>
+                <li>C.F. 92083740701</li>
               </ul>
             </div>
             <div>

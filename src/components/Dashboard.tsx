@@ -174,6 +174,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [editingMember, setEditingMember] = React.useState<any>(null);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
   const [showSponsorshipModal, setShowSponsorshipModal] = React.useState(false);
+  const [showStatementModal, setShowStatementModal] = React.useState(false);
+  const [statementDates, setStatementDates] = React.useState({
+    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
   const [sponsorshipData, setSponsorshipData] = React.useState<any>({
     companyName: '',
     address: '',
@@ -631,169 +636,344 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   };
 
   const generateReceiptPDF = async (financeData: any) => {
-    const doc = new jsPDF();
-    const company = typeof financeData.company_details === 'string' ? JSON.parse(financeData.company_details) : financeData.company_details;
-    
-    // Header
+    console.log('[PDF] Starting generation with data:', financeData);
     try {
-      doc.addImage('/logo.png', 'PNG', 15, 10, 35, 35);
-    } catch (e) {
-      console.warn('Logo not found for PDF');
-    }
-    
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(40, 40, 40);
-    doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('Via Salita la Chiesa, 19 - 86020 - Colle d\'Anchise (CB)', 200, 26, { align: 'right' });
-    doc.text('Codice Fiscale: 92083740701', 200, 31, { align: 'right' });
-    doc.text('Email: prosanfelice@outlook.it', 200, 36, { align: 'right' });
-    
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(15, 50, 200, 50);
-    
-    // Titolo Ricevuta
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text(`RICEVUTA EROGAZIONE LIBERALE nr. ${financeData.receipt_number}/${financeData.social_year}`, 15, 65);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Data emissione: ${new Date(financeData.date).toLocaleDateString('it-IT')}`, 15, 72);
-    
-    // Destinatario Box
-    doc.setDrawColor(240, 240, 240);
-    doc.setFillColor(250, 250, 250);
-    doc.roundedRect(120, 60, 80, 45, 3, 3, 'FD');
-    
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text('SPETT.LE / DESTINATARIO', 125, 68);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    doc.setFont('helvetica', 'bold');
-    doc.text(company.companyName.toUpperCase(), 125, 75, { maxWidth: 70 });
-    doc.setFont('helvetica', 'normal');
-    doc.text(company.address.toUpperCase(), 125, 85, { maxWidth: 70 });
-    if (company.city) doc.text(company.city.toUpperCase(), 125, 90);
-    doc.text(`P.IVA / C.F. ${company.vatNumber}`, 125, 95);
-    
-    // Corpo
-    doc.setFontSize(11);
-    doc.setTextColor(60, 60, 60);
-    const bodyText = `L'Associazione Pro San Felice dichiara di aver ricevuto in data ${new Date(financeData.date).toLocaleDateString('it-IT')} la somma di € ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })} a titolo di erogazione liberale per il sostegno delle attività istituzionali dell'associazione.`;
-    const splitBody = doc.splitTextToSize(bodyText, 170);
-    doc.text(splitBody, 15, 120);
-    
-    // Table
-    (doc as any).autoTable({
-      startY: 140,
-      head: [['DESCRIZIONE', 'IMPORTO']],
-      body: [[financeData.event_name, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
-      theme: 'grid',
-      headStyles: { 
-        fillColor: [40, 40, 40], 
-        textColor: [255, 255, 255], 
-        fontSize: 10, 
-        fontStyle: 'bold',
-        cellPadding: 5
-      },
-      bodyStyles: { 
-        textColor: [40, 40, 40], 
-        fontSize: 11,
-        cellPadding: 8
-      },
-      columnStyles: {
-        1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }
-      },
-      margin: { left: 15, right: 15 }
-    });
-    
-    const finalY = (doc as any).lastAutoTable.finalY + 20;
-    
-    // Payment Info
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DETTAGLI PAGAMENTO', 15, finalY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Metodo: ${company.paymentMethod || 'BONIFICO'}`, 15, finalY + 7);
-    doc.text('IBAN: IT36L0760103800001067338085', 15, finalY + 13);
-    doc.text('Banca: Poste Italiane', 15, finalY + 19);
-    
-    // Signature
-    doc.setFontSize(10);
-    doc.text('Il Presidente', 150, finalY + 10);
-    doc.setFont('helvetica', 'italic');
-    doc.text('Associazione Pro San Felice', 150, finalY + 25);
-    
-    // Legal Note
-    doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
-    const legalNote = "Il presente contributo, ai sensi dell'art. 83 del D.Lgs. 117/2017 (Codice del Terzo Settore), è deducibile o detraibile nei limiti previsti dalla normativa vigente, a condizione che il versamento sia eseguito tramite sistemi di pagamento tracciabili.";
-    const splitNote = doc.splitTextToSize(legalNote, 170);
-    doc.text(splitNote, 15, 280);
+      const doc = new jsPDF();
+      const company = typeof financeData.company_details === 'string' ? JSON.parse(financeData.company_details) : financeData.company_details;
+      
+      console.log('[PDF] Company details parsed:', company);
 
-    return doc;
+      // Header
+      try {
+        console.log('[PDF] Attempting to add logo from /logo.png');
+        doc.addImage('/logo.png', 'PNG', 15, 10, 35, 35);
+        console.log('[PDF] Logo added successfully');
+      } catch (e) {
+        console.warn('[PDF] Logo not found or failed to load:', e);
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(40, 40, 40);
+      doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text('Via Salita la Chiesa, 19 - 86020 - Colle d\'Anchise (CB)', 200, 26, { align: 'right' });
+      doc.text('Codice Fiscale: 92083740701', 200, 31, { align: 'right' });
+      doc.text('Email: prosanfelice@outlook.it', 200, 36, { align: 'right' });
+      
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.line(15, 50, 200, 50);
+      
+      // Titolo Ricevuta
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text(`RICEVUTA EROGAZIONE LIBERALE nr. ${financeData.receipt_number}/${financeData.social_year}`, 15, 65);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Data emissione: ${new Date(financeData.date).toLocaleDateString('it-IT')}`, 15, 72);
+      
+      // Destinatario Box
+      doc.setDrawColor(240, 240, 240);
+      doc.setFillColor(250, 250, 250);
+      doc.roundedRect(120, 60, 80, 45, 3, 3, 'FD');
+      
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('SPETT.LE / DESTINATARIO', 125, 68);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(40, 40, 40);
+      doc.setFont('helvetica', 'bold');
+      doc.text((company.companyName || '').toUpperCase(), 125, 75, { maxWidth: 70 });
+      doc.setFont('helvetica', 'normal');
+      doc.text((company.address || '').toUpperCase(), 125, 85, { maxWidth: 70 });
+      if (company.city) doc.text(company.city.toUpperCase(), 125, 90);
+      doc.text(`P.IVA / C.F. ${company.vatNumber || ''}`, 125, 95);
+      
+      // Corpo
+      doc.setFontSize(11);
+      doc.setTextColor(60, 60, 60);
+      const bodyText = `L'Associazione Pro San Felice dichiara di aver ricevuto in data ${new Date(financeData.date).toLocaleDateString('it-IT')} la somma di € ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })} a titolo di erogazione liberale per il sostegno delle attività istituzionali dell'associazione.`;
+      const splitBody = doc.splitTextToSize(bodyText, 170);
+      doc.text(splitBody, 15, 120);
+      
+      // Table
+      console.log('[PDF] Generating table with autoTable');
+      if (typeof (doc as any).autoTable !== 'function') {
+        console.error('[PDF] autoTable is NOT a function on doc object!');
+        throw new Error('Libreria PDF (autoTable) non caricata correttamente');
+      }
+
+      (doc as any).autoTable({
+        startY: 140,
+        head: [['DESCRIZIONE', 'IMPORTO']],
+        body: [[financeData.event_name, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [40, 40, 40], 
+          textColor: [255, 255, 255], 
+          fontSize: 10, 
+          fontStyle: 'bold',
+          cellPadding: 5
+        },
+        bodyStyles: { 
+          textColor: [40, 40, 40], 
+          fontSize: 11,
+          cellPadding: 8
+        },
+        columnStyles: {
+          1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }
+        },
+        margin: { left: 15, right: 15 }
+      });
+      
+      const finalY = (doc as any).lastAutoTable?.finalY || 200;
+      console.log('[PDF] Table generated, finalY:', finalY);
+      
+      // Payment Info
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DETTAGLI PAGAMENTO', 15, finalY + 20);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Metodo: ${company.paymentMethod || 'BONIFICO'}`, 15, finalY + 27);
+      doc.text('IBAN: IT36L0760103800001067338085', 15, finalY + 33);
+      doc.text('Banca: Poste Italiane', 15, finalY + 39);
+      
+      // Signature
+      doc.setFontSize(10);
+      doc.text('Il Presidente', 150, finalY + 30);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Associazione Pro San Felice', 150, finalY + 45);
+      
+      // Legal Note
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      const legalNote = "Il presente contributo, ai sensi dell'art. 83 del D.Lgs. 117/2017 (Codice del Terzo Settore), è deducibile o detraibile nei limiti previsti dalla normativa vigente, a condizione che il versamento sia eseguito tramite sistemi di pagamento tracciabili.";
+      const splitNote = doc.splitTextToSize(legalNote, 170);
+      doc.text(splitNote, 15, 280);
+
+      console.log('[PDF] Generation complete');
+      return doc;
+    } catch (err) {
+      console.error('[PDF] Fatal error during PDF generation:', err);
+      throw err;
+    }
   };
 
   const handleSponsorshipSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const year = new Date(sponsorshipData.date).getFullYear();
-    const yearReceipts = collections.filter((c: any) => c.social_year === year && c.receipt_number);
-    const nextNumber = yearReceipts.length + 1;
-    
-    const financeData = {
-      event_name: sponsorshipData.description,
-      type: 'sponsorizzazione',
-      amount: parseFloat(sponsorshipData.amount),
-      date: sponsorshipData.date,
-      company_details: JSON.stringify(sponsorshipData),
-      receipt_number: nextNumber.toString(),
-      social_year: year
-    };
-
-    // Generate PDF
-    const doc = await generateReceiptPDF(financeData);
-    const pdfBlob = doc.output('blob');
-    
-    // Upload PDF
-    const formData = new FormData();
-    formData.append('file', pdfBlob, `ricevuta_${nextNumber}_${year}.pdf`);
+    console.log('--- Sponsorship Submission Started ---');
     
     try {
+      if (!sponsorshipData.date) {
+        throw new Error('Data mancante');
+      }
+
+      const year = new Date(sponsorshipData.date).getFullYear();
+      if (isNaN(year)) {
+        throw new Error('Data non valida');
+      }
+
+      console.log('Year calculated:', year);
+      
+      if (!Array.isArray(collections)) {
+        console.error('Collections is not an array:', collections);
+        throw new Error('Errore interno: dati finanziari non caricati correttamente');
+      }
+
+      const yearReceipts = collections.filter((c: any) => c.social_year === year && c.receipt_number);
+      const nextNumber = yearReceipts.length + 1;
+      
+      console.log('Next receipt number:', nextNumber);
+
+      const amount = parseFloat(sponsorshipData.amount);
+      if (isNaN(amount)) {
+        throw new Error('Importo non valido');
+      }
+      
+      const financeData = {
+        event_name: sponsorshipData.description,
+        type: 'sponsorizzazione',
+        amount: amount,
+        date: sponsorshipData.date,
+        company_details: JSON.stringify(sponsorshipData),
+        receipt_number: nextNumber.toString(),
+        social_year: year
+      };
+
+      console.log('Finance data prepared:', financeData);
+
+      // Generate PDF
+      console.log('Calling generateReceiptPDF...');
+      const doc = await generateReceiptPDF(financeData);
+      
+      console.log('Generating blob from PDF...');
+      const pdfBlob = doc.output('blob');
+      console.log('PDF blob generated, size:', pdfBlob.size, 'bytes');
+      
+      if (pdfBlob.size < 100) {
+        throw new Error('Il PDF generato sembra essere vuoto o corrotto');
+      }
+
+      // Upload PDF
+      const formData = new FormData();
+      formData.append('file', pdfBlob, `ricevuta_${nextNumber}_${year}.pdf`);
+      
+      console.log('Uploading PDF to server...');
       const uploadRes = await fetch('/api/finances/upload-receipt', {
         method: 'POST',
         body: formData
       });
+      
+      console.log('Upload response status:', uploadRes.status);
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        console.error('Upload failed:', errorText);
+        let errorData;
+        try { errorData = JSON.parse(errorText); } catch(e) {}
+        throw new Error(`Errore caricamento PDF: ${errorData?.error || uploadRes.statusText}`);
+      }
+      
       const uploadData = await uploadRes.json();
+      console.log('PDF uploaded successfully, path:', uploadData.path);
       
       // Save to DB
+      console.log('Saving record to database...');
       const response = await fetch('/api/finances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...financeData, receipt_path: uploadData.path })
       });
       
+      console.log('DB save response status:', response.status);
       if (response.ok) {
         const dbData = await response.json();
+        console.log('Record saved to DB, ID:', dbData.id);
+        
         setCollections([{ ...financeData, id: dbData.id, receipt_path: uploadData.path }, ...collections]);
         setShowSponsorshipModal(false);
         setNotification({ message: 'Sponsorizzazione e ricevuta create con successo!', type: 'success' });
         
         // Download PDF for the user
-        doc.save(`ricevuta_${nextNumber}_${year}.pdf`);
+        try {
+          console.log('Triggering browser download of PDF...');
+          doc.save(`ricevuta_${nextNumber}_${year}.pdf`);
+          console.log('Download triggered');
+        } catch (downloadErr) {
+          console.error('Error during PDF download trigger:', downloadErr);
+          // Don't throw here, the record is already saved
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('DB save failed:', errorText);
+        let errorData;
+        try { errorData = JSON.parse(errorText); } catch(e) {}
+        throw new Error(`Errore salvataggio database: ${errorData?.error || response.statusText}`);
       }
-    } catch (error) {
-      console.error('Error creating sponsorship:', error);
-      setNotification({ message: 'Errore durante la creazione della sponsorizzazione.', type: 'error' });
+    } catch (error: any) {
+      console.error('CRITICAL ERROR in handleSponsorshipSubmit:', error);
+      setNotification({ message: `Errore: ${error.message || 'Errore durante la creazione della sponsorizzazione.'}`, type: 'error' });
+    } finally {
+      console.log('--- Sponsorship Submission Finished ---');
     }
   };
+
+  const generateStatementPDF = async () => {
+    console.log('[PDF] Starting Statement generation...');
+    try {
+      const doc = new jsPDF();
+      const start = new Date(statementDates.startDate);
+      const end = new Date(statementDates.endDate);
+      
+      // Calculate initial balance (sum of all amounts before startDate)
+      const initialBalance = collections
+        .filter((c: any) => new Date(c.date) < start)
+        .reduce((sum: number, c: any) => sum + c.amount, 0);
+
+      // Filter operations in range
+      const periodOperations = collections
+        .filter((c: any) => {
+          const d = new Date(c.date);
+          return d >= start && d <= end;
+        })
+        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      // Header
+      try {
+        doc.addImage('/logo.png', 'PNG', 15, 10, 30, 30);
+      } catch (e) {}
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('ESTRATTO CONTO ANALITICO', 200, 27, { align: 'right' });
+      doc.text(`Periodo: ${start.toLocaleDateString('it-IT')} - ${end.toLocaleDateString('it-IT')}`, 200, 33, { align: 'right' });
+      
+      doc.setDrawColor(200, 200, 200);
+      doc.line(15, 45, 200, 45);
+
+      // Initial Balance Row
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(`SALDO INIZIALE AL ${start.toLocaleDateString('it-IT')}:`, 15, 55);
+      doc.text(`€ ${initialBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 200, 55, { align: 'right' });
+
+      // Table
+      let currentBalance = initialBalance;
+      const tableBody = periodOperations.map((op: any) => {
+        currentBalance += op.amount;
+        return [
+          new Date(op.date).toLocaleDateString('it-IT'),
+          op.event_name.toUpperCase(),
+          op.type.toUpperCase().replace('_', ' '),
+          op.amount > 0 ? `€ ${op.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
+          op.amount < 0 ? `€ ${Math.abs(op.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
+          `€ ${currentBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+        ];
+      });
+
+      (doc as any).autoTable({
+        startY: 65,
+        head: [['DATA', 'CAUSALE', 'TIPO', 'ENTRATA', 'USCITA', 'SALDO']],
+        body: tableBody,
+        theme: 'striped',
+        headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: {
+          3: { halign: 'right' },
+          4: { halign: 'right' },
+          5: { halign: 'right', fontStyle: 'bold' }
+        }
+      });
+
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      
+      // Totals
+      const totalIn = periodOperations.filter((op: any) => op.amount > 0).reduce((s, op) => s + op.amount, 0);
+      const totalOut = periodOperations.filter((op: any) => op.amount < 0).reduce((s, op) => s + Math.abs(op.amount), 0);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('RIEPILOGO PERIODO', 15, finalY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Totale Entrate: € ${totalIn.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 15, finalY + 7);
+      doc.text(`Totale Uscite: € ${totalOut.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 15, finalY + 14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`SALDO FINALE AL ${end.toLocaleDateString('it-IT')}: € ${currentBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 15, finalY + 23);
+
+      doc.save(`estratto_conto_${statementDates.startDate}_${statementDates.endDate}.pdf`);
+      setShowStatementModal(false);
+    } catch (err) {
+      console.error('[PDF] Error generating statement:', err);
+      setNotification({ message: 'Errore durante la generazione dell\'estratto conto.', type: 'error' });
+    }
+  };
+
 
   const deleteCollection = (collection: any) => {
     setCollectionToDelete(collection);
@@ -982,9 +1162,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           {isStaff ? (
             <>
               {[
-                { id: 'members', label: 'Soci & Cariche', icon: Users, minRole: 'SuperAdmin' },
+                { id: 'members', label: 'Soci & Cariche', icon: Users, minRole: 'Operator' },
                 { id: 'registrations', label: 'Iscrizioni', icon: UserPlus, minRole: 'SuperAdmin', badge: registrations.length > 0 ? registrations.length : null },
-                { id: 'finances', label: 'Contabilità', icon: Euro, minRole: 'SuperAdmin' },
+                { id: 'finances', label: 'Contabilità', icon: Euro, minRole: 'Operator' },
                 { id: 'lottery', label: 'Lotteria', icon: Ticket, minRole: 'Operator' },
                 { id: 'minutes', label: 'Verbali', icon: FileText, minRole: 'Operator' },
                 { id: 'contests', label: 'Concorsi', icon: Trophy, minRole: 'Operator' },
@@ -1051,6 +1231,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           )}
           
           <div className="pt-4 mt-auto border-t border-stone-800">
+            <div className="px-4 py-2 text-[10px] text-stone-600 uppercase tracking-widest font-mono">
+              Dashboard v1.1.1
+            </div>
             <button 
               onClick={onLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors"
@@ -1066,7 +1249,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
         <header className="flex justify-between items-center mb-12">
           <div>
-            <h1 className="text-3xl font-serif text-stone-900">
+            <h1 className="text-3xl font-serif text-stone-900 flex items-center gap-3">
               {activeTab === 'members' && 'Gestione Soci'}
               {activeTab === 'registrations' && 'Nuove Iscrizioni'}
               {activeTab === 'finances' && 'Contabilità & Raccolte'}
@@ -1078,6 +1261,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'accounts' && 'Gestione Account'}
               {activeTab === 'poll' && 'Gestione Sondaggi'}
               {activeTab === 'member-home' && `Benvenuto, ${user?.username}`}
+              <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-2 py-1 rounded-full">v1.1.1</span>
             </h1>
             <p className="text-stone-500 text-sm mt-1">
               {isStaff ? 'Pannello di controllo amministrativo' : `Profilo ${user?.role}`}
@@ -1286,7 +1470,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         )}
 
         {/* Stats Overview */}
-        {isSuperAdmin && (activeTab === 'members' || activeTab === 'finances') && (
+        {isStaff && (activeTab === 'members' || activeTab === 'finances') && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200">
               <div className="flex items-center gap-3 text-stone-500 mb-2">
@@ -1309,7 +1493,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
               <div className="flex items-end justify-between">
                 <div className="text-4xl font-serif text-stone-900">{members.filter((m: any) => m.payments?.[2026] || m.payments?.['2026']).length}</div>
-                {members.filter((m: any) => m.payments?.[2026] || m.payments?.['2026']).length > 0 && (
+                {isSuperAdmin && members.filter((m: any) => m.payments?.[2026] || m.payments?.['2026']).length > 0 && (
                   <button 
                     onClick={reset2026Payments}
                     className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1325,22 +1509,24 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         {/* Tab Content */}
         <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
           <div className="p-8">
-            {isSuperAdmin && activeTab === 'members' && (
+            {isStaff && activeTab === 'members' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-4">
                     <h2 className="text-xl font-serif text-stone-900">Elenco Soci e Cariche</h2>
-                    <button 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowFeeSettings(true);
-                      }}
-                      className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all"
-                      title="Imposta Quote Associative"
-                    >
-                      <Settings className="w-5 h-5" />
-                    </button>
+                    {isSuperAdmin && (
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowFeeSettings(true);
+                        }}
+                        className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all"
+                        title="Imposta Quote Associative"
+                      >
+                        <Settings className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1435,7 +1621,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isSuperAdmin && activeTab === 'finances' && (
+            {isStaff && activeTab === 'finances' && (
               <div className="space-y-8">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
@@ -1443,20 +1629,33 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <p className="text-sm text-stone-500">Gestione entrate, uscite e sponsorizzazioni</p>
                   </div>
                   <div className="flex gap-3">
-                    <button 
-                      onClick={() => setShowSponsorshipModal(true)}
-                      className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-900/10"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Nuova Sponsorizzazione
-                    </button>
-                    <button 
-                      onClick={closeYear}
-                      className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center gap-2"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Chiusura Anno
-                    </button>
+                    {isSuperAdmin && (
+                      <button 
+                        onClick={() => setShowStatementModal(true)}
+                        className="bg-white text-stone-700 border border-stone-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-stone-50 transition-colors flex items-center gap-2 shadow-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        Estratto Conto
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <button 
+                        onClick={() => setShowSponsorshipModal(true)}
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-900/10"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Nuova Sponsorizzazione
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <button 
+                        onClick={closeYear}
+                        className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Chiusura Anno
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1586,6 +1785,65 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {showStatementModal && (
+              <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+                >
+                  <div className="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                    <div>
+                      <h3 className="text-xl font-serif text-stone-900">Stampa Estratto Conto</h3>
+                      <p className="text-xs text-stone-500">Seleziona l'intervallo di date</p>
+                    </div>
+                    <button onClick={() => setShowStatementModal(false)} className="text-stone-400 hover:text-stone-900 transition-colors">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  
+                  <div className="p-8 space-y-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-2">Data Inizio</label>
+                        <input 
+                          type="date"
+                          value={statementDates.startDate}
+                          onChange={e => setStatementDates({...statementDates, startDate: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-2">Data Fine</label>
+                        <input 
+                          type="date"
+                          value={statementDates.endDate}
+                          onChange={e => setStatementDates({...statementDates, endDate: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-4 pt-4">
+                      <button 
+                        onClick={() => setShowStatementModal(false)}
+                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-100 text-stone-600 font-bold hover:bg-stone-200 transition-colors"
+                      >
+                        Annulla
+                      </button>
+                      <button 
+                        onClick={generateStatementPDF}
+                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2"
+                      >
+                        <Download className="w-5 h-5" />
+                        Stampa PDF
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             )}
 
@@ -2108,7 +2366,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
-            {isSuperAdmin && activeTab === 'registrations' && (
+            {isStaff && activeTab === 'registrations' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Nuove Iscrizioni</h2>
@@ -2140,18 +2398,22 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           </div>
                         </div>
                         <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
-                          <button 
-                            onClick={() => approveRegistration(reg)}
-                            className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-600 transition-colors"
-                          >
-                            Approva
-                          </button>
-                          <button 
-                            onClick={() => deleteRegistration(reg)}
-                            className="bg-stone-200 text-stone-600 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-300 transition-colors"
-                          >
-                            Rifiuta
-                          </button>
+                          {isSuperAdmin && (
+                            <>
+                              <button 
+                                onClick={() => approveRegistration(reg)}
+                                className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-600 transition-colors"
+                              >
+                                Approva
+                              </button>
+                              <button 
+                                onClick={() => deleteRegistration(reg)}
+                                className="bg-stone-200 text-stone-600 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-300 transition-colors"
+                              >
+                                Rifiuta
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
