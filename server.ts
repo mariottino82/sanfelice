@@ -621,8 +621,11 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         ...lottery,
         active: !!lottery.active,
         showOnHomepage: !!lottery.showOnHomepage,
-        prizes: JSON.parse(lottery.prizes),
-        history: JSON.parse(lottery.history)
+        prizes: JSON.parse(lottery.prizes || '[]'),
+        history: JSON.parse(lottery.history || '[]'),
+        regulations_path: lottery.regulations_path,
+        municipality_request_path: lottery.municipality_request_path,
+        minutes_path: lottery.minutes_path
       });
     } else {
       res.status(404).json({ error: 'Lotteria non trovata' });
@@ -630,12 +633,34 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   });
 
   app.put('/api/lottery', async (req, res) => {
-    const { active, showOnHomepage, name, drawDate, prizes, history } = req.body;
+    const { active, showOnHomepage, name, drawDate, prizes, history, regulations_path, municipality_request_path, minutes_path } = req.body;
     await db.run(
-      'UPDATE lottery SET active = ?, showOnHomepage = ?, name = ?, drawDate = ?, prizes = ?, history = ? WHERE id = 1',
-      [active ? 1 : 0, showOnHomepage ? 1 : 0, name, drawDate, JSON.stringify(prizes), JSON.stringify(history)]
+      'UPDATE lottery SET active = ?, showOnHomepage = ?, name = ?, drawDate = ?, prizes = ?, history = ?, regulations_path = ?, municipality_request_path = ?, minutes_path = ? WHERE id = 1',
+      [active ? 1 : 0, showOnHomepage ? 1 : 0, name, drawDate, JSON.stringify(prizes), JSON.stringify(history), regulations_path || null, municipality_request_path || null, minutes_path || null]
     );
     res.json({ success: true });
+  });
+
+  const lotteryStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = 'public/lottery-docs/';
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `lotteria_${Date.now()}_${file.originalname}`);
+    }
+  });
+  const uploadLottery = multer({ storage: lotteryStorage });
+
+  app.post('/api/lottery/upload-doc', uploadLottery.single('file'), (req: any, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nessun file caricato' });
+    }
+    const filePath = `/lottery-docs/${req.file.filename}`;
+    res.json({ success: true, path: filePath });
   });
 
   // Settings API

@@ -160,7 +160,10 @@ export async function getDb() {
       name TEXT,
       drawDate TEXT,
       prizes TEXT, -- JSON string
-      history TEXT -- JSON string
+      history TEXT, -- JSON string
+      regulations_path TEXT,
+      municipality_request_path TEXT,
+      minutes_path TEXT
     );
 
     CREATE TABLE IF NOT EXISTS settings (
@@ -188,7 +191,10 @@ export async function getDb() {
     'ALTER TABLE members ADD COLUMN payments TEXT DEFAULT "{}"',
     'ALTER TABLE news ADD COLUMN video TEXT',
     'ALTER TABLE events ADD COLUMN video TEXT',
-    'ALTER TABLE gallery ADD COLUMN type TEXT DEFAULT "image"'
+    'ALTER TABLE gallery ADD COLUMN type TEXT DEFAULT "image"',
+    'ALTER TABLE lottery ADD COLUMN regulations_path TEXT',
+    'ALTER TABLE lottery ADD COLUMN municipality_request_path TEXT',
+    'ALTER TABLE lottery ADD COLUMN minutes_path TEXT'
   ];
 
   for (const migration of migrations) {

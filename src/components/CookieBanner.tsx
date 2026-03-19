@@ -6,7 +6,7 @@ export const CookieBanner = () => {
   const [isVisible, setIsVisible] = React.useState(false);
 
   React.useEffect(() => {
-    const consent = localStorage.getItem('cookie-consent');
+    const consent = localStorage.getItem('cookie-consent') || document.cookie.includes('cookie-consent=accepted');
     if (!consent) {
       const timer = setTimeout(() => setIsVisible(true), 1500);
       return () => clearTimeout(timer);
@@ -15,6 +15,7 @@ export const CookieBanner = () => {
 
   const handleAccept = () => {
     localStorage.setItem('cookie-consent', 'accepted');
+    document.cookie = "cookie-consent=accepted; max-age=" + (60 * 60 * 24 * 365) + "; path=/";
     setIsVisible(false);
   };
 

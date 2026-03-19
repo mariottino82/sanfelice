@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -180,6 +180,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     youtube: '',
     twitter: ''
   });
+  const [associationDetails, setAssociationDetails] = React.useState({
+    name: 'Pro San Felice',
+    address: 'Via Salita la Chiesa, 19 - 86020 - Colle d\'Anchise (CB)',
+    cf: '92083740701',
+    email: 'sanfeliceassociazione@gmail.com',
+    legalRepresentative: '___________________________',
+    municipality: 'Colle d\'Anchise',
+    province: 'CB',
+    phone: ''
+  });
 
   const [editingMember, setEditingMember] = React.useState<any>(null);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
@@ -330,6 +340,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       { key: 'gallery', url: '/api/gallery', setter: setGallery },
       { key: 'users', url: '/api/users', setter: setAccounts },
       { key: 'social_links', url: '/api/settings/social_links', setter: (data: any) => data?.value && setSocialLinks(data.value) },
+      { key: 'association_details', url: '/api/settings/association_details', setter: (data: any) => data?.value && setAssociationDetails(data.value) },
       { key: 'membership_fees', url: '/api/settings/membership_fees', setter: (data: any) => data?.value && setMembershipFees(data.value) }
     ];
 
@@ -643,6 +654,172 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       console.error('Error resetting 2026 payments:', error);
       setNotification({ message: 'Errore durante l\'azzeramento delle iscrizioni.', type: 'error' });
     }
+  };
+
+  const generateLotteryMinutesPDF = async (lotteryData: any) => {
+    const doc = new jsPDF();
+    try {
+      try {
+        const logoImg = await loadImage('/logo.png');
+        doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
+      } catch (e) {}
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('VERBALE DI ESTRAZIONE LOTTERIA', 105, 45, { align: 'center' });
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Associazione: ${associationDetails.name}`, 15, 60);
+      doc.text(`Sede: ${associationDetails.address}`, 15, 65);
+
+      const drawDate = new Date(lotteryData.drawDate);
+      doc.text(`In data ${drawDate.toLocaleDateString('it-IT')}, alle ore 18:00, presso la sede dell'Associazione,`, 15, 75);
+      doc.text(`si è svolta l’estrazione pubblica della lotteria organizzata dall’Associazione ${associationDetails.name}.`, 15, 80);
+
+      doc.text(`La lotteria è stata autorizzata con comunicazione al Comune di ${associationDetails.municipality} in data ${new Date().toLocaleDateString('it-IT')}.`, 15, 90);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Commissione presente:', 15, 100);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Sono presenti i seguenti membri della commissione: ${associationDetails.legalRepresentative}, e altri membri dell'Associazione.`, 15, 105, { maxWidth: 180 });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Operazioni di estrazione:', 15, 115);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Si è proceduto all’estrazione dei premi messi in palio, con i seguenti risultati:', 15, 120);
+
+      const tableData = lotteryData.prizes.map((p: any, index: number) => [
+        `${index + 1}° Premio`,
+        p.name,
+        p.winningNumber || '---'
+      ]);
+
+      autoTable(doc, {
+        startY: 125,
+        head: [['Posizione', 'Premio', 'Numero Vincente']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [40, 40, 40] }
+      });
+
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      doc.text('Le operazioni si sono concluse regolarmente.', 15, finalY);
+      doc.text('Firma della Commissione:', 15, finalY + 20);
+      doc.text('___________________________', 15, finalY + 30);
+      doc.text('___________________________', 150, finalY + 30, { align: 'right' });
+
+      return doc;
+    } catch (err) {
+      console.error('Error generating minutes PDF:', err);
+      throw err;
+    }
+  };
+
+  const generateLotteryRequestPDF = async (lotteryData: any) => {
+    const doc = new jsPDF();
+    try {
+      try {
+        const logoImg = await loadImage('/logo.png');
+        doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
+      } catch (e) {}
+
+      doc.setFontSize(10);
+      doc.text(`Al Comune di ${associationDetails.municipality}`, 150, 45, { align: 'right' });
+      doc.text('Ufficio Commercio / Manifestazioni', 150, 50, { align: 'right' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('COMUNICAZIONE DI SVOLGIMENTO LOTTERIA', 15, 65);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const text = `Il sottoscritto ${associationDetails.legalRepresentative}, in qualità di Rappresentante Legale dell'Associazione ${associationDetails.name}, con sede in ${associationDetails.address}, C.F. ${associationDetails.cf}, comunica che l'Associazione intende organizzare una lotteria locale denominata "${lotteryData.name}".`;
+      doc.text(doc.splitTextToSize(text, 180), 15, 75);
+
+      doc.text(`Scopo della lotteria: Sostegno alle attività istituzionali e promozione del territorio.`, 15, 95);
+      doc.text(`Periodo di svolgimento: dal ${new Date().toLocaleDateString('it-IT')} al ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')}.`, 15, 100);
+      doc.text(`Data e luogo dell'estrazione: ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')} presso la sede sociale.`, 15, 105);
+
+      doc.text('Si allega il regolamento della lotteria con l\'elenco dei premi.', 15, 115);
+
+      doc.text('Luogo e data:', 15, 135);
+      doc.text(`${associationDetails.municipality}, ${new Date().toLocaleDateString('it-IT')}`, 15, 140);
+      doc.text('Firma del Rappresentante Legale', 150, 140, { align: 'right' });
+      doc.text('___________________________', 150, 150, { align: 'right' });
+
+      return doc;
+    } catch (err) {
+      console.error('Error generating request PDF:', err);
+      throw err;
+    }
+  };
+
+  const generateLotteryRegulationsPDF = async (lotteryData: any) => {
+    const doc = new jsPDF();
+    try {
+      try {
+        const logoImg = await loadImage('/logo.png');
+        doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
+      } catch (e) {}
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('REGOLAMENTO DELLA LOTTERIA', 105, 45, { align: 'center' });
+      doc.setFontSize(12);
+      doc.text(`"${lotteryData.name}"`, 105, 52, { align: 'center' });
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Art. 1 - Organizzazione: La lotteria è organizzata dall'Associazione ${associationDetails.name}.`, 15, 65);
+      doc.text(`Art. 2 - Scopo: Il ricavato sarà devoluto al finanziamento delle attività associative.`, 15, 72);
+      doc.text(`Art. 3 - Biglietti: I biglietti sono venduti al prezzo di € 2,50 cadauno.`, 15, 79);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Art. 4 - Premi in palio:', 15, 89);
+      
+      const prizesText = lotteryData.prizes.map((p: any, i: number) => `${i + 1}° Premio: ${p.name}`).join('\n');
+      doc.setFont('helvetica', 'normal');
+      doc.text(prizesText, 20, 96);
+
+      const nextY = 96 + (lotteryData.prizes.length * 7) + 10;
+      doc.text(`Art. 5 - Estrazione: L'estrazione avverrà il giorno ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')} alle ore 18:00.`, 15, nextY);
+      doc.text(`Art. 6 - Ritiro premi: I premi potranno essere ritirati entro 30 giorni dall'estrazione.`, 15, nextY + 7);
+
+      doc.text('Il presente regolamento è affisso presso la sede sociale.', 15, nextY + 20);
+
+      return doc;
+    } catch (err) {
+      console.error('Error generating regulations PDF:', err);
+      throw err;
+    }
+  };
+
+  const saveLotteryDoc = async (doc: jsPDF, filename: string, type: 'regulations' | 'request' | 'minutes') => {
+    const blob = doc.output('blob');
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/lottery/upload-doc', {
+        method: 'POST',
+        body: formData
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const fieldName = type === 'regulations' ? 'regulations_path' : 
+                         type === 'request' ? 'municipality_request_path' : 'minutes_path';
+        
+        const updatedLottery = { ...lottery, [fieldName]: data.path };
+        await saveLottery(updatedLottery);
+        setLottery(updatedLottery);
+        return data.path;
+      }
+    } catch (error) {
+      console.error('Error saving lottery doc:', error);
+    }
+    return null;
   };
 
   const generateReceiptPDF = async (financeData: any) => {
@@ -1256,6 +1433,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
                 { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
+                { id: 'association', label: 'Associazione', icon: Building, minRole: 'SuperAdmin' },
                 { id: 'accounts', label: 'Account & Sicurezza', icon: Shield, minRole: 'SuperAdmin' },
               ].filter(tab => {
                 if (isSuperAdmin) return true;
@@ -1342,6 +1520,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'contests' && 'Concorsi & Rassegne'}
               {activeTab === 'appointments' && 'Agenda Appuntamenti'}
               {activeTab === 'news' && 'News & Eventi'}
+              {activeTab === 'association' && 'Dati Associazione'}
               {activeTab === 'accounts' && 'Gestione Account'}
               {activeTab === 'poll' && 'Gestione Sondaggi'}
               {activeTab === 'member-home' && `Benvenuto, ${user?.username}`}
@@ -2158,7 +2337,111 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   </div>
 
                   <div className="space-y-4">
-                    <h3 className="font-serif text-lg text-stone-900">Elenco Premi & Vincitori</h3>
+                    <h3 className="font-serif text-lg text-stone-900">Documentazione</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className={`w-5 h-5 ${lottery.regulations_path ? 'text-emerald-500' : 'text-stone-300'}`} />
+                          <div>
+                            <p className="text-sm font-bold text-stone-900">Regolamento Lotteria</p>
+                            <p className="text-[10px] text-stone-500 uppercase">Step 1: Configurazione</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {lottery.regulations_path && (
+                            <a 
+                              href={lottery.regulations_path} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-stone-400 hover:text-stone-900"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          )}
+                          <button 
+                            onClick={async () => {
+                              const doc = await generateLotteryRegulationsPDF(lottery);
+                              await saveLotteryDoc(doc, 'regolamento_lotteria.pdf', 'regulations');
+                              setNotification({ message: 'Regolamento generato e salvato!', type: 'success' });
+                            }}
+                            className="px-3 py-1 bg-stone-900 text-white rounded-lg text-[10px] font-bold uppercase"
+                          >
+                            {lottery.regulations_path ? 'Rigenera' : 'Genera'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Mail className={`w-5 h-5 ${lottery.municipality_request_path ? 'text-emerald-500' : 'text-stone-300'}`} />
+                          <div>
+                            <p className="text-sm font-bold text-stone-900">Comunicazione Comune</p>
+                            <p className="text-[10px] text-stone-500 uppercase">Step 2: Autorizzazione</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {lottery.municipality_request_path && (
+                            <a 
+                              href={lottery.municipality_request_path} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-stone-400 hover:text-stone-900"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          )}
+                          <button 
+                            onClick={async () => {
+                              const doc = await generateLotteryRequestPDF(lottery);
+                              await saveLotteryDoc(doc, 'comunicazione_comune.pdf', 'request');
+                              setNotification({ message: 'Comunicazione generata e salvata!', type: 'success' });
+                            }}
+                            className="px-3 py-1 bg-stone-900 text-white rounded-lg text-[10px] font-bold uppercase"
+                          >
+                            {lottery.municipality_request_path ? 'Rigenera' : 'Genera'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <ClipboardCheck className={`w-5 h-5 ${lottery.minutes_path ? 'text-emerald-500' : 'text-stone-300'}`} />
+                          <div>
+                            <p className="text-sm font-bold text-stone-900">Verbale di Estrazione</p>
+                            <p className="text-[10px] text-stone-500 uppercase">Step 3: Post-Estrazione</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {lottery.minutes_path && (
+                            <a 
+                              href={lottery.minutes_path} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-stone-400 hover:text-stone-900"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          )}
+                          <button 
+                            disabled={!lottery.prizes.every((p: any) => p.winningNumber)}
+                            onClick={async () => {
+                              const doc = await generateLotteryMinutesPDF(lottery);
+                              await saveLotteryDoc(doc, 'verbale_estrazione.pdf', 'minutes');
+                              setNotification({ message: 'Verbale generato e salvato!', type: 'success' });
+                            }}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                              lottery.prizes.every((p: any) => p.winningNumber) 
+                                ? 'bg-stone-900 text-white' 
+                                : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {lottery.minutes_path ? 'Rigenera' : 'Genera'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <h3 className="font-serif text-lg text-stone-900 pt-4">Elenco Premi & Vincitori</h3>
                     <div className="space-y-3">
                       {lottery.prizes.map((prize: any) => (
                         <div key={prize.id} className="p-4 bg-white border border-stone-200 rounded-2xl shadow-sm space-y-3">
@@ -3260,6 +3543,117 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <p className="text-stone-400 text-xs italic text-center py-4">Nessun voto registrato</p>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isSuperAdmin && activeTab === 'association' && (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-serif text-stone-900">Dati Associazione</h2>
+                    <p className="text-stone-500 mt-1">Configura le informazioni legali dell'associazione per i documenti ufficiali.</p>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/settings/association_details', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(associationDetails)
+                        });
+                        if (response.ok) {
+                          setNotification({ message: 'Dati salvati con successo!', type: 'success' });
+                        }
+                      } catch (error) {
+                        setNotification({ message: 'Errore durante il salvataggio', type: 'error' });
+                      }
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                  >
+                    <Save className="w-5 h-5" />
+                    Salva Modifiche
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-8 bg-white border border-stone-200 rounded-3xl shadow-sm space-y-6">
+                    <h3 className="font-serif text-xl text-stone-900">Informazioni Generali</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Nome Associazione</label>
+                        <input 
+                          value={associationDetails.name}
+                          onChange={(e) => setAssociationDetails({ ...associationDetails, name: e.target.value })}
+                          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Sede Legale (Indirizzo)</label>
+                        <input 
+                          value={associationDetails.address}
+                          onChange={(e) => setAssociationDetails({ ...associationDetails, address: e.target.value })}
+                          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Comune</label>
+                          <input 
+                            value={associationDetails.municipality}
+                            onChange={(e) => setAssociationDetails({ ...associationDetails, municipality: e.target.value })}
+                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Provincia</label>
+                          <input 
+                            value={associationDetails.province}
+                            onChange={(e) => setAssociationDetails({ ...associationDetails, province: e.target.value })}
+                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Codice Fiscale</label>
+                        <input 
+                          value={associationDetails.cf}
+                          onChange={(e) => setAssociationDetails({ ...associationDetails, cf: e.target.value })}
+                          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-8 bg-white border border-stone-200 rounded-3xl shadow-sm space-y-6">
+                    <h3 className="font-serif text-xl text-stone-900">Rappresentanza Legale</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Rappresentante Legale (Nome e Cognome)</label>
+                        <input 
+                          value={associationDetails.legalRepresentative}
+                          onChange={(e) => setAssociationDetails({ ...associationDetails, legalRepresentative: e.target.value })}
+                          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Email di Contatto</label>
+                        <input 
+                          value={associationDetails.email}
+                          onChange={(e) => setAssociationDetails({ ...associationDetails, email: e.target.value })}
+                          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Telefono</label>
+                        <input 
+                          value={associationDetails.phone}
+                          onChange={(e) => setAssociationDetails({ ...associationDetails, phone: e.target.value })}
+                          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        />
                       </div>
                     </div>
                   </div>
