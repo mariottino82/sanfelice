@@ -433,8 +433,36 @@ async function startServer() {
   });
 
   app.delete('/api/finances/:id', async (req, res) => {
-    await db.run('DELETE FROM finances WHERE id = ?', [req.params.id]);
-    res.json({ success: true });
+    try {
+      // 1. Get the record to know its year and if it has a receipt number
+      const record = await db.get('SELECT social_year, receipt_number FROM finances WHERE id = ?', [req.params.id]);
+      
+      if (!record) {
+        return res.status(404).json({ error: 'Record non trovato' });
+      }
+
+      // 2. Delete the record
+      await db.run('DELETE FROM finances WHERE id = ?', [req.params.id]);
+
+      // 3. If it had a receipt number, re-sequence all receipts for that year
+      if (record.receipt_number && record.social_year) {
+        const year = record.social_year;
+        const yearReceipts = await db.all(
+          'SELECT id FROM finances WHERE social_year = ? AND receipt_number IS NOT NULL ORDER BY CAST(receipt_number AS INTEGER) ASC',
+          [year]
+        );
+
+        for (let i = 0; i < yearReceipts.length; i++) {
+          const newNumber = (i + 1).toString();
+          await db.run('UPDATE finances SET receipt_number = ? WHERE id = ?', [newNumber, yearReceipts[i].id]);
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting finance record:', error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Contests API

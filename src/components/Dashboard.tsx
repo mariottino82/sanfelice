@@ -882,7 +882,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     try {
       const doc = new jsPDF();
       const start = new Date(statementDates.startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(statementDates.endDate);
+      end.setHours(23, 59, 59, 999);
       
       // Calculate initial balance (sum of all amounts before startDate)
       const initialBalance = collections
@@ -897,29 +899,75 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         })
         .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      // Header
+      // --- BANK STYLE HEADER ---
+      // Background for header
+      doc.setFillColor(245, 245, 240);
+      doc.rect(0, 0, 210, 60, 'F');
+      
       try {
-        doc.addImage('/logo.png', 'PNG', 15, 10, 30, 30);
+        doc.addImage('/logo.png', 'PNG', 15, 10, 25, 25);
       } catch (e) {}
       
+      doc.setTextColor(40, 40, 40);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(15);
-      doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
-      doc.setFontSize(10);
+      doc.setFontSize(18);
+      doc.text('ASSOCIAZIONE PRO SAN FELICE', 50, 20);
+      
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text('ESTRATTO CONTO ANALITICO', 200, 27, { align: 'right' });
-      doc.text(`Periodo: ${start.toLocaleDateString('it-IT')} - ${end.toLocaleDateString('it-IT')}`, 200, 33, { align: 'right' });
+      doc.setTextColor(100, 100, 100);
+      doc.text('Sede Legale: Via San Felice, Colle d\'Anchise (CB)', 50, 26);
+      doc.text('Codice Fiscale: 92024760706', 50, 31);
       
       doc.setDrawColor(200, 200, 200);
-      doc.line(15, 45, 200, 45);
-
-      // Initial Balance Row
+      doc.line(15, 45, 195, 45);
+      
+      // Statement Info Box
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(220, 220, 220);
+      doc.roundedRect(120, 10, 75, 30, 3, 3, 'FD');
+      
+      doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text(`SALDO INIZIALE AL ${start.toLocaleDateString('it-IT')}:`, 15, 55);
-      doc.text(`€ ${initialBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 200, 55, { align: 'right' });
+      doc.text('ESTRATTO CONTO', 125, 18);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`Periodo: ${start.toLocaleDateString('it-IT')} - ${end.toLocaleDateString('it-IT')}`, 125, 24);
+      doc.text(`Data Stampa: ${new Date().toLocaleDateString('it-IT')}`, 125, 29);
 
-      // Table
+      // --- SUMMARY SECTION ---
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('RIEPILOGO MOVIMENTI', 15, 70);
+      
+      const totalIn = periodOperations.filter((op: any) => op.amount > 0).reduce((s, op) => s + op.amount, 0);
+      const totalOut = periodOperations.filter((op: any) => op.amount < 0).reduce((s, op) => s + Math.abs(op.amount), 0);
+      const finalBalance = initialBalance + totalIn - totalOut;
+
+      autoTable(doc, {
+        startY: 75,
+        head: [['Descrizione', 'Importo']],
+        body: [
+          ['Saldo Iniziale', `€ ${initialBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`],
+          ['Totale Entrate (+)', `€ ${totalIn.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`],
+          ['Totale Uscite (-)', `€ ${totalOut.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`],
+          ['SALDO FINALE', `€ ${finalBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`]
+        ],
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+        tableWidth: 80,
+        margin: { left: 15 }
+      });
+
+      // --- OPERATIONS TABLE ---
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DETTAGLIO OPERAZIONI', 15, (doc as any).lastAutoTable.finalY + 15);
+
       let currentBalance = initialBalance;
       const tableBody = periodOperations.map((op: any) => {
         currentBalance += op.amount;
@@ -927,40 +975,49 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           new Date(op.date).toLocaleDateString('it-IT'),
           op.event_name.toUpperCase(),
           op.type.toUpperCase().replace('_', ' '),
-          op.amount > 0 ? `€ ${op.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
-          op.amount < 0 ? `€ ${Math.abs(op.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
-          `€ ${currentBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+          op.amount > 0 ? `+ ${op.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
+          op.amount < 0 ? `- ${Math.abs(op.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
+          `${currentBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
         ];
       });
 
       autoTable(doc, {
-        startY: 65,
-        head: [['DATA', 'CAUSALE', 'TIPO', 'ENTRATA', 'USCITA', 'SALDO']],
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [['DATA', 'CAUSALE', 'TIPO', 'ENTRATE (€)', 'USCITE (€)', 'SALDO (€)']],
         body: tableBody,
-        theme: 'striped',
-        headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontSize: 8 },
-        bodyStyles: { fontSize: 8 },
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [50, 50, 50], 
+          textColor: [255, 255, 255], 
+          fontSize: 8, 
+          halign: 'center',
+          cellPadding: 3
+        },
+        bodyStyles: { fontSize: 8, cellPadding: 3 },
         columnStyles: {
-          3: { halign: 'right' },
-          4: { halign: 'right' },
+          0: { cellWidth: 25 },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 30 },
+          3: { halign: 'right', textColor: [0, 128, 0] },
+          4: { halign: 'right', textColor: [200, 0, 0] },
           5: { halign: 'right', fontStyle: 'bold' }
-        }
+        },
+        alternateRowStyles: { fillColor: [250, 250, 250] }
       });
 
-      const finalY = (doc as any).lastAutoTable.finalY + 15;
-      
-      // Totals
-      const totalIn = periodOperations.filter((op: any) => op.amount > 0).reduce((s, op) => s + op.amount, 0);
-      const totalOut = periodOperations.filter((op: any) => op.amount < 0).reduce((s, op) => s + Math.abs(op.amount), 0);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('RIEPILOGO PERIODO', 15, finalY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Totale Entrate: € ${totalIn.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 15, finalY + 7);
-      doc.text(`Totale Uscite: € ${totalOut.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 15, finalY + 14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`SALDO FINALE AL ${end.toLocaleDateString('it-IT')}: € ${currentBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 15, finalY + 23);
+      // Footer
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Pagina ${i} di ${pageCount} - Associazione Pro San Felice - Estratto Conto Analitico`,
+          105,
+          285,
+          { align: 'center' }
+        );
+      }
 
       doc.save(`estratto_conto_${statementDates.startDate}_${statementDates.endDate}.pdf`);
       setShowStatementModal(false);
@@ -1687,6 +1744,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
 
                 <form 
+                  key={editingCollection?.id || 'new'}
                   onSubmit={(e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
@@ -3811,6 +3869,62 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
       {/* Modali di Conferma Eliminazione */}
       <AnimatePresence mode="wait">
+        {accountToDelete && (
+          <ConfirmationModal 
+            isOpen={!!accountToDelete}
+            onClose={() => setAccountToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/users/${accountToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Account eliminato con successo!', type: 'success' });
+                  await fetchData();
+                  setAccountToDelete(null);
+                } else {
+                  const errorData = await response.json();
+                  setNotification({ message: 'Errore: ' + (errorData.error || 'Impossibile eliminare'), type: 'error' });
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Account"
+            message={`Sei sicuro di voler eliminare l'account "${accountToDelete.username}"?`}
+            isDeleting={isDeleting}
+          />
+        )}
+
+        {collectionToDelete && (
+          <ConfirmationModal 
+            isOpen={!!collectionToDelete}
+            onClose={() => setCollectionToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/finances/${collectionToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Operazione eliminata e numerazione ricalcolata!', type: 'success' });
+                  await fetchData();
+                  setCollectionToDelete(null);
+                } else {
+                  const errorData = await response.json();
+                  setNotification({ message: 'Errore: ' + (errorData.error || 'Impossibile eliminare'), type: 'error' });
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Operazione"
+            message={`Sei sicuro di voler eliminare l'operazione "${collectionToDelete.event_name}"? ${collectionToDelete.receipt_number ? `Questa azione ricalcolerà anche la numerazione delle ricevute per l'anno ${collectionToDelete.social_year}.` : ''}`}
+            isDeleting={isDeleting}
+          />
+        )}
+
         {contestToDelete && (
           <motion.div 
             key="delete-contest-modal"
@@ -3964,51 +4078,190 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           )}
 
           {pollToDelete && (
-            <motion.div 
-              key="delete-poll-modal"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-            >
-              <motion.div 
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-[1.5rem] md:rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl"
-              >
-                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
-                  <Vote className="w-8 h-8 text-red-600" />
-                </div>
-                <h3 className="text-xl font-serif text-stone-900 mb-2">Elimina Sondaggio</h3>
-                <p className="text-stone-500 text-sm mb-8">
-                  Vuoi eliminare il sondaggio <span className="font-bold text-stone-900">"{pollToDelete.question}"</span>?
-                </p>
-                <div className="flex gap-3">
-                  <button onClick={() => setPollToDelete(null)} className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 transition-all">Annulla</button>
-                  <button 
-                    onClick={async () => {
-                      try {
-                        await fetch(`/api/polls/${pollToDelete.id}`, { method: 'DELETE' });
-                        setPolls(polls.filter((p: any) => p.id !== pollToDelete.id));
-                        if (poll?.id === pollToDelete.id) {
-                          createNewPoll();
-                        }
-                        setNotification({ message: 'Sondaggio eliminato', type: 'success' });
-                        setPollToDelete(null);
-                      } catch (error) {
-                        console.error('Error deleting poll:', error);
-                        setNotification({ message: 'Errore durante l\'eliminazione', type: 'error' });
-                      }
-                    }}
-                    className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
-                  >
-                    Elimina
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <ConfirmationModal 
+            isOpen={!!pollToDelete}
+            onClose={() => setPollToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/polls/${pollToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setPolls(polls.filter((p: any) => p.id !== pollToDelete.id));
+                  if (poll?.id === pollToDelete.id) {
+                    createNewPoll();
+                  }
+                  setNotification({ message: 'Sondaggio eliminato', type: 'success' });
+                  setPollToDelete(null);
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore durante l\'eliminazione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Sondaggio"
+            message={`Vuoi eliminare il sondaggio "${pollToDelete.question}"?`}
+            isDeleting={isDeleting}
+            icon={<Vote className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {minuteToDelete && (
+          <ConfirmationModal 
+            isOpen={!!minuteToDelete}
+            onClose={() => setMinuteToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/minutes/${minuteToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Verbale eliminato!', type: 'success' });
+                  await fetchData();
+                  setMinuteToDelete(null);
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Verbale"
+            message={`Sei sicuro di voler eliminare il verbale del ${new Date(minuteToDelete.date).toLocaleDateString('it-IT')}?`}
+            isDeleting={isDeleting}
+            icon={<FileText className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {appointmentToDelete && (
+          <ConfirmationModal 
+            isOpen={!!appointmentToDelete}
+            onClose={() => setAppointmentToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/appointments/${appointmentToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Appuntamento eliminato!', type: 'success' });
+                  await fetchData();
+                  setAppointmentToDelete(null);
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Appuntamento"
+            message={`Sei sicuro di voler eliminare l'appuntamento "${appointmentToDelete.title}"?`}
+            isDeleting={isDeleting}
+            icon={<Calendar className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {memberToDelete && (
+          <ConfirmationModal 
+            isOpen={!!memberToDelete}
+            onClose={() => setMemberToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/members/${memberToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Socio eliminato!', type: 'success' });
+                  await fetchData();
+                  setMemberToDelete(null);
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Socio"
+            message={`Sei sicuro di voler eliminare il socio ${memberToDelete.name} ${memberToDelete.surname}?`}
+            isDeleting={isDeleting}
+            icon={<Users className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {newsToDelete && (
+          <ConfirmationModal 
+            isOpen={!!newsToDelete}
+            onClose={() => setNewsToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/news/${newsToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Notizia eliminata!', type: 'success' });
+                  await fetchData();
+                  setNewsToDelete(null);
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Notizia"
+            message={`Sei sicuro di voler eliminare la notizia "${newsToDelete.title}"?`}
+            isDeleting={isDeleting}
+            icon={<Newspaper className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {galleryItemToDelete && (
+          <ConfirmationModal 
+            isOpen={!!galleryItemToDelete}
+            onClose={() => setGalleryItemToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/gallery/${galleryItemToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Elemento rimosso dalla galleria!', type: 'success' });
+                  await fetchData();
+                  setGalleryItemToDelete(null);
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina dalla Galleria"
+            message="Sei sicuro di voler eliminare questo elemento dalla galleria?"
+            isDeleting={isDeleting}
+            icon={<ImageIcon className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {memberRegistrationToDelete && (
+          <ConfirmationModal 
+            isOpen={!!memberRegistrationToDelete}
+            onClose={() => setMemberRegistrationToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const response = await fetch(`/api/registrations/${memberRegistrationToDelete.id}`, { method: 'DELETE' });
+                if (response.ok) {
+                  setNotification({ message: 'Iscrizione eliminata!', type: 'success' });
+                  await fetchData();
+                  setMemberRegistrationToDelete(null);
+                }
+              } catch (error) {
+                setNotification({ message: 'Errore di connessione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Iscrizione"
+            message={`Sei sicuro di voler eliminare l'iscrizione di ${memberRegistrationToDelete.name}?`}
+            isDeleting={isDeleting}
+            icon={<UserPlus className="w-8 h-8 text-red-600" />}
+          />
+        )}
+      </AnimatePresence>
 
         <MeetingMinutesWizard 
           isOpen={showWizard}
