@@ -5,6 +5,16 @@ import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const loadImage = (url: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+    img.src = url;
+  });
+};
+
 const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[], onChange: (winners: any[]) => void }) => {
   const [winners, setWinners] = React.useState(initialWinners.map(w => ({ ...w, id: w.id || Math.random().toString(36).substr(2, 9) })));
 
@@ -186,7 +196,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     amount: '',
     date: new Date().toISOString().split('T')[0],
     paymentMethod: 'BONIFICO',
-    description: 'Contributo volontario festività San Felice 2026 - Colle d\'Anchise (CB)'
+    description: "Erogazione liberale festività San Felice 2026 - Colle d'Anchise (CB)"
   });
   const [editingMinute, setEditingMinute] = React.useState<any>(null);
   const [editingAppointment, setEditingAppointment] = React.useState<any>(null);
@@ -646,7 +656,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       // Header
       try {
         console.log('[PDF] Attempting to add logo from /logo.png');
-        doc.addImage('/logo.png', 'PNG', 15, 10, 30, 30);
+        const logoImg = await loadImage('/logo.png');
+        doc.addImage(logoImg, 'PNG', 15, 10, 30, 30);
         console.log('[PDF] Logo added successfully');
       } catch (e) {
         console.warn('[PDF] Logo not found or failed to load:', e);
@@ -706,7 +717,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       autoTable(doc, {
         startY: 140,
         head: [['DESCRIZIONE', 'IMPORTO']],
-        body: [[financeData.event_name, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
+        body: [[`EROGAZIONE LIBERALE - ${financeData.event_name}`, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
         theme: 'grid',
         headStyles: { 
           fillColor: [40, 40, 40], 
@@ -905,19 +916,22 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       doc.rect(0, 0, 210, 60, 'F');
       
       try {
-        doc.addImage('/logo.png', 'PNG', 15, 10, 25, 25);
-      } catch (e) {}
+        const logoImg = await loadImage('/logo.png');
+        doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
+      } catch (e) {
+        console.warn('[PDF] Logo not found or failed to load in statement:', e);
+      }
       
       doc.setTextColor(40, 40, 40);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text('ASSOCIAZIONE PRO SAN FELICE', 50, 20);
+      doc.text('ASSOCIAZIONE PRO SAN FELICE', 45, 20);
       
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 100, 100);
-      doc.text('Sede Legale: Via San Felice, Colle d\'Anchise (CB)', 50, 26);
-      doc.text('Codice Fiscale: 92024760706', 50, 31);
+      doc.text('Sede Legale: Via San Felice, Colle d\'Anchise (CB)', 45, 26);
+      doc.text('Codice Fiscale: 92024760706', 45, 31);
       
       doc.setDrawColor(200, 200, 200);
       doc.line(15, 45, 195, 45);
@@ -925,16 +939,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       // Statement Info Box
       doc.setFillColor(255, 255, 255);
       doc.setDrawColor(220, 220, 220);
-      doc.roundedRect(120, 10, 75, 30, 3, 3, 'FD');
+      doc.roundedRect(140, 10, 60, 30, 3, 3, 'FD');
       
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text('ESTRATTO CONTO', 125, 18);
+      doc.text('ESTRATTO CONTO', 145, 18);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.text(`Periodo: ${start.toLocaleDateString('it-IT')} - ${end.toLocaleDateString('it-IT')}`, 125, 24);
-      doc.text(`Data Stampa: ${new Date().toLocaleDateString('it-IT')}`, 125, 29);
+      doc.text(`Periodo: ${start.toLocaleDateString('it-IT')} - ${end.toLocaleDateString('it-IT')}`, 145, 24);
+      doc.text(`Data Stampa: ${new Date().toLocaleDateString('it-IT')}`, 145, 29);
 
       // --- SUMMARY SECTION ---
       doc.setFontSize(11);
