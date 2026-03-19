@@ -1084,11 +1084,28 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         body: JSON.stringify(newNews)
       });
       const data = await response.json();
-      setNews([...news, { ...newNews, id: data.id, date: new Date().toISOString() }]);
+      setNews([{ ...newNews, id: data.id, date: newNews.date || new Date().toISOString() }, ...news]);
       setEditingNews(null);
       alert('News/Evento pubblicato con successo!');
     } catch (error) {
       console.error('Error adding news:', error);
+    }
+  };
+
+  const updateNews = async (updated: any) => {
+    try {
+      const response = await fetch(`/api/news/${updated.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      if (response.ok) {
+        setNews(news.map((n: any) => n.id === updated.id ? updated : n));
+        setEditingNews(null);
+        alert('News/Evento aggiornato con successo!');
+      }
+    } catch (error) {
+      console.error('Error updating news:', error);
     }
   };
 
@@ -2834,27 +2851,34 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
                       const data = Object.fromEntries(formData);
-                      addNews(data);
+                      if (editingNews) {
+                        updateNews({ ...editingNews, ...data });
+                      } else {
+                        addNews(data);
+                      }
                       e.currentTarget.reset();
                     }}
                     className="space-y-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input name="title" defaultValue={editingNews?.title} placeholder="Titolo News / Evento" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" required />
-                      <select name="category" defaultValue={editingNews?.category || 'news'} className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none">
-                        <option value="news">News</option>
-                        <option value="evento">Evento</option>
-                      </select>
+                      <div className="flex gap-2">
+                        <select name="category" defaultValue={editingNews?.category || 'news'} className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none">
+                          <option value="news">News</option>
+                          <option value="evento">Evento</option>
+                        </select>
+                        <input type="date" name="date" defaultValue={editingNews?.date ? new Date(editingNews.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
+                      </div>
                     </div>
                     <textarea name="content" defaultValue={editingNews?.content} placeholder="Contenuto della news..." className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none h-32" required />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="relative">
                         <ImageIcon className="absolute left-3 top-2.5 w-4 h-4 text-stone-400" />
-                        <input name="imageUrl" defaultValue={editingNews?.imageUrl} placeholder="URL Immagine" className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
+                        <input name="image" defaultValue={editingNews?.image} placeholder="URL Immagine" className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
                       </div>
                       <div className="relative">
                         <Video className="absolute left-3 top-2.5 w-4 h-4 text-stone-400" />
-                        <input name="videoUrl" defaultValue={editingNews?.videoUrl} placeholder="URL Video (YouTube/Vimeo)" className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
+                        <input name="video" defaultValue={editingNews?.video} placeholder="URL Video (YouTube/Vimeo)" className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
                       </div>
                     </div>
                     <div className="flex gap-4">
@@ -2879,9 +2903,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   )}
                   {news.map((n: any) => (
                     <div key={n.id} className="bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm group">
-                      {n.imageUrl && (
+                      {n.image && (
                         <div className="h-48 overflow-hidden">
-                          <img src={n.imageUrl} alt={n.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                          <img src={n.image} alt={n.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
                         </div>
                       )}
                       <div className="p-6">

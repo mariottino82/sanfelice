@@ -20,7 +20,7 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
     "headline": item.title,
     "name": item.title,
     "description": item.content.substring(0, 160),
-    "image": item.imageUrl || `${window.location.origin}/logo.png`,
+    "image": item.image || `${window.location.origin}/logo.png`,
     "datePublished": item.date,
     "author": {
       "@type": "Organization",
@@ -50,14 +50,14 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
       <SEO 
         title={item.title} 
         description={item.content.substring(0, 160)} 
-        image={item.imageUrl}
+        image={item.image}
         type="article"
         schema={newsSchema}
       />
       {/* Hero Section */}
       <div className="relative h-[40vh] md:h-[60vh] w-full overflow-hidden">
         <img 
-          src={item.imageUrl || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'} 
+          src={item.image || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'} 
           alt={item.title}
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
@@ -115,12 +115,12 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
               </p>
             </div>
 
-            {item.videoUrl && (
+            {item.video && (
               <div className="mt-8 md:mt-12">
                 <h3 className="text-xl md:text-2xl font-serif text-stone-900 mb-4 md:mb-6">Video dell'evento</h3>
                 <div className="aspect-video rounded-2xl md:rounded-3xl overflow-hidden bg-stone-100 flex items-center justify-center border border-stone-200">
                   <a 
-                    href={item.videoUrl} 
+                    href={item.video} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-3 md:gap-4 text-stone-400 hover:text-stone-900 transition-colors"

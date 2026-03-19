@@ -135,12 +135,21 @@ async function startServer() {
   });
 
   app.post('/api/events', async (req, res) => {
-    const { title, date, location, description, image, category } = req.body;
+    const { title, date, location, description, image, video, category } = req.body;
     const result = await db.run(
-      'INSERT INTO events (title, date, location, description, image, category) VALUES (?, ?, ?, ?, ?, ?)',
-      [title, date, location, description, image, category]
+      'INSERT INTO events (title, date, location, description, image, video, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [title, date || new Date().toISOString(), location, description, image, video, category]
     );
     res.json({ id: result.lastID });
+  });
+
+  app.put('/api/events/:id', async (req, res) => {
+    const { title, date, location, description, image, video, category } = req.body;
+    await db.run(
+      'UPDATE events SET title = ?, date = ?, location = ?, description = ?, image = ?, video = ?, category = ? WHERE id = ?',
+      [title, date || new Date().toISOString(), location, description, image, video, category, req.params.id]
+    );
+    res.json({ success: true });
   });
 
   app.delete('/api/events/:id', async (req, res) => {
@@ -155,12 +164,21 @@ async function startServer() {
   });
 
   app.post('/api/news', async (req, res) => {
-    const { title, date, excerpt, content, image, category } = req.body;
+    const { title, date, excerpt, content, image, video, category } = req.body;
     const result = await db.run(
-      'INSERT INTO news (title, date, excerpt, content, image, category) VALUES (?, ?, ?, ?, ?, ?)',
-      [title, date, excerpt, content, image, category]
+      'INSERT INTO news (title, date, excerpt, content, image, video, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [title, date || new Date().toISOString(), excerpt, content, image, video, category]
     );
     res.json({ id: result.lastID });
+  });
+
+  app.put('/api/news/:id', async (req, res) => {
+    const { title, date, excerpt, content, image, video, category } = req.body;
+    await db.run(
+      'UPDATE news SET title = ?, date = ?, excerpt = ?, content = ?, image = ?, video = ?, category = ? WHERE id = ?',
+      [title, date || new Date().toISOString(), excerpt, content, image, video, category, req.params.id]
+    );
+    res.json({ success: true });
   });
 
   app.delete('/api/news/:id', async (req, res) => {
@@ -175,10 +193,10 @@ async function startServer() {
   });
 
   app.post('/api/gallery', async (req, res) => {
-    const { url, title, category, date } = req.body;
+    const { url, title, type, category, date } = req.body;
     const result = await db.run(
-      'INSERT INTO gallery (url, title, category, date) VALUES (?, ?, ?, ?)',
-      [url, title, category, date || new Date().toISOString()]
+      'INSERT INTO gallery (url, title, type, category, date) VALUES (?, ?, ?, ?, ?)',
+      [url, title, type || 'image', category, date || new Date().toISOString()]
     );
     res.json({ id: result.lastID });
   });

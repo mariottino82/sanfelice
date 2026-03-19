@@ -50,6 +50,7 @@ export async function getDb() {
       location TEXT,
       description TEXT,
       image TEXT,
+      video TEXT,
       category TEXT
     );
 
@@ -60,6 +61,7 @@ export async function getDb() {
       excerpt TEXT,
       content TEXT,
       image TEXT,
+      video TEXT,
       category TEXT
     );
 
@@ -67,6 +69,7 @@ export async function getDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       url TEXT,
       title TEXT,
+      type TEXT DEFAULT 'image',
       category TEXT,
       date TEXT
     );
@@ -182,7 +185,10 @@ export async function getDb() {
     'ALTER TABLE finances ADD COLUMN receipt_number TEXT',
     'ALTER TABLE finances ADD COLUMN social_year INTEGER',
     'ALTER TABLE finances ADD COLUMN receipt_path TEXT',
-    'ALTER TABLE members ADD COLUMN payments TEXT DEFAULT "{}"'
+    'ALTER TABLE members ADD COLUMN payments TEXT DEFAULT "{}"',
+    'ALTER TABLE news ADD COLUMN video TEXT',
+    'ALTER TABLE events ADD COLUMN video TEXT',
+    'ALTER TABLE gallery ADD COLUMN type TEXT DEFAULT "image"'
   ];
 
   for (const migration of migrations) {
