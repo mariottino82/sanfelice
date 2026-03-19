@@ -646,14 +646,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       // Header
       try {
         console.log('[PDF] Attempting to add logo from /logo.png');
-        doc.addImage('/logo.png', 'PNG', 15, 10, 35, 35);
+        doc.addImage('/logo.png', 'PNG', 15, 10, 30, 30);
         console.log('[PDF] Logo added successfully');
       } catch (e) {
         console.warn('[PDF] Logo not found or failed to load:', e);
       }
       
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
+      doc.setFontSize(15);
       doc.setTextColor(40, 40, 40);
       doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
       doc.setFontSize(9);
@@ -661,14 +661,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       doc.setTextColor(100, 100, 100);
       doc.text('Via Salita la Chiesa, 19 - 86020 - Colle d\'Anchise (CB)', 200, 26, { align: 'right' });
       doc.text('Codice Fiscale: 92083740701', 200, 31, { align: 'right' });
-      doc.text('Email: prosanfelice@outlook.it', 200, 36, { align: 'right' });
+      doc.text('Email: sanfeliceassociazione@gmail.com', 200, 36, { align: 'right' });
       
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.5);
       doc.line(15, 50, 200, 50);
       
       // Titolo Ricevuta
-      doc.setFontSize(14);
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(40, 40, 40);
       doc.text(`RICEVUTA EROGAZIONE LIBERALE nr. ${financeData.receipt_number}/${financeData.social_year}`, 15, 65);
@@ -685,7 +685,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       doc.setTextColor(150, 150, 150);
       doc.text('SPETT.LE / DESTINATARIO', 125, 68);
       
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setTextColor(40, 40, 40);
       doc.setFont('helvetica', 'bold');
       doc.text((company.companyName || '').toUpperCase(), 125, 75, { maxWidth: 70 });
@@ -711,7 +711,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         headStyles: { 
           fillColor: [40, 40, 40], 
           textColor: [255, 255, 255], 
-          fontSize: 10, 
+          fontSize: 9, 
           fontStyle: 'bold',
           cellPadding: 5
         },
@@ -730,7 +730,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       console.log('[PDF] Table generated, finalY:', finalY);
       
       // Payment Info
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.text('DETTAGLI PAGAMENTO', 15, finalY + 20);
       doc.setFont('helvetica', 'normal');
@@ -903,7 +903,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       } catch (e) {}
       
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
+      doc.setFontSize(15);
       doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -915,7 +915,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
       // Initial Balance Row
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.text(`SALDO INIZIALE AL ${start.toLocaleDateString('it-IT')}:`, 15, 55);
       doc.text(`€ ${initialBalance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 200, 55, { align: 'right' });
 
@@ -938,7 +938,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         head: [['DATA', 'CAUSALE', 'TIPO', 'ENTRATA', 'USCITA', 'SALDO']],
         body: tableBody,
         theme: 'striped',
-        headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontSize: 9 },
+        headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontSize: 8 },
         bodyStyles: { fontSize: 8 },
         columnStyles: {
           3: { halign: 'right' },
@@ -954,6 +954,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       const totalOut = periodOperations.filter((op: any) => op.amount < 0).reduce((s, op) => s + Math.abs(op.amount), 0);
 
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
       doc.text('RIEPILOGO PERIODO', 15, finalY);
       doc.setFont('helvetica', 'normal');
       doc.text(`Totale Entrate: € ${totalIn.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, 15, finalY + 7);
