@@ -15,10 +15,14 @@ import { NewsDetail } from './components/NewsDetail';
 import { RegistrationModal } from './components/RegistrationModal';
 import { ContestRegistrationModal } from './components/ContestRegistrationModal';
 import { ContestAnnouncement } from './components/ContestAnnouncement';
-import { X, LogIn, Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { CookiePolicy } from './components/CookiePolicy';
+import { CookieBanner } from './components/CookieBanner';
+import { X, LogIn, Facebook, Instagram, Youtube, Twitter, Shield, Cookie } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
+  const [view, setView] = React.useState<'home' | 'privacy' | 'cookie'>('home');
   const [isLoggedIn, setIsLoggedIn] = React.useState(() => {
     return localStorage.getItem('session_user') !== null;
   });
@@ -87,6 +91,14 @@ export default function App() {
       setUser(null); 
       localStorage.removeItem('session_user');
     }} />;
+  }
+
+  if (view === 'privacy') {
+    return <PrivacyPolicy onBack={() => setView('home')} />;
+  }
+
+  if (view === 'cookie') {
+    return <CookiePolicy onBack={() => setView('home')} />;
   }
 
   if (selectedNews) {
@@ -176,11 +188,29 @@ export default function App() {
               </div>
             </div>
           </div>
-          <div className="mt-12 pt-8 border-t border-stone-800 text-center text-xs">
+          <div className="mt-12 pt-8 border-t border-stone-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
             <p>&copy; {new Date().getFullYear()} Pro San Felice 2023. Tutti i diritti riservati.</p>
+            <div className="flex items-center gap-6">
+              <button 
+                onClick={() => setView('privacy')}
+                className="flex items-center gap-1.5 hover:text-white transition-colors"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Privacy Policy
+              </button>
+              <button 
+                onClick={() => setView('cookie')}
+                className="flex items-center gap-1.5 hover:text-white transition-colors"
+              >
+                <Cookie className="w-3.5 h-3.5" />
+                Cookie Policy
+              </button>
+            </div>
           </div>
         </div>
       </footer>
+
+      <CookieBanner />
 
       <AnimatePresence>
         {showLoginModal && (
