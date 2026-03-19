@@ -22,9 +22,9 @@ export const SEO: React.FC<SEOProps> = ({
 }) => {
   const baseTitle = 'Pro San Felice 2023';
   const fullTitle = title ? `${title} | ${baseTitle}` : `${baseTitle} - Eventi, Sagre e Feste in Molise`;
-  const defaultDescription = 'Associazione Pro San Felice 2023: Scopri tutti gli eventi, le sagre, le rassegne e le feste a San Felice e in tutto il Molise.';
+  const defaultDescription = 'Associazione Pro San Felice 2023: Scopri tutti gli eventi, le sagre, le rassegne e le feste a Colle d\'Anchise e in tutto il Molise.';
   const fullDescription = description || defaultDescription;
-  const fullKeywords = keywords ? `${keywords}, Molise, eventi, sagre` : 'Pro San Felice, Molise, eventi Molise, sagre Molise, feste Molise';
+  const fullKeywords = keywords ? `${keywords}, Molise, eventi, sagre` : 'Pro San Felice, Molise, eventi Molise, sagre Molise, feste Molise, Colle d\'Anchise';
 
   return (
     <Helmet>

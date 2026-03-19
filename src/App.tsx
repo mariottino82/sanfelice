@@ -93,7 +93,7 @@ export default function App() {
     "name": "Pro San Felice 2023",
     "url": window.location.origin,
     "logo": `${window.location.origin}/logo.png`,
-    "description": "Associazione di promozione sociale e culturale dedicata alla valorizzazione del territorio e delle tradizioni di San Felice e del Molise.",
+    "description": "Associazione di promozione sociale e culturale dedicata alla valorizzazione del territorio e delle tradizioni di Colle d'Anchise e del Molise.",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Via Salita la chiesa, 19",

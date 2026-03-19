@@ -30,10 +30,10 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
       "startDate": item.date,
       "location": {
         "@type": "Place",
-        "name": "San Felice del Molise",
+        "name": "Colle d'Anchise",
         "address": {
           "@type": "PostalAddress",
-          "addressLocality": "San Felice del Molise",
+          "addressLocality": "Colle d'Anchise",
           "addressRegion": "CB",
           "addressCountry": "IT"
         }
