@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[], onChange: (winners: any[]) => void }) => {
   const [winners, setWinners] = React.useState(initialWinners.map(w => ({ ...w, id: w.id || Math.random().toString(36).substr(2, 9) })));
@@ -703,12 +703,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       
       // Table
       console.log('[PDF] Generating table with autoTable');
-      if (typeof (doc as any).autoTable !== 'function') {
-        console.error('[PDF] autoTable is NOT a function on doc object!');
-        throw new Error('Libreria PDF (autoTable) non caricata correttamente');
-      }
-
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: 140,
         head: [['DESCRIZIONE', 'IMPORTO']],
         body: [[financeData.event_name, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
@@ -938,7 +933,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         ];
       });
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: 65,
         head: [['DATA', 'CAUSALE', 'TIPO', 'ENTRATA', 'USCITA', 'SALDO']],
         body: tableBody,
