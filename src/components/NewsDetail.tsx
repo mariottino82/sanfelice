@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Calendar, Share2, Facebook, Twitter, Link as LinkIcon, PlayCircle, X, UserPlus } from 'lucide-react';
+import { ArrowLeft, Calendar, Share2, Facebook, Twitter, Link as LinkIcon, PlayCircle, X, UserPlus, Mail, CheckCircle2 } from 'lucide-react';
 import { SEO } from './SEO';
 
 interface NewsDetailProps {
@@ -10,9 +10,27 @@ interface NewsDetailProps {
 }
 
 export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
+  const [copied, setCopied] = React.useState(false);
+
   React.useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  const handleShareFacebook = () => {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
+
+  const handleShareTwitter = () => {
+    const url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(item.title)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const newsSchema = {
     "@context": "https://schema.org",
@@ -135,43 +153,88 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
 
           {/* Sidebar / Share */}
           <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6 md:space-y-8">
+            <div className="sticky top-8 space-y-8 md:space-y-12">
               <div>
-                <h4 className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 md:mb-4">Condividi</h4>
-                <div className="flex flex-row lg:flex-col gap-2 md:gap-3 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
-                  <button className="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 rounded-xl bg-stone-50 text-stone-600 hover:bg-stone-100 transition-colors text-xs md:text-sm font-medium whitespace-nowrap">
-                    <Facebook className="w-4 h-4 md:w-5 md:h-5 text-[#1877F2]" />
+                <h4 className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-widest mb-4 md:mb-6">Condividi</h4>
+                <div className="flex flex-row lg:flex-col gap-3 md:gap-4 overflow-x-auto pb-4 lg:pb-0 scrollbar-hide">
+                  <motion.button 
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleShareFacebook}
+                    className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-stone-50 text-stone-600 hover:bg-white hover:shadow-md transition-all text-xs md:text-sm font-semibold whitespace-nowrap border border-stone-100"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-[#1877F2]/10 flex items-center justify-center">
+                      <Facebook className="w-4 h-4 text-[#1877F2]" />
+                    </div>
                     Facebook
-                  </button>
-                  <button className="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 rounded-xl bg-stone-50 text-stone-600 hover:bg-stone-100 transition-colors text-xs md:text-sm font-medium whitespace-nowrap">
-                    <Twitter className="w-4 h-4 md:w-5 md:h-5 text-[#1DA1F2]" />
+                  </motion.button>
+                  <motion.button 
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleShareTwitter}
+                    className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-stone-50 text-stone-600 hover:bg-white hover:shadow-md transition-all text-xs md:text-sm font-semibold whitespace-nowrap border border-stone-100"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-[#1DA1F2]/10 flex items-center justify-center">
+                      <Twitter className="w-4 h-4 text-[#1DA1F2]" />
+                    </div>
                     Twitter
-                  </button>
-                  <button className="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 rounded-xl bg-stone-50 text-stone-600 hover:bg-stone-100 transition-colors text-xs md:text-sm font-medium whitespace-nowrap">
-                    <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />
-                    Copia Link
-                  </button>
+                  </motion.button>
+                  <motion.button 
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-stone-50 text-stone-600 hover:bg-white hover:shadow-md transition-all text-xs md:text-sm font-semibold whitespace-nowrap border border-stone-100"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${copied ? 'bg-emerald-100' : 'bg-stone-200'}`}>
+                      {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <LinkIcon className="w-4 h-4 text-stone-600" />}
+                    </div>
+                    {copied ? 'Copiato!' : 'Copia Link'}
+                  </motion.button>
                 </div>
               </div>
 
-              <div className="p-6 md:p-8 bg-stone-900 rounded-[1.5rem] md:rounded-[2.5rem] text-white shadow-2xl shadow-stone-900/40 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 md:w-32 md:h-32 bg-white/5 rounded-full -mr-12 -mt-12 md:-mr-16 md:-mt-16" />
-                <div className="relative z-10 space-y-4 md:space-y-6">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 rounded-xl md:rounded-2xl flex items-center justify-center">
-                    <UserPlus className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              <div className="space-y-6">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="p-8 bg-gradient-to-br from-stone-900 to-stone-800 rounded-[2.5rem] text-white shadow-2xl shadow-stone-900/40 relative overflow-hidden group"
+                >
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full -mr-24 -mt-24 group-hover:scale-110 transition-transform duration-700" />
+                  
+                  <div className="relative z-10 space-y-6">
+                    <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                      <UserPlus className="w-7 h-7 text-white" />
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-serif text-2xl mb-3 leading-tight">Diventa parte della nostra storia</h4>
+                      <p className="text-stone-400 text-sm leading-relaxed">
+                        Sostieni il territorio e accedi a eventi esclusivi riservati ai nostri soci.
+                      </p>
+                    </div>
+
+                    <button 
+                      onClick={onRegisterClick}
+                      className="w-full bg-white text-stone-900 py-4 rounded-2xl font-bold text-sm hover:bg-stone-100 transition-all transform active:scale-95 shadow-xl shadow-white/5 flex items-center justify-center gap-2 group/btn"
+                    >
+                      Iscriviti Ora
+                      <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                    </button>
                   </div>
-                  <div>
-                    <h4 className="font-serif text-xl md:text-2xl mb-1 md:mb-2">Partecipa anche tu</h4>
-                    <p className="text-stone-400 text-xs md:text-sm leading-relaxed">
-                      Unisciti alla nostra associazione per sostenere il territorio e non perdere i prossimi eventi esclusivi.
-                    </p>
-                  </div>
-                  <button 
-                    onClick={onRegisterClick}
-                    className="w-full bg-white text-stone-900 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm hover:bg-stone-100 transition-all transform active:scale-95 shadow-lg shadow-white/10 flex items-center justify-center gap-2"
+                </motion.div>
+
+                <div className="px-4">
+                  <p className="text-stone-400 text-xs mb-4 text-center uppercase tracking-widest font-bold">Hai domande?</p>
+                  <motion.a 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    href="mailto:sanfeliceassociazione@gmail.com"
+                    className="flex items-center justify-center gap-3 text-stone-600 hover:text-stone-900 transition-colors py-3 border-2 border-stone-100 rounded-2xl font-bold text-sm"
                   >
-                    Diventa Socio Ora
-                  </button>
+                    <Mail className="w-4 h-4" />
+                    Scrivici un'email
+                  </motion.a>
                 </div>
               </div>
             </div>
