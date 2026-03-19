@@ -6,24 +6,22 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[], onChange: (winners: any[]) => void }) => {
-  const [winners, setWinners] = React.useState(() => 
-    (initialWinners || []).map((w, idx) => ({ ...w, id: w.id || `winner-${Date.now()}-${idx}-${Math.random()}` }))
-  );
+  const [winners, setWinners] = React.useState(initialWinners);
 
   const addWinner = () => {
-    const newWinners = [...winners, { id: `winner-${Date.now()}-${Math.random()}`, year: new Date().getFullYear(), winnerName: '', prize: '' }];
+    const newWinners = [...winners, { year: new Date().getFullYear(), winnerName: '', prize: '' }];
     setWinners(newWinners);
     onChange(newWinners);
   };
 
-  const updateWinner = (id: string | number, field: string, value: any) => {
-    const newWinners = winners.map((w) => w.id === id ? { ...w, [field]: value } : w);
+  const updateWinner = (index: number, field: string, value: any) => {
+    const newWinners = winners.map((w, i) => i === index ? { ...w, [field]: value } : w);
     setWinners(newWinners);
     onChange(newWinners);
   };
 
-  const removeWinner = (id: string | number) => {
-    const newWinners = winners.filter((w) => w.id !== id);
+  const removeWinner = (index: number) => {
+    const newWinners = winners.filter((_, i) => i !== index);
     setWinners(newWinners);
     onChange(newWinners);
   };
@@ -31,10 +29,10 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        {winners.map((winner) => (
-          <div key={winner.id} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-xl border border-stone-100 relative group">
+        {winners.map((winner, idx) => (
+          <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-xl border border-stone-100 relative group">
             <button 
-              onClick={() => removeWinner(winner.id)}
+              onClick={() => removeWinner(idx)}
               className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
             >
               <X className="w-3 h-3" />
@@ -44,7 +42,7 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
               <input 
                 type="number" 
                 value={winner.year} 
-                onChange={(e) => updateWinner(winner.id, 'year', e.target.value)}
+                onChange={(e) => updateWinner(idx, 'year', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
               />
             </div>
@@ -52,7 +50,7 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
               <label className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Vincitore</label>
               <input 
                 value={winner.winnerName} 
-                onChange={(e) => updateWinner(winner.id, 'winnerName', e.target.value)}
+                onChange={(e) => updateWinner(idx, 'winnerName', e.target.value)}
                 placeholder="Nome Vincitore"
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
               />
@@ -61,7 +59,7 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
               <label className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Premio</label>
               <input 
                 value={winner.prize} 
-                onChange={(e) => updateWinner(winner.id, 'prize', e.target.value)}
+                onChange={(e) => updateWinner(idx, 'prize', e.target.value)}
                 placeholder="es. 1° Classificato"
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
               />
@@ -709,7 +707,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-stone-900 text-stone-400 flex flex-col transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:h-screen
+        lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen
       `}>
         <div className="p-6 flex items-center gap-3">
           <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
@@ -726,7 +724,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           </div>
         </div>
         
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto sidebar-scrollbar">
           {isStaff ? (
             <>
               {[
@@ -963,7 +961,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            {p.options.map((option: any) => {
+                            {p.options.map((option: any, idx: number) => {
                               const optionVotes = p.votes?.filter((v: any) => v.optionId === option.id).length || 0;
                               const totalVotes = p.votes?.length || 0;
                               const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
@@ -989,7 +987,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               return (
                                 <button
                                   key={option.id}
-                                  onClick={() => handleVote(p.id, option.id)}
+                                  onClick={() => handleVote(p.id, idx)}
                                   className="w-full text-left p-4 rounded-2xl border border-white/10 hover:bg-white/5 hover:border-white/30 transition-all group"
                                 >
                                   <div className="flex items-center justify-between">
@@ -2324,7 +2322,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
                                 const text = formData.get('option_text') as string;
-                                const newOption = { id: `option-${Date.now()}-${Math.random()}`, text };
+                                const newOption = { id: Date.now(), text };
                                 setPoll({ ...poll, options: [...poll.options, newOption] });
                                 e.currentTarget.reset();
                               }}
@@ -2435,7 +2433,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <h3 className="font-serif text-lg text-stone-900 mb-4">Dettaglio Votanti</h3>
                         <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                           {poll.votes?.map((vote: any, idx: number) => (
-                            <div key={vote.id || `vote-${vote.email}-${vote.date}-${idx}`} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                            <div key={idx} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
                               <p className="text-xs font-bold text-stone-900 truncate">{vote.email}</p>
                               <p className="text-[10px] text-stone-500">{vote.phone}</p>
                               <p className="text-[10px] text-stone-400 mt-1">{new Date(vote.date).toLocaleString('it-IT')}</p>
