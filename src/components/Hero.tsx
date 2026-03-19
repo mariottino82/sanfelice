@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Facebook } from 'lucide-react';
 
 export function Hero() {
   return (
@@ -45,10 +45,13 @@ export function Hero() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </motion.a>
               <a
-                href="#gallery"
-                className="text-white border-b border-white/30 pb-1 text-sm uppercase tracking-widest font-bold hover:border-white transition-all"
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-white border-b border-white/30 pb-1 text-sm uppercase tracking-widest font-bold hover:border-white transition-all group"
               >
-                Esplora la Gallery
+                <Facebook className="w-4 h-4 text-[#1877F2] group-hover:scale-110 transition-transform" />
+                Seguici su Facebook
               </a>
             </div>
           </motion.div>

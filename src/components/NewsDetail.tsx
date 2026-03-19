@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Calendar, Share2, Facebook, Twitter, Link as LinkIcon, PlayCircle, X, UserPlus } from 'lucide-react';
+import { SEO } from './SEO';
 
 interface NewsDetailProps {
   item: any;
@@ -13,12 +14,46 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
     window.scrollTo(0, 0);
   }, []);
 
+  const newsSchema = {
+    "@context": "https://schema.org",
+    "@type": item.category === 'evento' ? 'Event' : 'NewsArticle',
+    "headline": item.title,
+    "name": item.title,
+    "description": item.content.substring(0, 160),
+    "image": item.imageUrl || `${window.location.origin}/logo.png`,
+    "datePublished": item.date,
+    "author": {
+      "@type": "Organization",
+      "name": "Pro San Felice 2023"
+    },
+    ...(item.category === 'evento' ? {
+      "startDate": item.date,
+      "location": {
+        "@type": "Place",
+        "name": "San Felice del Molise",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "San Felice del Molise",
+          "addressRegion": "CB",
+          "addressCountry": "IT"
+        }
+      }
+    } : {})
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="min-h-screen bg-white"
     >
+      <SEO 
+        title={item.title} 
+        description={item.content.substring(0, 160)} 
+        image={item.imageUrl}
+        type="article"
+        schema={newsSchema}
+      />
       {/* Hero Section */}
       <div className="relative h-[40vh] md:h-[60vh] w-full overflow-hidden">
         <img 
