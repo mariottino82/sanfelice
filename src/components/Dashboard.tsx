@@ -6,22 +6,22 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[], onChange: (winners: any[]) => void }) => {
-  const [winners, setWinners] = React.useState(initialWinners);
+  const [winners, setWinners] = React.useState(initialWinners.map(w => ({ ...w, id: w.id || Math.random().toString(36).substr(2, 9) })));
 
   const addWinner = () => {
-    const newWinners = [...winners, { year: new Date().getFullYear(), winnerName: '', prize: '' }];
+    const newWinners = [...winners, { id: Math.random().toString(36).substr(2, 9), year: new Date().getFullYear(), winnerName: '', prize: '' }];
     setWinners(newWinners);
     onChange(newWinners);
   };
 
-  const updateWinner = (index: number, field: string, value: any) => {
-    const newWinners = winners.map((w, i) => i === index ? { ...w, [field]: value } : w);
+  const updateWinner = (id: string, field: string, value: any) => {
+    const newWinners = winners.map(w => w.id === id ? { ...w, [field]: value } : w);
     setWinners(newWinners);
     onChange(newWinners);
   };
 
-  const removeWinner = (index: number) => {
-    const newWinners = winners.filter((_, i) => i !== index);
+  const removeWinner = (id: string) => {
+    const newWinners = winners.filter(w => w.id !== id);
     setWinners(newWinners);
     onChange(newWinners);
   };
@@ -29,10 +29,11 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        {winners.map((winner, idx) => (
-          <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-xl border border-stone-100 relative group">
+        {winners.map((winner) => (
+          <div key={winner.id} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-xl border border-stone-100 relative group">
             <button 
-              onClick={() => removeWinner(idx)}
+              type="button"
+              onClick={() => removeWinner(winner.id)}
               className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
             >
               <X className="w-3 h-3" />
@@ -42,7 +43,7 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
               <input 
                 type="number" 
                 value={winner.year} 
-                onChange={(e) => updateWinner(idx, 'year', e.target.value)}
+                onChange={(e) => updateWinner(winner.id, 'year', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
               />
             </div>
@@ -50,7 +51,7 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
               <label className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Vincitore</label>
               <input 
                 value={winner.winnerName} 
-                onChange={(e) => updateWinner(idx, 'winnerName', e.target.value)}
+                onChange={(e) => updateWinner(winner.id, 'winnerName', e.target.value)}
                 placeholder="Nome Vincitore"
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
               />
@@ -59,7 +60,7 @@ const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[],
               <label className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Premio</label>
               <input 
                 value={winner.prize} 
-                onChange={(e) => updateWinner(idx, 'prize', e.target.value)}
+                onChange={(e) => updateWinner(winner.id, 'prize', e.target.value)}
                 placeholder="es. 1° Classificato"
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
               />
@@ -200,6 +201,31 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [editingContest, setEditingContest] = React.useState<any>(null);
   const [showRegistrationDetails, setShowRegistrationDetails] = React.useState<any>(null);
 
+  const handleContestImageUpload = async (contestId: number, file: File) => {
+    setUploadingContestId(contestId);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`/api/contests/${contestId}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotification({ message: 'Immagine caricata con successo!', type: 'success' });
+        fetchData();
+        return data.path;
+      }
+    } catch (error) {
+      console.error('Error uploading contest image:', error);
+      setNotification({ message: 'Errore durante il caricamento dell\'immagine.', type: 'error' });
+    } finally {
+      setUploadingContestId(null);
+    }
+    return null;
+  };
+
   const addContest = async (newContest: any) => {
     console.log('Attempting to add/update contest:', newContest);
     try {
@@ -262,6 +288,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [showFeeSettings, setShowFeeSettings] = React.useState(false);
   const [showWizard, setShowWizard] = React.useState(false);
   const [uploadingMinuteId, setUploadingMinuteId] = React.useState<number | null>(null);
+  const [uploadingContestId, setUploadingContestId] = React.useState<number | null>(null);
 
   const fetchData = React.useCallback(async () => {
     const endpoints = [
@@ -795,17 +822,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               ))}
             </>
           )}
+          
+          <div className="pt-4 mt-auto border-t border-stone-800">
+            <button 
+              onClick={onLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              Esci
+            </button>
+          </div>
         </nav>
-
-        <div className="px-4 py-4 border-t border-stone-800">
-          <button 
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Esci
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -2432,8 +2459,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       <div className="p-6 bg-white border border-stone-200 rounded-3xl shadow-sm">
                         <h3 className="font-serif text-lg text-stone-900 mb-4">Dettaglio Votanti</h3>
                         <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                          {poll.votes?.map((vote: any, idx: number) => (
-                            <div key={idx} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                          {poll.votes?.map((vote: any) => (
+                            <div key={`${vote.email}-${vote.date}`} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
                               <p className="text-xs font-bold text-stone-900 truncate">{vote.email}</p>
                               <p className="text-[10px] text-stone-500">{vote.phone}</p>
                               <p className="text-[10px] text-stone-400 mt-1">{new Date(vote.date).toLocaleString('it-IT')}</p>
@@ -2625,6 +2652,39 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       <div>
                         <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">URL Immagine</label>
                         <input name="image" defaultValue={editingContest.image} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Carica Immagine (JPG/PNG)</label>
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="file" 
+                            accept="image/jpeg,image/png"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file && editingContest.id) {
+                                await handleContestImageUpload(editingContest.id, file);
+                              }
+                            }}
+                            className="hidden" 
+                            id="contest-image-upload" 
+                          />
+                          <label 
+                            htmlFor="contest-image-upload"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900 transition-all cursor-pointer text-xs font-bold uppercase tracking-widest"
+                          >
+                            {uploadingContestId === editingContest.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-stone-900 border-t-transparent" />
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4" />
+                                {editingContest.image ? 'Cambia Immagine' : 'Seleziona Immagine'}
+                              </>
+                            )}
+                          </label>
+                        </div>
+                        {!editingContest.id && (
+                          <p className="text-[10px] text-stone-400 mt-1 italic">Potrai caricare l'immagine dopo aver creato il concorso.</p>
+                        )}
                       </div>
                     </div>
 

@@ -94,14 +94,67 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
                     <X className="w-6 h-6" />
                   </button>
 
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center">
-                      <Trophy className="w-8 h-8 text-stone-900" />
+                  <div className="space-y-6 mb-8">
+                    {contest.image && (
+                      <div className="w-full h-48 rounded-3xl overflow-hidden shadow-lg border border-stone-100">
+                        <img 
+                          src={contest.image} 
+                          alt={contest.title} 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <Trophy className="w-8 h-8 text-stone-900" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-serif text-stone-900">{contest.title}</h3>
+                        <p className="text-stone-500 text-sm">Compila il modulo per partecipare</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-serif text-stone-900">Iscrizione: {contest.title}</h3>
-                      <p className="text-stone-500 text-sm">Compila il modulo per partecipare</p>
-                    </div>
+
+                    {contest.description && (
+                      <div className="p-6 bg-stone-50 rounded-3xl border border-stone-100">
+                        <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">
+                          {contest.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {contest.prizes && (
+                      <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
+                        <div className="flex items-center gap-2 text-emerald-700 text-[10px] font-bold uppercase tracking-widest mb-3">
+                          <Trophy className="w-3 h-3" />
+                          Premi & Riconoscimenti
+                        </div>
+                        <p className="text-sm text-emerald-800 leading-relaxed whitespace-pre-wrap">
+                          {contest.prizes}
+                        </p>
+                      </div>
+                    )}
+
+                    {contest.winners && JSON.parse(contest.winners).length > 0 && (
+                      <div className="p-6 bg-stone-900 rounded-3xl text-white">
+                        <div className="flex items-center gap-2 text-stone-400 text-[10px] font-bold uppercase tracking-widest mb-4">
+                          <ShieldCheck className="w-3 h-3" />
+                          Albo d'Oro / Vincitori Passati
+                        </div>
+                        <div className="space-y-3">
+                          {JSON.parse(contest.winners).map((w: any, idx: number) => (
+                            <div key={`${w.winnerName}-${w.year}-${idx}`} className="flex justify-between items-center py-2 border-b border-white/10 last:border-0">
+                              <div>
+                                <p className="text-xs font-bold">{w.winnerName}</p>
+                                <p className="text-[10px] text-stone-400">{w.prize}</p>
+                              </div>
+                              <span className="text-[10px] font-bold text-stone-500">{w.year}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-6">

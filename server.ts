@@ -467,6 +467,29 @@ app.delete('/api/contests/:id', async (req, res) => {
   }
 });
 
+const contestStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = 'public/contests/';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `concorso_${Date.now()}_${file.originalname}`);
+  }
+});
+const uploadContest = multer({ storage: contestStorage });
+
+app.post('/api/contests/:id/upload', uploadContest.single('image'), async (req: any, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Nessun file caricato' });
+  }
+  const filePath = `/contests/${req.file.filename}`;
+  await db.run('UPDATE contests SET image = ? WHERE id = ?', [filePath, req.params.id]);
+  res.json({ success: true, path: filePath });
+});
+
 // Contest Registrations API
 app.get('/api/contest-registrations', async (req, res) => {
   const { contestId } = req.query;
