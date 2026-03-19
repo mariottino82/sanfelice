@@ -183,7 +183,7 @@ export default function App() {
 
       <AnimatePresence>
         {showLoginModal && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 md:p-8">
+          <div className="fixed inset-0 z-[100] overflow-y-auto p-2 md:p-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -196,47 +196,47 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
+                className="relative bg-white p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden mx-2"
               >
                 <button 
                   onClick={() => setShowLoginModal(false)}
-                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
+                  className="absolute top-3 right-3 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-1.5 md:p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                   aria-label="Chiudi"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-4.5 h-4.5 md:w-6 md:h-6" />
                 </button>
                 
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-100 rounded-2xl mb-4">
-                    <LogIn className="w-8 h-8 text-stone-900" />
+                <div className="text-center mb-5 md:mb-8">
+                  <div className="inline-flex items-center justify-center w-10 h-10 md:w-16 md:h-16 bg-stone-100 rounded-xl md:rounded-2xl mb-3 md:mb-4">
+                    <LogIn className="w-5 h-5 md:w-8 md:h-8 text-stone-900" />
                   </div>
-                  <h3 className="text-2xl font-serif text-stone-900">Area Riservata</h3>
-                  <p className="text-stone-500 text-sm mt-2">Accedi per gestire l'associazione</p>
+                  <h3 className="text-lg md:text-2xl font-serif text-stone-900 leading-tight">Area Riservata</h3>
+                  <p className="text-stone-500 text-[10px] md:text-sm mt-1.5 md:mt-2">Accedi per gestire l'associazione</p>
                   {apiStatus === 'error' && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-medium">
+                    <div className="mt-3 md:mt-4 p-2.5 md:p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-[9px] md:text-xs font-medium">
                       Attenzione: Il server non risponde. Verifica la connessione.
                     </div>
                   )}
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-3 md:space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Username</label>
+                    <label className="block text-[9px] md:text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-1 ml-1">Username</label>
                     <input
                       type="text"
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                      className="w-full px-4 py-2.5 md:py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="admin"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Password</label>
+                    <label className="block text-[9px] md:text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-1 ml-1">Password</label>
                     <input
                       type="password"
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                      className="w-full px-4 py-2.5 md:py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
@@ -244,7 +244,7 @@ export default function App() {
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold hover:bg-stone-800 transition-all transform active:scale-95 shadow-lg shadow-stone-900/20"
+                    className="w-full bg-stone-900 text-white py-3 md:py-4 rounded-xl font-bold hover:bg-stone-800 transition-all transform active:scale-95 shadow-lg shadow-stone-900/20 text-sm md:text-base mt-2"
                   >
                     Accedi ora
                   </button>

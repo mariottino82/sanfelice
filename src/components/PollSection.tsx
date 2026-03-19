@@ -203,12 +203,10 @@ export function PollSection() {
             )}
           </motion.div>
         </div>
-      </div>
-
-      {/* Vote Modal */}
+      </div>      {/* Vote Modal */}
       <AnimatePresence>
         {showVoteModal && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 md:p-8">
+          <div className="fixed inset-0 z-[100] overflow-y-auto p-2 md:p-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -221,66 +219,66 @@ export function PollSection() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
+                className="relative bg-white p-5 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden"
               >
                 <button
                   onClick={() => setShowVoteModal(false)}
-                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
+                  className="absolute top-3 right-3 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                   aria-label="Chiudi"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
 
               {voted ? (
-                <div className="text-center py-12">
+                <div className="text-center py-8 md:py-12">
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6"
+                    className="w-16 h-16 md:w-20 md:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6"
                   >
-                    <CheckCircle2 className="w-10 h-10" />
+                    <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10" />
                   </motion.div>
-                  <h3 className="text-2xl font-serif text-stone-900 mb-2">Grazie per il tuo voto!</h3>
-                  <p className="text-stone-500">La tua opinione è stata registrata con successo.</p>
+                  <h3 className="text-xl md:text-2xl font-serif text-stone-900 mb-2">Grazie per il tuo voto!</h3>
+                  <p className="text-stone-500 text-sm md:text-base">La tua opinione è stata registrata con successo.</p>
                 </div>
               ) : (
                 <>
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-stone-100 rounded-2xl mb-4">
-                      <Vote className="w-8 h-8 text-stone-900" />
+                  <div className="text-center mb-6 md:mb-8">
+                    <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 bg-stone-100 rounded-2xl mb-3 md:mb-4">
+                      <Vote className="w-6 h-6 md:w-8 md:h-8 text-stone-900" />
                     </div>
-                    <h3 className="text-2xl font-serif text-stone-900">Conferma il tuo voto</h3>
-                    <p className="text-stone-500 text-sm mt-2">
+                    <h3 className="text-xl md:text-2xl font-serif text-stone-900">Conferma il tuo voto</h3>
+                    <p className="text-stone-500 text-xs md:text-sm mt-1 md:mt-2">
                       Hai scelto: <span className="font-bold text-stone-900">"{selectedOption?.text}"</span>
                     </p>
                   </div>
 
-                  <form onSubmit={handleVote} className="space-y-5">
+                  <form onSubmit={handleVote} className="space-y-4 md:space-y-5">
                     <div className="relative">
-                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Email</label>
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5 md:mb-2 ml-1">Email</label>
                       <div className="relative">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-stone-400" />
                         <input
                           type="email"
                           required
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="w-full pl-12 pr-4 py-4 rounded-2xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all text-sm"
+                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-4 rounded-xl md:rounded-2xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all text-sm"
                           placeholder="la-tua@email.it"
                         />
                       </div>
                     </div>
 
                     <div className="relative">
-                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Cellulare</label>
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1.5 md:mb-2 ml-1">Cellulare</label>
                       <div className="relative">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-stone-400" />
                         <input
                           type="tel"
                           required
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          className="w-full pl-12 pr-4 py-4 rounded-2xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all text-sm"
+                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-4 rounded-xl md:rounded-2xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all text-sm"
                           placeholder="+39 333 1234567"
                         />
                       </div>
@@ -288,13 +286,13 @@ export function PollSection() {
 
                     <button
                       type="submit"
-                      className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-stone-900/20 mt-4"
+                      className="w-full bg-stone-900 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-stone-900/20 mt-2 md:mt-4 text-sm md:text-base"
                     >
                       Invia il mio voto
                       <Send className="w-4 h-4" />
                     </button>
                     
-                    <p className="text-[10px] text-stone-400 text-center leading-relaxed px-4">
+                    <p className="text-[10px] text-stone-400 text-center leading-relaxed px-2 md:px-4">
                       Partecipando al sondaggio accetti il trattamento dei dati personali secondo la nostra privacy policy.
                     </p>
                   </form>
@@ -304,7 +302,7 @@ export function PollSection() {
           </div>
         </div>
       )}
-      </AnimatePresence>
-    </section>
-  );
+    </AnimatePresence>
+  </section>
+);
 }

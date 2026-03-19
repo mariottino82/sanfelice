@@ -2753,36 +2753,36 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         )}
 
         {showRegistrationDetails && (
-          <div key="registration-list-modal" className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+          <div key="registration-list-modal" className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8">
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowRegistrationDetails(null)} />
             <div className="flex min-h-full items-center justify-center">
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-5xl w-full overflow-hidden"
+                className="relative bg-white p-4 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-5xl w-full overflow-hidden"
               >
                 <button 
                   onClick={() => setShowRegistrationDetails(null)}
                   className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
 
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center">
-                    <Users className="w-8 h-8 text-stone-900" />
+                <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-stone-100 rounded-xl md:rounded-2xl flex items-center justify-center">
+                    <Users className="w-6 h-6 md:w-8 md:h-8 text-stone-900" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-serif text-stone-900">Iscritti: {showRegistrationDetails.title}</h3>
-                    <p className="text-stone-500 text-sm">Gestione partecipanti e comunicazioni</p>
+                    <h3 className="text-lg md:text-2xl font-serif text-stone-900">Iscritti: {showRegistrationDetails.title}</h3>
+                    <p className="text-stone-500 text-[10px] md:text-sm">Gestione partecipanti e comunicazioni</p>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                <div className="overflow-x-auto -mx-4 px-4">
+                  <table className="w-full text-left text-xs md:text-sm min-w-[600px]">
                     <thead>
-                      <tr className="text-stone-400 uppercase text-[10px] tracking-widest border-b border-stone-100">
+                      <tr className="text-stone-400 uppercase text-[9px] md:text-[10px] tracking-widest border-b border-stone-100">
                         <th className="pb-4 font-semibold">Partecipante</th>
                         <th className="pb-4 font-semibold">Contatti</th>
                         <th className="pb-4 font-semibold">Minorenne</th>
@@ -2795,48 +2795,48 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         .filter((r: any) => r.contestId === showRegistrationDetails.id)
                         .map((reg: any) => (
                           <tr key={reg.id} className="group hover:bg-stone-50 transition-colors">
-                            <td className="py-4">
+                            <td className="py-3 md:py-4">
                               <p className="font-medium text-stone-900">{reg.name}</p>
-                              <p className="text-[10px] text-stone-400 uppercase tracking-widest">{new Date(reg.date).toLocaleDateString()}</p>
+                              <p className="text-[9px] md:text-[10px] text-stone-400 uppercase tracking-widest">{new Date(reg.date).toLocaleDateString()}</p>
                             </td>
-                            <td className="py-4">
+                            <td className="py-3 md:py-4">
                               <p className="text-stone-600">{reg.email}</p>
-                              <p className="text-stone-500 text-xs">{reg.phone}</p>
+                              <p className="text-stone-500 text-[10px] md:text-xs">{reg.phone}</p>
                             </td>
-                            <td className="py-4">
+                            <td className="py-3 md:py-4">
                               {reg.isMinor ? (
                                 <div className="space-y-1">
-                                  <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold uppercase rounded">Sì</span>
-                                  <p className="text-[10px] text-stone-400">Genitore: {reg.parentName}</p>
+                                  <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] md:text-[10px] font-bold uppercase rounded">Sì</span>
+                                  <p className="text-[9px] md:text-[10px] text-stone-400">Genitore: {reg.parentName}</p>
                                 </div>
                               ) : (
-                                <span className="px-2 py-0.5 bg-stone-100 text-stone-400 text-[10px] font-bold uppercase rounded">No</span>
+                                <span className="px-1.5 py-0.5 bg-stone-100 text-stone-400 text-[9px] md:text-[10px] font-bold uppercase rounded">No</span>
                               )}
                             </td>
-                            <td className="py-4">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            <td className="py-3 md:py-4">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] md:text-[10px] font-bold uppercase ${
                                 reg.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                               }`}>
                                 {reg.status === 'confirmed' ? 'Confermato' : 'In Attesa'}
                               </span>
                             </td>
-                            <td className="py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
+                            <td className="py-3 md:py-4 text-right">
+                              <div className="flex items-center justify-end gap-1 md:gap-2">
                                 {reg.status !== 'confirmed' && (
                                   <button 
                                     onClick={() => updateRegistrationStatus(reg.id, 'confirmed')}
-                                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                    className="p-1.5 md:p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                                     title="Conferma Iscrizione"
                                   >
-                                    <CheckCircle2 className="w-4 h-4" />
+                                    <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                   </button>
                                 )}
                                 <button 
                                   onClick={() => deleteContestRegistration(reg)}
-                                  className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  className="p-1.5 md:p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                                   title="Elimina"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                 </button>
                               </div>
                             </td>
@@ -2844,7 +2844,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         ))}
                       {contestRegistrations.filter((r: any) => r.contestId === showRegistrationDetails.id).length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-12 text-center text-stone-400 italic">Nessun iscritto per questo concorso.</td>
+                          <td colSpan={5} className="py-12 text-center text-stone-400 italic text-xs md:text-sm">Nessun iscritto per questo concorso.</td>
                         </tr>
                       )}
                     </tbody>
@@ -2856,66 +2856,66 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         )}
 
         {selectedRegistration && (
-          <div key="registration-detail-modal" className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+          <div key="registration-detail-modal" className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8">
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRegistration(null)} />
             <div className="flex min-h-full items-center justify-center">
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
+                className="relative bg-white p-5 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
               >
                 <button 
                   onClick={() => setSelectedRegistration(null)}
                   className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
 
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center">
-                    <UserPlus className="w-8 h-8 text-stone-900" />
+                <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-stone-100 rounded-xl md:rounded-2xl flex items-center justify-center">
+                    <UserPlus className="w-6 h-6 md:w-8 md:h-8 text-stone-900" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-serif text-stone-900">Dettaglio Richiesta</h3>
-                    <p className="text-stone-500 text-sm">Inviata il {new Date(selectedRegistration.date).toLocaleDateString('it-IT')}</p>
+                    <h3 className="text-xl md:text-2xl font-serif text-stone-900">Dettaglio Richiesta</h3>
+                    <p className="text-stone-500 text-xs md:text-sm">Inviata il {new Date(selectedRegistration.date).toLocaleDateString('it-IT')}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                  <div className="space-y-4 md:space-y-6">
                     <div>
-                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Dati Anagrafici</label>
-                      <p className="text-lg font-medium text-stone-900">{selectedRegistration.name}</p>
-                      <p className="text-stone-500">{selectedRegistration.email}</p>
-                      <p className="text-stone-500">{selectedRegistration.phone || 'Nessun telefono'}</p>
+                      <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Dati Anagrafici</label>
+                      <p className="text-base md:text-lg font-medium text-stone-900">{selectedRegistration.name}</p>
+                      <p className="text-sm text-stone-500">{selectedRegistration.email}</p>
+                      <p className="text-sm text-stone-500">{selectedRegistration.phone || 'Nessun telefono'}</p>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Messaggio del Socio</label>
-                      <p className="text-stone-600 bg-stone-50 p-4 rounded-2xl border border-stone-100 italic">
+                      <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Messaggio del Socio</label>
+                      <p className="text-xs md:text-stone-600 bg-stone-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-stone-100 italic">
                         "{selectedRegistration.message || 'Nessun messaggio accompagnatorio'}"
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-stone-900 rounded-[2rem] p-8 text-white space-y-6">
-                    <div className="flex items-center gap-3 text-emerald-400">
-                      <ShieldCheck className="w-5 h-5" />
-                      <span className="text-xs font-bold uppercase tracking-widest">Verifica Sicurezza</span>
+                  <div className="bg-stone-900 rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 text-white space-y-4 md:space-y-6">
+                    <div className="flex items-center gap-2 md:gap-3 text-emerald-400">
+                      <ShieldCheck className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Verifica Sicurezza</span>
                     </div>
-                    <p className="text-sm text-stone-300 leading-relaxed">
+                    <p className="text-xs md:text-sm text-stone-300 leading-relaxed">
                       L'approvazione creerà automaticamente un account socio con l'email fornita. Il socio riceverà una notifica di benvenuto.
                     </p>
-                    <div className="pt-4 space-y-3">
+                    <div className="pt-2 md:pt-4 space-y-2 md:space-y-3">
                       <button 
                         onClick={() => approveRegistration(selectedRegistration)}
-                        className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20"
+                        className="w-full bg-emerald-500 text-white py-3 md:py-4 rounded-xl font-bold hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 text-sm md:text-base"
                       >
                         Approva Iscrizione
                       </button>
                       <button 
                         onClick={() => deleteRegistration(selectedRegistration)}
-                        className="w-full bg-white/10 text-white py-4 rounded-xl font-bold hover:bg-white/20 transition-all"
+                        className="w-full bg-white/10 text-white py-3 md:py-4 rounded-xl font-bold hover:bg-white/20 transition-all text-sm md:text-base"
                       >
                         Rifiuta
                       </button>
@@ -2930,75 +2930,75 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
       <AnimatePresence>
         {showEmailConfirmation && (
-          <div key="email-confirmation-modal" className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+          <div key="email-confirmation-modal" className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8">
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEmailConfirmation(null)} />
             <div className="flex min-h-full items-center justify-center">
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
+                className="relative bg-white p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
               >
-                <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
+                <div className="absolute top-0 left-0 w-full h-1.5 md:h-2 bg-emerald-500" />
                 
                 <button 
                   onClick={() => setShowEmailConfirmation(null)}
                   className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
 
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+              <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-emerald-100 rounded-xl md:rounded-2xl flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 md:w-8 md:h-8 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-serif text-stone-900">Iscrizione Approvata</h3>
-                  <p className="text-stone-500 text-sm">Email di benvenuto inviata con successo</p>
+                  <h3 className="text-lg md:text-2xl font-serif text-stone-900">Iscrizione Approvata</h3>
+                  <p className="text-stone-500 text-[10px] md:text-sm">Email di benvenuto inviata con successo</p>
                 </div>
               </div>
 
-              <div className="bg-stone-50 rounded-3xl border border-stone-200 overflow-hidden">
-                <div className="bg-stone-100 px-6 py-3 border-b border-stone-200 flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Anteprima Email Inviata</span>
-                  <span className="text-[10px] text-stone-400 italic">Destinatario: {showEmailConfirmation.email}</span>
+              <div className="bg-stone-50 rounded-2xl md:rounded-3xl border border-stone-200 overflow-hidden">
+                <div className="bg-stone-100 px-4 md:px-6 py-2 md:py-3 border-b border-stone-200 flex flex-col md:flex-row md:justify-between md:items-center gap-1">
+                  <span className="text-[8px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest">Anteprima Email Inviata</span>
+                  <span className="text-[8px] md:text-[10px] text-stone-400 italic">Destinatario: {showEmailConfirmation.email}</span>
                 </div>
-                <div className="p-8 space-y-6 text-stone-700">
-                  <p className="font-serif text-xl text-stone-900">Benvenuto in Pro San Felice, {showEmailConfirmation.name}!</p>
+                <div className="p-4 md:p-8 space-y-4 md:space-y-6 text-stone-700">
+                  <p className="font-serif text-lg md:text-xl text-stone-900">Benvenuto in Pro San Felice, {showEmailConfirmation.name}!</p>
                   
-                  <p className="text-sm leading-relaxed">
+                  <p className="text-xs md:text-sm leading-relaxed">
                     Siamo felici di comunicarti che la tua richiesta di iscrizione è stata approvata dal consiglio direttivo. 
                     Da questo momento sei ufficialmente un socio della nostra associazione.
                   </p>
 
-                  <div className="p-6 bg-white rounded-2xl border border-stone-200 space-y-4">
-                    <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest">I tuoi dati di accesso:</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 md:p-6 bg-white rounded-xl md:rounded-2xl border border-stone-200 space-y-3 md:space-y-4">
+                    <h4 className="text-[10px] md:text-xs font-bold text-stone-900 uppercase tracking-widest">I tuoi dati di accesso:</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                       <div>
-                        <label className="block text-[10px] text-stone-400 uppercase">Username / Email</label>
-                        <p className="text-sm font-medium">{showEmailConfirmation.email}</p>
+                        <label className="block text-[8px] md:text-[10px] text-stone-400 uppercase">Username / Email</label>
+                        <p className="text-xs md:text-sm font-medium">{showEmailConfirmation.email}</p>
                       </div>
                       <div>
-                        <label className="block text-[10px] text-stone-400 uppercase">Password</label>
-                        <p className="text-sm font-mono">******** (quella scelta da te)</p>
+                        <label className="block text-[8px] md:text-[10px] text-stone-400 uppercase">Password</label>
+                        <p className="text-xs md:text-sm font-mono">******** (quella scelta da te)</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-stone-900 uppercase tracking-widest">Istruzioni per il versamento:</h4>
-                    <p className="text-sm leading-relaxed">
+                  <div className="space-y-2 md:space-y-3">
+                    <h4 className="text-[10px] md:text-xs font-bold text-stone-900 uppercase tracking-widest">Istruzioni per il versamento:</h4>
+                    <p className="text-xs md:text-sm leading-relaxed">
                       Per completare l'attivazione, è necessario versare la quota associativa annuale stabilita. 
                       Puoi effettuare il versamento tramite:
                     </p>
-                    <ul className="text-sm space-y-2 list-disc pl-5 text-stone-600">
+                    <ul className="text-xs md:text-sm space-y-1 md:space-y-2 list-disc pl-5 text-stone-600">
                       <li>Bonifico Bancario: IT 00 X 00000 00000 000000000000</li>
                       <li>Presso la nostra sede negli orari di apertura</li>
                       <li>Durante il prossimo evento associativo</li>
                     </ul>
                   </div>
 
-                  <p className="text-xs text-stone-400 pt-4 border-t border-stone-100">
+                  <p className="text-[10px] text-stone-400 pt-3 md:pt-4 border-t border-stone-100">
                     Questa è una simulazione dell'email che verrebbe inviata al socio.
                   </p>
                 </div>
@@ -3006,7 +3006,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
               <button 
                 onClick={() => setShowEmailConfirmation(null)}
-                className="w-full mt-8 bg-stone-900 text-white py-4 rounded-xl font-bold hover:bg-stone-800 transition-all"
+                className="w-full mt-6 md:mt-8 bg-stone-900 text-white py-3 md:py-4 rounded-xl font-bold hover:bg-stone-800 transition-all text-sm md:text-base"
               >
                 Ho capito, chiudi
               </button>
@@ -3023,7 +3023,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8"
+            className="fixed inset-0 z-[110] overflow-y-auto p-2 md:p-8"
           >
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFeeSettings(false)} />
             <div className="flex min-h-full items-center justify-center">
@@ -3031,41 +3031,41 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full"
+                className="relative bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-md w-full"
               >
                 <button 
                   onClick={() => setShowFeeSettings(false)}
                   className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
 
-              <div className="mb-8">
-                <div className="w-12 h-12 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-                  <Settings className="w-6 h-6 text-stone-900" />
+              <div className="mb-6 md:mb-8">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-stone-100 rounded-xl md:rounded-2xl flex items-center justify-center mb-4">
+                  <Settings className="w-5 h-5 md:w-6 md:h-6 text-stone-900" />
                 </div>
-                <h3 className="text-2xl font-serif text-stone-900 mb-2">Quote Associative</h3>
-                <p className="text-stone-500 text-sm">Imposta la quota stabilita per ogni anno sociale. Ogni modifica verrà notificata ai nuovi iscritti.</p>
+                <h3 className="text-xl md:text-2xl font-serif text-stone-900 mb-2">Quote Associative</h3>
+                <p className="text-stone-500 text-xs md:text-sm">Imposta la quota stabilita per ogni anno sociale. Ogni modifica verrà notificata ai nuovi iscritti.</p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {[2024, 2025, 2026].map(year => (
-                  <div key={year} className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                    <span className="font-bold text-stone-900">Anno {year}</span>
+                  <div key={year} className="flex items-center justify-between p-3 md:p-4 bg-stone-50 rounded-xl md:rounded-2xl border border-stone-100">
+                    <span className="font-bold text-stone-900 text-sm md:text-base">Anno {year}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-stone-400 font-medium">€</span>
+                      <span className="text-stone-400 font-medium text-sm md:text-base">€</span>
                       <input 
                         type="number" 
                         value={membershipFees[year]} 
                         onChange={(e) => setMembershipFees({ ...membershipFees, [year]: parseInt(e.target.value) || 0 })}
-                        className="w-20 px-3 py-2 rounded-xl border border-stone-200 text-right font-bold text-stone-900 focus:ring-2 focus:ring-stone-900 outline-none"
+                        className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 rounded-lg md:rounded-xl border border-stone-200 text-right font-bold text-stone-900 focus:ring-2 focus:ring-stone-900 outline-none text-sm md:text-base"
                       />
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-8 space-y-3">
+              <div className="mt-6 md:mt-8 space-y-3">
                 <button 
                   onClick={async () => {
                     try {
@@ -3080,7 +3080,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       console.error('Error saving fees:', error);
                     }
                   }}
-                  className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                  className="w-full bg-stone-900 text-white py-3 md:py-4 rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 text-sm md:text-base"
                 >
                   Salva e Notifica
                 </button>
@@ -3102,7 +3102,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+                className="bg-white rounded-[1.5rem] md:rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl"
               >
                 <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
                   <Trash2 className="w-8 h-8 text-red-600" />
@@ -3158,7 +3158,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+                className="bg-white rounded-[1.5rem] md:rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl"
               >
                 <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
                   <UserPlus className="w-8 h-8 text-red-600" />
@@ -3211,7 +3211,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+                className="bg-white rounded-[1.5rem] md:rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl"
               >
                 <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
                   <Ticket className="w-8 h-8 text-red-600" />
@@ -3251,7 +3251,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+                className="bg-white rounded-[1.5rem] md:rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl"
               >
                 <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
                   <Vote className="w-8 h-8 text-red-600" />

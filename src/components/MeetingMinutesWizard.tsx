@@ -260,7 +260,7 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[150] overflow-y-auto p-4 md:p-8">
+        <div className="fixed inset-0 z-[150] overflow-y-auto p-2 md:p-8">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -273,47 +273,47 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative bg-white rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[92vh] md:max-h-[90vh]"
             >
               {/* Header */}
-              <div className="p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-stone-900 rounded-2xl flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-white" />
+              <div className="p-4 md:p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50 shrink-0">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="w-9 h-9 md:w-12 md:h-12 bg-stone-900 rounded-xl md:rounded-2xl flex items-center justify-center">
+                    <FileText className="w-4.5 h-4.5 md:w-6 md:h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-serif text-stone-900">Nuovo Verbale</h3>
-                    <p className="text-stone-500 text-sm">Step {step} di 4</p>
+                    <h3 className="text-lg md:text-2xl font-serif text-stone-900">Nuovo Verbale</h3>
+                    <p className="text-stone-500 text-[9px] md:text-sm uppercase tracking-widest">Step {step} di 4</p>
                   </div>
                 </div>
                 <button 
                   onClick={onClose}
-                  className="p-2 hover:bg-white rounded-full transition-colors border border-stone-200 shadow-sm"
+                  className="p-1.5 md:p-2 hover:bg-white rounded-full transition-colors border border-stone-200 shadow-sm"
                 >
-                  <X className="w-6 h-6 text-stone-400" />
+                  <X className="w-4.5 h-4.5 md:w-6 md:h-6 text-stone-400" />
                 </button>
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
                 {step === 1 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Titolo Adunanza</label>
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4 md:space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Titolo Adunanza</label>
                         <input 
                           value={formData.title}
                           onChange={e => setFormData({...formData, title: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none"
+                          className="w-full px-4 py-2.5 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
                           placeholder="es: Consiglio Direttivo Straordinario"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Tipo di Riunione</label>
+                      <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Tipo di Riunione</label>
                         <select 
                           value={formData.type}
                           onChange={e => setFormData({...formData, type: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none"
+                          className="w-full px-4 py-2.5 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
                         >
                           <option>Assemblea Ordinaria</option>
                           <option>Assemblea Straordinaria</option>
@@ -321,36 +321,36 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
                           <option>Riunione Operativa</option>
                         </select>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Data</label>
+                      <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Data</label>
                         <div className="relative">
-                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-stone-400" />
                           <input 
                             type="date"
                             value={formData.date}
                             onChange={e => setFormData({...formData, date: e.target.value})}
-                            className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none"
+                            className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
                           />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Ora Inizio</label>
+                      <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Ora Inizio</label>
                         <input 
                           type="time"
                           value={formData.time}
                           onChange={e => setFormData({...formData, time: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none"
+                          className="w-full px-4 py-2.5 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Luogo</label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Luogo</label>
                       <div className="relative">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-stone-400" />
                         <input 
                           value={formData.location}
                           onChange={e => setFormData({...formData, location: e.target.value})}
-                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none"
+                          className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
                         />
                       </div>
                     </div>
@@ -358,58 +358,58 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
                 )}
 
                 {step === 2 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Presidente</label>
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4 md:space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Presidente</label>
                         <input 
                           value={formData.president}
                           onChange={e => setFormData({...formData, president: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none"
+                          className="w-full px-4 py-2.5 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Segretario</label>
+                      <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Segretario</label>
                         <input 
                           value={formData.secretary}
                           onChange={e => setFormData({...formData, secretary: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none"
+                          className="w-full px-4 py-2.5 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
                           placeholder="Nome del segretario verbalizzante"
                         />
                       </div>
                     </div>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-3 md:space-y-4">
                       <div className="flex justify-between items-center">
-                        <label className="text-xs font-bold text-stone-400 uppercase tracking-widest ml-1">Soci Presenti e Pareri</label>
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Soci Presenti e Pareri</label>
                         <button 
                           onClick={addAttendee}
-                          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
+                          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
                         >
-                          <Plus className="w-4 h-4" /> Aggiungi Socio
+                          <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" /> Aggiungi Socio
                         </button>
                       </div>
 
                       <div className="space-y-3">
                         {formData.attendees.map((attendee) => (
-                          <div key={attendee.id} className="p-4 bg-stone-50 rounded-xl border border-stone-200 relative">
+                          <div key={attendee.id} className="p-3 md:p-4 bg-stone-50 rounded-xl border border-stone-200 relative">
                             <button 
                               onClick={() => removeAttendee(attendee.id)}
                               className="absolute top-2 right-2 text-stone-300 hover:text-red-500"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                             </button>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-2 md:mb-3">
                               <input 
                                 value={attendee.name}
                                 onChange={e => updateAttendee(attendee.id, 'name', e.target.value)}
-                                className="bg-white px-3 py-2 rounded-lg border border-stone-200 text-sm outline-none"
+                                className="bg-white px-3 py-2 rounded-lg border border-stone-200 text-xs md:text-sm outline-none"
                                 placeholder="Nome Socio"
                               />
                               <input 
                                 value={attendee.role}
                                 onChange={e => updateAttendee(attendee.id, 'role', e.target.value)}
-                                className="bg-white px-3 py-2 rounded-lg border border-stone-200 text-sm outline-none"
+                                className="bg-white px-3 py-2 rounded-lg border border-stone-200 text-xs md:text-sm outline-none"
                                 placeholder="Ruolo (es: Socio, Consigliere)"
                               />
                             </div>
@@ -417,13 +417,13 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
                               value={attendee.opinion}
                               onChange={e => updateAttendee(attendee.id, 'opinion', e.target.value)}
                               rows={2}
-                              className="w-full bg-white px-3 py-2 rounded-lg border border-stone-200 text-sm outline-none resize-none"
+                              className="w-full bg-white px-3 py-2 rounded-lg border border-stone-200 text-xs md:text-sm outline-none resize-none"
                               placeholder="Parere o intervento del socio..."
                             />
                           </div>
                         ))}
                         {formData.attendees.length === 0 && (
-                          <p className="text-center py-4 text-stone-400 text-sm italic border-2 border-dashed border-stone-100 rounded-xl">
+                          <p className="text-center py-4 text-stone-400 text-xs italic border-2 border-dashed border-stone-100 rounded-xl">
                             Nessun socio aggiunto individualmente. Verrà indicato "Tutti i soci".
                           </p>
                         )}
@@ -433,33 +433,33 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
                 )}
 
                 {step === 3 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-lg font-serif text-stone-900">Ordine del Giorno</h4>
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4 md:space-y-6">
+                    <div className="flex justify-between items-center mb-2 md:mb-4">
+                      <h4 className="text-base md:text-lg font-serif text-stone-900">Ordine del Giorno</h4>
                       <button 
                         onClick={addAgendaItem}
-                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
+                        className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
                       >
-                        <Plus className="w-4 h-4" /> Aggiungi Punto
+                        <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" /> Aggiungi Punto
                       </button>
                     </div>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-3 md:space-y-4">
                       {formData.agenda.map((item, index) => (
-                        <div key={item.id} className="p-6 bg-stone-50 rounded-2xl border border-stone-200 relative group">
+                        <div key={item.id} className="p-4 md:p-6 bg-stone-50 rounded-xl md:rounded-2xl border border-stone-200 relative group">
                           <button 
                             onClick={() => removeAgendaItem(item.id)}
-                            className="absolute top-4 right-4 text-stone-300 hover:text-red-500 transition-colors"
+                            className="absolute top-3 right-3 md:top-4 md:right-4 text-stone-300 hover:text-red-500 transition-colors"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
-                          <div className="flex gap-4">
-                            <span className="text-2xl font-serif text-stone-300">0{index + 1}</span>
-                            <div className="flex-1 space-y-4">
+                          <div className="flex gap-3 md:gap-4">
+                            <span className="text-xl md:text-2xl font-serif text-stone-300">0{index + 1}</span>
+                            <div className="flex-1 space-y-3 md:space-y-4">
                               <input 
                                 value={item.title}
                                 onChange={e => updateAgendaItem(item.id, 'title', e.target.value)}
-                                className="w-full bg-transparent border-b border-stone-200 py-2 text-lg font-medium text-stone-900 focus:border-stone-900 outline-none transition-colors"
+                                className="w-full bg-transparent border-b border-stone-200 py-1.5 md:py-2 text-base md:text-lg font-medium text-stone-900 focus:border-stone-900 outline-none transition-colors"
                                 placeholder="Titolo del punto all'OdG..."
                               />
                             </div>
@@ -467,9 +467,9 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
                         </div>
                       ))}
                       {formData.agenda.length === 0 && (
-                        <div className="text-center py-12 border-2 border-dashed border-stone-200 rounded-[2rem]">
-                          <List className="w-12 h-12 text-stone-200 mx-auto mb-4" />
-                          <p className="text-stone-400">Nessun punto all'ordine del giorno aggiunto.</p>
+                        <div className="text-center py-8 md:py-12 border-2 border-dashed border-stone-200 rounded-[1.5rem] md:rounded-[2rem]">
+                          <List className="w-10 h-10 md:w-12 md:h-12 text-stone-200 mx-auto mb-3 md:mb-4" />
+                          <p className="text-stone-400 text-sm">Nessun punto all'ordine del giorno aggiunto.</p>
                         </div>
                       )}
                     </div>
@@ -477,33 +477,33 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
                 )}
 
                 {step === 4 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6 md:space-y-8">
                     {formData.agenda.map((item, index) => (
-                      <div key={item.id} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <span className="w-8 h-8 bg-stone-900 text-white rounded-lg flex items-center justify-center text-xs font-bold">
+                      <div key={item.id} className="space-y-3 md:space-y-4">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <span className="w-6 h-6 md:w-8 md:h-8 bg-stone-900 text-white rounded-lg flex items-center justify-center text-[10px] md:text-xs font-bold">
                             {index + 1}
                           </span>
-                          <h4 className="text-lg font-serif text-stone-900">{item.title}</h4>
+                          <h4 className="text-base md:text-lg font-serif text-stone-900">{item.title}</h4>
                         </div>
-                        <div className="grid grid-cols-1 gap-4 ml-11">
-                          <div className="space-y-2">
+                        <div className="grid grid-cols-1 gap-3 md:gap-4 ml-8 md:ml-11">
+                          <div className="space-y-1.5 md:space-y-2">
                             <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Discussione</label>
                             <textarea 
                               value={item.discussion}
                               onChange={e => updateAgendaItem(item.id, 'discussion', e.target.value)}
                               rows={3}
-                              className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none resize-none text-sm"
+                              className="w-full px-3 md:px-4 py-2 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none resize-none text-xs md:text-sm"
                               placeholder="Cosa è stato discusso..."
                             />
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-1.5 md:space-y-2">
                             <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Deliberazione / Decisione</label>
                             <textarea 
                               value={item.decision}
                               onChange={e => updateAgendaItem(item.id, 'decision', e.target.value)}
                               rows={2}
-                              className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-emerald-500 outline-none resize-none text-sm bg-emerald-50/30"
+                              className="w-full px-3 md:px-4 py-2 md:py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-emerald-500 outline-none resize-none text-xs md:text-sm bg-emerald-50/30"
                               placeholder="Cosa è stato deciso..."
                             />
                           </div>
@@ -515,32 +515,32 @@ export function MeetingMinutesWizard({ isOpen, onClose, onSuccess }: MeetingMinu
               </div>
 
               {/* Footer */}
-              <div className="p-8 border-t border-stone-100 bg-stone-50 flex justify-between items-center">
+              <div className="p-4 md:p-8 border-t border-stone-100 bg-stone-50 flex justify-between items-center shrink-0">
                 <button 
                   onClick={step === 1 ? onClose : prevStep}
-                  className="flex items-center gap-2 px-6 py-3 text-stone-500 font-bold hover:text-stone-900 transition-colors"
+                  className="flex items-center gap-1 md:gap-2 px-3 md:px-6 py-2 md:py-3 text-stone-500 font-bold hover:text-stone-900 transition-colors text-xs md:text-base"
                 >
-                  <ChevronLeft className="w-5 h-5" /> {step === 1 ? 'Annulla' : 'Indietro'}
+                  <ChevronLeft className="w-3.5 h-3.5 md:w-5 md:h-5" /> {step === 1 ? 'Annulla' : 'Indietro'}
                 </button>
                 
-                <div className="flex gap-4">
+                <div className="flex gap-2 md:gap-4">
                   {step < 4 ? (
                     <button 
                       onClick={nextStep}
                       disabled={step === 1 && !formData.title}
-                      className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 disabled:opacity-50"
+                      className="flex items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-3 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 disabled:opacity-50 text-xs md:text-base"
                     >
-                      Continua <ChevronRight className="w-5 h-5" />
+                      Continua <ChevronRight className="w-3.5 h-3.5 md:w-5 md:h-5" />
                     </button>
                   ) : (
                     <button 
                       onClick={handleSubmit}
                       disabled={loading}
-                      className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                      className="flex items-center gap-1 md:gap-2 px-4 md:px-8 py-2 md:py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 text-xs md:text-base"
                     >
                       {loading ? 'Salvataggio...' : (
                         <>
-                          <Save className="w-5 h-5" /> Genera e Salva
+                          <Save className="w-3.5 h-3.5 md:w-5 md:h-5" /> Genera e Salva
                         </>
                       )}
                     </button>
