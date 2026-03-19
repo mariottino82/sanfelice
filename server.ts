@@ -401,7 +401,114 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Lottery API
+  // Contests API
+app.get('/api/contests', async (req, res) => {
+  try {
+    const rows = await db.all('SELECT * FROM contests ORDER BY id DESC');
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/contests', async (req, res) => {
+  console.log('POST /api/contests - Body:', req.body);
+  const { title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners } = req.body;
+  try {
+    const result = await db.run(
+      'INSERT INTO contests (title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage ? 1 : 0, winners || '[]']
+    );
+    console.log('Insert result:', result);
+    res.json({ id: result.lastID });
+  } catch (err: any) {
+    console.error('Error inserting contest:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/contests/:id', async (req, res) => {
+  console.log(`PUT /api/contests/${req.params.id} - Body:`, req.body);
+  const { title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners } = req.body;
+  try {
+    const result = await db.run(
+      'UPDATE contests SET title = ?, type = ?, description = ?, image = ?, startDate = ?, endDate = ?, cost = ?, prizes = ?, showOnHomepage = ?, winners = ? WHERE id = ?',
+      [title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage ? 1 : 0, winners || '[]', req.params.id]
+    );
+    console.log('Update result:', result);
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('Error updating contest:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/contests/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`DELETE /api/contests/${id} - Request received`);
+  try {
+    // First, delete registrations associated with this contest to avoid FK issues
+    const regResult = await db.run('DELETE FROM contest_registrations WHERE contestId = ?', [id]);
+    console.log(`Deleted ${regResult.changes} registrations for contest ${id}`);
+
+    // Then delete the contest
+    const result = await db.run('DELETE FROM contests WHERE id = ?', [id]);
+    console.log(`Delete contest result:`, result);
+    
+    if (result.changes === 0) {
+      console.warn(`No contest found with ID: ${id}`);
+      return res.status(404).json({ error: 'Concorso non trovato' });
+    }
+    
+    res.json({ success: true, message: 'Concorso eliminato con successo' });
+  } catch (err: any) {
+    console.error('Error deleting contest:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Contest Registrations API
+app.get('/api/contest-registrations', async (req, res) => {
+  const { contestId } = req.query;
+  let query = 'SELECT * FROM contest_registrations';
+  let params: any[] = [];
+  if (contestId) {
+    query += ' WHERE contestId = ?';
+    params.push(contestId);
+  }
+  query += ' ORDER BY id DESC';
+  try {
+    const rows = await db.all(query, params);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/contest-registrations', async (req, res) => {
+  const { contestId, name, email, phone, isMinor, parentName, parentEmail, parentPhone, privacyAccepted } = req.body;
+  const date = new Date().toISOString();
+  try {
+    const result = await db.run(
+      'INSERT INTO contest_registrations (contestId, name, email, phone, isMinor, parentName, parentEmail, parentPhone, privacyAccepted, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [contestId, name, email, phone, isMinor ? 1 : 0, parentName, parentEmail, parentPhone, privacyAccepted ? 1 : 0, date]
+    );
+    res.json({ id: result.lastID });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/contest-registrations/:id', async (req, res) => {
+  try {
+    await db.run('DELETE FROM contest_registrations WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Lottery API
   app.get('/api/lottery', async (req, res) => {
     const lottery = await db.get('SELECT * FROM lottery LIMIT 1');
     if (lottery) {

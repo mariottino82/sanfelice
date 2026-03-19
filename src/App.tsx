@@ -13,6 +13,8 @@ import { LotterySection } from './components/LotterySection';
 import { PollSection } from './components/PollSection';
 import { NewsDetail } from './components/NewsDetail';
 import { RegistrationModal } from './components/RegistrationModal';
+import { ContestRegistrationModal } from './components/ContestRegistrationModal';
+import { ContestAnnouncement } from './components/ContestAnnouncement';
 import { X, LogIn, Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -26,6 +28,8 @@ export default function App() {
   });
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = React.useState(false);
+  const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState(false);
+  const [selectedContest, setSelectedContest] = React.useState<any>(null);
   const [selectedNews, setSelectedNews] = React.useState<any>(null);
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -111,6 +115,17 @@ export default function App() {
         <NewsEvents onNewsClick={(item) => setSelectedNews(item)} />
         <Gallery />
       </main>
+
+      <ContestAnnouncement onRegisterClick={(contest) => {
+        setSelectedContest(contest);
+        setShowContestRegistrationModal(true);
+      }} />
+
+      <ContestRegistrationModal 
+        isOpen={showContestRegistrationModal} 
+        onClose={() => setShowContestRegistrationModal(false)} 
+        contest={selectedContest} 
+      />
       
       <RegistrationModal 
         isOpen={showRegistrationModal} 

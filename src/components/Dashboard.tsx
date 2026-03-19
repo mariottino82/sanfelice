@@ -1,9 +1,125 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+
+const WinnerManagement = ({ initialWinners, onChange }: { initialWinners: any[], onChange: (winners: any[]) => void }) => {
+  const [winners, setWinners] = React.useState(() => 
+    (initialWinners || []).map((w, idx) => ({ ...w, id: w.id || `winner-${Date.now()}-${idx}-${Math.random()}` }))
+  );
+
+  const addWinner = () => {
+    const newWinners = [...winners, { id: `winner-${Date.now()}-${Math.random()}`, year: new Date().getFullYear(), winnerName: '', prize: '' }];
+    setWinners(newWinners);
+    onChange(newWinners);
+  };
+
+  const updateWinner = (id: string | number, field: string, value: any) => {
+    const newWinners = winners.map((w) => w.id === id ? { ...w, [field]: value } : w);
+    setWinners(newWinners);
+    onChange(newWinners);
+  };
+
+  const removeWinner = (id: string | number) => {
+    const newWinners = winners.filter((w) => w.id !== id);
+    setWinners(newWinners);
+    onChange(newWinners);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        {winners.map((winner) => (
+          <div key={winner.id} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-xl border border-stone-100 relative group">
+            <button 
+              onClick={() => removeWinner(winner.id)}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+            >
+              <X className="w-3 h-3" />
+            </button>
+            <div>
+              <label className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Anno</label>
+              <input 
+                type="number" 
+                value={winner.year} 
+                onChange={(e) => updateWinner(winner.id, 'year', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Vincitore</label>
+              <input 
+                value={winner.winnerName} 
+                onChange={(e) => updateWinner(winner.id, 'winnerName', e.target.value)}
+                placeholder="Nome Vincitore"
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Premio</label>
+              <input 
+                value={winner.prize} 
+                onChange={(e) => updateWinner(winner.id, 'prize', e.target.value)}
+                placeholder="es. 1° Classificato"
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-xs focus:ring-2 focus:ring-stone-900 outline-none"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <button 
+        type="button"
+        onClick={addWinner}
+        className="w-full py-3 border-2 border-dashed border-stone-200 rounded-xl text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-all text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+      >
+        <Plus className="w-4 h-4" />
+        Aggiungi Vincitore all'Albo
+      </button>
+    </div>
+  );
+};
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = 'Elimina', cancelText = 'Annulla', icon, isDeleting }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string, confirmText?: string, cancelText?: string, icon?: React.ReactNode, isDeleting?: boolean }) => {
+  if (!isOpen) return null;
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+      >
+        <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
+          {icon || <Trash2 className="w-8 h-8 text-red-600" />}
+        </div>
+        <h3 className="text-xl font-serif text-stone-900 mb-2">{title}</h3>
+        <p className="text-stone-500 text-sm mb-8">{message}</p>
+        <div className="flex gap-3">
+          <button 
+            disabled={isDeleting}
+            onClick={onClose} 
+            className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 transition-all disabled:opacity-50"
+          >
+            {cancelText}
+          </button>
+          <button 
+            disabled={isDeleting}
+            onClick={onConfirm}
+            className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 disabled:opacity-50 flex items-center justify-center"
+          >
+            {isDeleting ? '...' : confirmText}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void }) {
   const isSuperAdmin = user?.role === 'Amministratore' || user?.role === 'Presidente';
@@ -61,8 +177,84 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [editingMinute, setEditingMinute] = React.useState<any>(null);
   const [editingAppointment, setEditingAppointment] = React.useState<any>(null);
   const [editingNews, setEditingNews] = React.useState<any>(null);
+  const [notification, setNotification] = React.useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  React.useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  const [contestToDelete, setContestToDelete] = React.useState<any>(null);
+  const [registrationToDelete, setRegistrationToDelete] = React.useState<any>(null);
+  const [lotteryToDelete, setLotteryToDelete] = React.useState<any>(null);
+  const [pollToDelete, setPollToDelete] = React.useState<any>(null);
+  const [accountToDelete, setAccountToDelete] = React.useState<any>(null);
+  const [minuteToDelete, setMinuteToDelete] = React.useState<any>(null);
+  const [appointmentToDelete, setAppointmentToDelete] = React.useState<any>(null);
+  const [memberToDelete, setMemberToDelete] = React.useState<any>(null);
+  const [collectionToDelete, setCollectionToDelete] = React.useState<any>(null);
+  const [newsToDelete, setNewsToDelete] = React.useState<any>(null);
+  const [galleryItemToDelete, setGalleryItemToDelete] = React.useState<any>(null);
+  const [memberRegistrationToDelete, setMemberRegistrationToDelete] = React.useState<any>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [editingContest, setEditingContest] = React.useState<any>(null);
+  const [showRegistrationDetails, setShowRegistrationDetails] = React.useState<any>(null);
+
+  const addContest = async (newContest: any) => {
+    console.log('Attempting to add/update contest:', newContest);
+    try {
+      const method = newContest.id ? 'PUT' : 'POST';
+      const url = newContest.id ? `/api/contests/${newContest.id}` : '/api/contests';
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newContest)
+      });
+      
+      if (response.ok) {
+        setEditingContest(null);
+        setNotification({ message: newContest.id ? 'Concorso aggiornato con successo!' : 'Concorso creato con successo!', type: 'success' });
+        await fetchData();
+      } else {
+        const errorData = await response.json();
+        console.error('Server error:', errorData);
+        setNotification({ message: 'Errore dal server: ' + (errorData.error || 'Errore sconosciuto'), type: 'error' });
+      }
+    } catch (error) {
+      console.error('Error adding/updating contest:', error);
+      setNotification({ message: 'Errore di connessione o di sistema: ' + (error instanceof Error ? error.message : String(error)), type: 'error' });
+    }
+  };
+
+  const deleteContest = (contest: any) => {
+    setContestToDelete(contest);
+  };
+
+  const updateRegistrationStatus = async (id: number, status: string) => {
+    try {
+      const response = await fetch(`/api/contest-registrations/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (response.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error updating registration status:', error);
+    }
+  };
+
+  const deleteContestRegistration = (registration: any) => {
+    setRegistrationToDelete(registration);
+  };
+  const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState<any>(null);
 
   const [minutes, setMinutes] = React.useState([]);
+  const [contests, setContests] = React.useState([]);
+  const [contestRegistrations, setContestRegistrations] = React.useState([]);
   const [appointments, setAppointments] = React.useState([]);
   const [registrations, setRegistrations] = React.useState([]);
   const [gallery, setGallery] = React.useState([]);
@@ -80,6 +272,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       { key: 'lottery', url: '/api/lottery', setter: setLottery },
       { key: 'polls', url: '/api/polls', setter: setPolls },
       { key: 'minutes', url: '/api/minutes', setter: setMinutes },
+      { key: 'contests', url: '/api/contests', setter: setContests },
+      { key: 'contest_registrations', url: '/api/contest-registrations', setter: setContestRegistrations },
       { key: 'appointments', url: '/api/appointments', setter: setAppointments },
       { key: 'registrations', url: '/api/registrations', setter: setRegistrations },
       { key: 'news', url: '/api/news', setter: setNews },
@@ -113,6 +307,33 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const exportContestRegistrations = (contestId: number) => {
+    const contest = contests.find(c => c.id === contestId);
+    const regs = contestRegistrations.filter(r => r.contestId === contestId);
+    if (!contest || regs.length === 0) return;
+
+    const headers = ['Nome', 'Email', 'Cellulare', 'Minorenne', 'Genitore', 'Email Genitore', 'Cellulare Genitore', 'Data'];
+    const csvContent = [
+      headers.join(','),
+      ...regs.map(r => [
+        `"${r.name}"`,
+        `"${r.email}"`,
+        `"${r.phone}"`,
+        r.isMinor ? 'Sì' : 'No',
+        `"${r.parentName || ''}"`,
+        `"${r.parentEmail || ''}"`,
+        `"${r.parentPhone || ''}"`,
+        new Date(r.date).toLocaleDateString()
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `iscritti_${contest.title.replace(/\s+/g, '_').toLowerCase()}.csv`;
+    link.click();
+  };
 
   const totalCollected = collections.reduce((acc, curr: any) => acc + curr.amount, 0);
 
@@ -148,7 +369,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     if (!lottery.active) return;
     
     const newHistoryItem = {
-      id: Date.now(),
+      id: `history-${Date.now()}-${Math.random()}`,
       name: lottery.name,
       drawDate: lottery.drawDate,
       prizes: lottery.prizes,
@@ -167,15 +388,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     alert('Lotteria archiviata con successo!');
   };
 
-  const deleteHistoryItem = async (historyId: number) => {
-    if (!confirm('Sei sicuro di voler eliminare questa lotteria dall\'archivio?')) return;
-    
-    const updatedLottery = {
-      ...lottery,
-      history: lottery.history.filter((h: any) => h.id !== historyId)
-    };
-
-    await saveLottery(updatedLottery);
+  const deleteHistoryItem = (item: any) => {
+    setLotteryToDelete(item);
   };
 
   const saveSocialLinks = async (links: any) => {
@@ -243,13 +457,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteAccount = async (id: number) => {
-    try {
-      await fetch(`/api/users/${id}`, { method: 'DELETE' });
-      setAccounts(accounts.filter((a: any) => a.id !== id));
-    } catch (error) {
-      console.error('Error deleting account:', error);
-    }
+  const deleteAccount = (account: any) => {
+    setAccountToDelete(account);
   };
 
   const addMinute = async (newMinute: any) => {
@@ -268,15 +477,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteMinute = async (id: number) => {
-    try {
-      const response = await fetch(`/api/minutes/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        fetchData();
-      }
-    } catch (error) {
-      console.error('Error deleting minute:', error);
-    }
+  const deleteMinute = (minute: any) => {
+    setMinuteToDelete(minute);
   };
 
   const addAppointment = async (newApp: any) => {
@@ -294,13 +496,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteAppointment = async (id: number) => {
-    try {
-      await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
-      setAppointments(appointments.filter((a: any) => a.id !== id));
-    } catch (error) {
-      console.error('Error deleting appointment:', error);
-    }
+  const deleteAppointment = (app: any) => {
+    setAppointmentToDelete(app);
   };
 
   const addMember = async (newMember: any) => {
@@ -327,13 +524,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteMember = async (id: number) => {
-    try {
-      await fetch(`/api/members/${id}`, { method: 'DELETE' });
-      setMembers(members.filter((m: any) => m.id !== id));
-    } catch (error) {
-      console.error('Error deleting member:', error);
-    }
+  const deleteMember = (member: any) => {
+    setMemberToDelete(member);
   };
 
   const addCollection = async (newCollection: any) => {
@@ -351,13 +543,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteCollection = async (id: number) => {
-    try {
-      await fetch(`/api/finances/${id}`, { method: 'DELETE' });
-      setCollections(collections.filter((c: any) => c.id !== id));
-    } catch (error) {
-      console.error('Error deleting collection:', error);
-    }
+  const deleteCollection = (collection: any) => {
+    setCollectionToDelete(collection);
   };
 
   const approveRegistration = async (reg: any) => {
@@ -386,13 +573,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteRegistration = async (id: number) => {
-    try {
-      await fetch(`/api/registrations/${id}`, { method: 'DELETE' });
-      setRegistrations(registrations.filter((r: any) => r.id !== id));
-    } catch (error) {
-      console.error('Error deleting registration:', error);
-    }
+  const deleteRegistration = (reg: any) => {
+    setMemberRegistrationToDelete(reg);
   };
 
   const addNews = async (newNews: any) => {
@@ -411,13 +593,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteNews = async (id: number) => {
-    try {
-      await fetch(`/api/news/${id}`, { method: 'DELETE' });
-      setNews(news.filter((n: any) => n.id !== id));
-    } catch (error) {
-      console.error('Error deleting news:', error);
-    }
+  const deleteNews = (newsItem: any) => {
+    setNewsToDelete(newsItem);
   };
 
   const addGalleryItem = async (item: any) => {
@@ -435,13 +612,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deleteGalleryItem = async (id: number) => {
-    try {
-      await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
-      setGallery(gallery.filter((item: any) => item.id !== id));
-    } catch (error) {
-      console.error('Error deleting gallery item:', error);
-    }
+  const deleteGalleryItem = (item: any) => {
+    setGalleryItemToDelete(item);
   };
 
   const saveLottery = async (updated: any) => {
@@ -457,17 +629,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const deletePoll = async (id: number) => {
-    if (!confirm('Sei sicuro di voler eliminare questo sondaggio?')) return;
-    try {
-      await fetch(`/api/polls/${id}`, { method: 'DELETE' });
-      setPolls(polls.filter((p: any) => p.id !== id));
-      if (poll?.id === id) {
-        createNewPoll();
-      }
-    } catch (error) {
-      console.error('Error deleting poll:', error);
-    }
+  const deletePoll = (poll: any) => {
+    setPollToDelete(poll);
   };
 
   const savePoll = async (updated: any) => {
@@ -572,6 +735,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'finances', label: 'Contabilità', icon: Euro, minRole: 'SuperAdmin' },
                 { id: 'lottery', label: 'Lotteria', icon: Ticket, minRole: 'Operator' },
                 { id: 'minutes', label: 'Verbali', icon: FileText, minRole: 'Operator' },
+                { id: 'contests', label: 'Concorsi', icon: Trophy, minRole: 'Operator' },
                 { id: 'appointments', label: 'Agenda', icon: Calendar, minRole: 'Operator' },
                 { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
                 { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
@@ -580,7 +744,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               ].filter(tab => {
                 if (isSuperAdmin) return true;
                 if (isStaff && tab.minRole === 'Operator') return true;
-                if (isMember && ['minutes', 'appointments', 'news', 'gallery'].includes(tab.id)) return true;
+                if (isMember && ['minutes', 'appointments', 'news', 'gallery', 'contests'].includes(tab.id)) return true;
                 return false;
               }).map((tab: any) => (
                 <button
@@ -656,6 +820,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'finances' && 'Contabilità & Raccolte'}
               {activeTab === 'lottery' && 'Gestione Lotteria'}
               {activeTab === 'minutes' && 'Archivio Verbali'}
+              {activeTab === 'contests' && 'Concorsi & Rassegne'}
               {activeTab === 'appointments' && 'Agenda Appuntamenti'}
               {activeTab === 'news' && 'News & Eventi'}
               {activeTab === 'accounts' && 'Gestione Account'}
@@ -798,7 +963,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            {p.options.map((option: any, idx: number) => {
+                            {p.options.map((option: any) => {
                               const optionVotes = p.votes?.filter((v: any) => v.optionId === option.id).length || 0;
                               const totalVotes = p.votes?.length || 0;
                               const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
@@ -824,7 +989,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               return (
                                 <button
                                   key={option.id}
-                                  onClick={() => handleVote(p.id, idx)}
+                                  onClick={() => handleVote(p.id, option.id)}
                                   className="w-full text-left p-4 rounded-2xl border border-white/10 hover:bg-white/5 hover:border-white/30 transition-all group"
                                 >
                                   <div className="flex items-center justify-between">
@@ -930,7 +1095,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   <input name="name" defaultValue={editingMember?.name} placeholder="Nome e Cognome" className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required />
                   <input name="email" defaultValue={editingMember?.email} type="email" placeholder="Email" className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
                   <select name="role" defaultValue={editingMember?.role || 'Socio'} className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required>
-                    {cariche.map(c => <option key={c} value={c}>{c}</option>)}
+                    {cariche.map((c, idx) => <option key={`${c}-${idx}`} value={c}>{c}</option>)}
                   </select>
                   <button type="submit" className="bg-stone-900 text-white py-2 rounded-xl text-sm font-medium hover:bg-stone-800">
                     {editingMember ? 'Salva Modifiche' : 'Aggiungi Socio'}
@@ -995,7 +1160,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               <button onClick={() => setEditingMember(member)} className="text-stone-400 hover:text-stone-900 transition-colors p-2 bg-stone-100 rounded-lg" title="Modifica">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => deleteMember(member.id)} className="text-red-400 hover:text-white hover:bg-red-500 transition-all p-2 bg-red-50 rounded-lg border border-red-100" title="Elimina Definitivamente">
+                              <button onClick={() => deleteMember(member)} className="text-red-400 hover:text-white hover:bg-red-500 transition-all p-2 bg-red-50 rounded-lg border border-red-100" title="Elimina Definitivamente">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -1083,7 +1248,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               <button onClick={() => setEditingCollection(item)} className="text-stone-400 hover:text-stone-900 transition-colors p-1">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => deleteCollection(item.id)} className="text-stone-400 hover:text-red-600 transition-colors p-1">
+                              <button onClick={() => deleteCollection(item)} className="text-stone-400 hover:text-red-600 transition-colors p-1">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -1161,7 +1326,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             e.preventDefault();
                             const formData = new FormData(e.currentTarget);
                             const name = formData.get('prize_name') as string;
-                            const newPrize = { id: Date.now(), name, winningNumber: '', collectedBy: '' };
+                            const newPrize = { id: `prize-${Date.now()}-${Math.random()}`, name, winningNumber: '', collectedBy: '' };
                             setLottery({ ...lottery, prizes: [...lottery.prizes, newPrize] });
                             e.currentTarget.reset();
                           }}
@@ -1275,7 +1440,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <div className="flex items-center gap-4">
                               <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{old.prizes.length} Premi</span>
                               <button
-                                onClick={() => deleteHistoryItem(old.id)}
+                                onClick={() => deleteHistoryItem(old)}
                                 className="p-2 text-stone-400 hover:text-red-500 transition-colors"
                                 title="Elimina dall'archivio"
                               >
@@ -1340,7 +1505,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => deleteAccount(acc.id)} className="text-stone-400 hover:text-red-600 transition-colors">
+                        <button onClick={() => deleteAccount(acc)} className="text-stone-400 hover:text-red-600 transition-colors">
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
@@ -1521,7 +1686,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             Approva
                           </button>
                           <button 
-                            onClick={() => deleteRegistration(reg.id)}
+                            onClick={() => deleteRegistration(reg)}
                             className="bg-stone-200 text-stone-600 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-300 transition-colors"
                           >
                             Rifiuta
@@ -1794,7 +1959,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <button onClick={() => setEditingMinute(m)} className="text-stone-300 hover:text-stone-900 transition-colors">
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button onClick={() => deleteMinute(m.id)} className="text-stone-300 hover:text-red-500 transition-colors">
+                            <button onClick={() => deleteMinute(m)} className="text-stone-300 hover:text-red-500 transition-colors">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -1855,7 +2020,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <button onClick={() => setEditingAppointment(a)} className="text-stone-300 hover:text-stone-900">
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button onClick={() => deleteAppointment(a.id)} className="text-stone-300 hover:text-red-500">
+                            <button onClick={() => deleteAppointment(a)} className="text-stone-300 hover:text-red-500">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </>
@@ -1944,7 +2109,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <button onClick={() => setEditingNews(n)} className="p-2 text-stone-400 hover:text-stone-900 bg-stone-100 rounded-lg transition-colors" title="Modifica">
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button onClick={() => deleteNews(n.id)} className="p-2 text-red-400 hover:text-white hover:bg-red-500 bg-red-50 border border-red-100 rounded-lg transition-all" title="Elimina Definitivamente">
+                            <button onClick={() => deleteNews(n)} className="p-2 text-red-400 hover:text-white hover:bg-red-500 bg-red-50 border border-red-100 rounded-lg transition-all" title="Elimina Definitivamente">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -1992,7 +2157,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         {item.type === 'video' && <Video className="w-6 h-6 text-white" />}
                         {isStaff && (
                           <button 
-                            onClick={() => deleteGalleryItem(item.id)}
+                            onClick={() => deleteGalleryItem(item)}
                             className="p-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-lg flex items-center gap-2"
                             title="Elimina Definitivamente"
                           >
@@ -2069,7 +2234,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              deletePoll(p.id);
+                              deletePoll(p);
                             }}
                             className={`p-1.5 rounded-lg transition-colors ${
                               poll?.id === p.id ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-red-50 text-stone-400 hover:text-red-500'
@@ -2159,7 +2324,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
                                 const text = formData.get('option_text') as string;
-                                const newOption = { id: Date.now(), text };
+                                const newOption = { id: `option-${Date.now()}-${Math.random()}`, text };
                                 setPoll({ ...poll, options: [...poll.options, newOption] });
                                 e.currentTarget.reset();
                               }}
@@ -2270,7 +2435,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <h3 className="font-serif text-lg text-stone-900 mb-4">Dettaglio Votanti</h3>
                         <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                           {poll.votes?.map((vote: any, idx: number) => (
-                            <div key={idx} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                            <div key={vote.id || `vote-${vote.email}-${vote.date}-${idx}`} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
                               <p className="text-xs font-bold text-stone-900 truncate">{vote.email}</p>
                               <p className="text-[10px] text-stone-500">{vote.phone}</p>
                               <p className="text-[10px] text-stone-400 mt-1">{new Date(vote.date).toLocaleString('it-IT')}</p>
@@ -2286,12 +2451,352 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
               </div>
             )}
+
+            {activeTab === 'contests' && (
+              <div className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-serif text-stone-900">Gestione Concorsi & Rassegne</h2>
+                  <button 
+                    onClick={() => setEditingContest({})}
+                    className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nuovo Concorso
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  {contests.map((contest: any) => (
+                    <div key={contest.id} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex flex-col md:flex-row gap-6">
+                        {contest.image && (
+                          <div className="w-full md:w-48 h-32 rounded-2xl overflow-hidden flex-shrink-0">
+                            <img src={contest.image} alt={contest.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                        )}
+                        <div className="flex-1 space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] font-bold uppercase tracking-widest rounded">{contest.type}</span>
+                                {contest.showOnHomepage ? (
+                                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-widest rounded">In Homepage</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-stone-100 text-stone-400 text-[10px] font-bold uppercase tracking-widest rounded">Nascosto</span>
+                                )}
+                              </div>
+                              <h3 className="text-xl font-serif text-stone-900">{contest.title}</h3>
+                              <p className="text-stone-500 text-sm line-clamp-2">{contest.description}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => setEditingContest(contest)}
+                                className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => deleteContest(contest)}
+                                className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                            <div className="space-y-1">
+                              <p className="text-stone-400 uppercase font-bold tracking-widest">Inizio Iscrizioni</p>
+                              <p className="text-stone-900">{new Date(contest.startDate).toLocaleDateString('it-IT')}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-stone-400 uppercase font-bold tracking-widest">Fine Iscrizioni</p>
+                              <p className="text-stone-900">{new Date(contest.endDate).toLocaleDateString('it-IT')}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-stone-400 uppercase font-bold tracking-widest">Costo</p>
+                              <p className="text-stone-900">{contest.cost > 0 ? `€ ${contest.cost}` : 'Gratuito'}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-stone-400 uppercase font-bold tracking-widest">Iscritti</p>
+                              <p className="text-stone-900">{contestRegistrations.filter((r: any) => r.contestId === contest.id).length}</p>
+                            </div>
+                          </div>
+
+                          <div className="pt-4 border-t border-stone-100 flex flex-wrap gap-3">
+                            <button 
+                              onClick={() => setShowRegistrationDetails(contest)}
+                              className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-900 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-200 transition-all"
+                            >
+                              <Users className="w-4 h-4" />
+                              Gestisci Iscritti
+                            </button>
+                            <button 
+                              onClick={() => exportContestRegistrations(contest.id)}
+                              className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-900 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-200 transition-all"
+                            >
+                              <Download className="w-4 h-4" />
+                              Esporta Lista
+                            </button>
+                            <button 
+                              onClick={() => {
+                                // In a real app, this would open a communication modal
+                                alert('Funzionalità di comunicazione in fase di sviluppo.');
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-900 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-200 transition-all"
+                            >
+                              <Mail className="w-4 h-4" />
+                              Invia Comunicazione
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
 
-      {/* Global Modals */}
       <AnimatePresence>
+        {editingContest && (
+          <div key="contest-modal" className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditingContest(null)} />
+            <div className="flex min-h-full items-center justify-center">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-4xl w-full overflow-hidden"
+              >
+                <button 
+                  onClick={() => setEditingContest(null)}
+                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center">
+                    <Trophy className="w-8 h-8 text-stone-900" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-serif text-stone-900">{editingContest.id ? 'Modifica Concorso' : 'Nuovo Concorso'}</h3>
+                    <p className="text-stone-500 text-sm">Configura i dettagli del concorso o rassegna</p>
+                  </div>
+                </div>
+
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const data = Object.fromEntries(formData);
+                    
+                    // Get winners from hidden input
+                    const winnersInput = e.currentTarget.querySelector('input[name="winners"]') as HTMLInputElement;
+                    const winnersValue = winnersInput?.value || '[]';
+                    
+                    const contestData = { 
+                      ...editingContest, 
+                      ...data, 
+                      cost: Number(data.cost) || 0,
+                      showOnHomepage: data.showOnHomepage === 'on',
+                      winners: winnersValue 
+                    };
+                    
+                    addContest(contestData);
+                  }}
+                  className="space-y-8"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Titolo</label>
+                        <input name="title" defaultValue={editingContest.title} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Tipo (es. Pittura, Musica)</label>
+                        <input name="type" defaultValue={editingContest.type} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Descrizione</label>
+                        <textarea name="description" defaultValue={editingContest.description} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none h-32 resize-none" required />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">URL Immagine</label>
+                        <input name="image" defaultValue={editingContest.image} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Inizio Iscrizioni</label>
+                          <input name="startDate" type="date" defaultValue={editingContest.startDate ? new Date(editingContest.startDate).toISOString().split('T')[0] : ''} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Fine Iscrizioni</label>
+                          <input name="endDate" type="date" defaultValue={editingContest.endDate ? new Date(editingContest.endDate).toISOString().split('T')[0] : ''} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Costo Iscrizione (€)</label>
+                        <input name="cost" type="number" step="0.01" defaultValue={editingContest.cost} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Premi / Attestati</label>
+                        <textarea name="prizes" defaultValue={editingContest.prizes} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none h-24 resize-none" />
+                      </div>
+                      <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-xl border border-stone-100">
+                        <input 
+                          type="checkbox" 
+                          name="showOnHomepage" 
+                          defaultChecked={editingContest.showOnHomepage} 
+                          className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
+                        />
+                        <label className="text-sm text-stone-700 font-medium">Visualizza sulla Homepage</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-stone-100">
+                    <h4 className="text-sm font-bold text-stone-900 uppercase tracking-widest mb-4">Albo Vincitori</h4>
+                    <WinnerManagement 
+                      initialWinners={editingContest.winners ? JSON.parse(editingContest.winners) : []} 
+                      onChange={(winners) => {
+                        const input = document.querySelector('input[name="winners"]') as HTMLInputElement;
+                        if (input) input.value = JSON.stringify(winners);
+                      }}
+                    />
+                    <input type="hidden" name="winners" defaultValue={editingContest.winners || '[]'} />
+                  </div>
+
+                  <div className="flex justify-end gap-4 pt-6 border-t border-stone-100">
+                    <button 
+                      type="button" 
+                      onClick={() => setEditingContest(null)}
+                      className="px-8 py-4 rounded-xl text-sm font-bold text-stone-500 hover:bg-stone-50 transition-all"
+                    >
+                      Annulla
+                    </button>
+                    <button 
+                      type="submit"
+                      className="px-12 py-4 bg-stone-900 text-white rounded-xl text-sm font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                    >
+                      {editingContest.id ? 'Salva Modifiche' : 'Crea Concorso'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          </div>
+        )}
+
+        {showRegistrationDetails && (
+          <div key="registration-list-modal" className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowRegistrationDetails(null)} />
+            <div className="flex min-h-full items-center justify-center">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl max-w-5xl w-full overflow-hidden"
+              >
+                <button 
+                  onClick={() => setShowRegistrationDetails(null)}
+                  className="absolute top-4 right-4 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center">
+                    <Users className="w-8 h-8 text-stone-900" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-serif text-stone-900">Iscritti: {showRegistrationDetails.title}</h3>
+                    <p className="text-stone-500 text-sm">Gestione partecipanti e comunicazioni</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="text-stone-400 uppercase text-[10px] tracking-widest border-b border-stone-100">
+                        <th className="pb-4 font-semibold">Partecipante</th>
+                        <th className="pb-4 font-semibold">Contatti</th>
+                        <th className="pb-4 font-semibold">Minorenne</th>
+                        <th className="pb-4 font-semibold">Stato</th>
+                        <th className="pb-4 font-semibold text-right">Azioni</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-50">
+                      {contestRegistrations
+                        .filter((r: any) => r.contestId === showRegistrationDetails.id)
+                        .map((reg: any) => (
+                          <tr key={reg.id} className="group hover:bg-stone-50 transition-colors">
+                            <td className="py-4">
+                              <p className="font-medium text-stone-900">{reg.name}</p>
+                              <p className="text-[10px] text-stone-400 uppercase tracking-widest">{new Date(reg.date).toLocaleDateString()}</p>
+                            </td>
+                            <td className="py-4">
+                              <p className="text-stone-600">{reg.email}</p>
+                              <p className="text-stone-500 text-xs">{reg.phone}</p>
+                            </td>
+                            <td className="py-4">
+                              {reg.isMinor ? (
+                                <div className="space-y-1">
+                                  <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold uppercase rounded">Sì</span>
+                                  <p className="text-[10px] text-stone-400">Genitore: {reg.parentName}</p>
+                                </div>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-stone-100 text-stone-400 text-[10px] font-bold uppercase rounded">No</span>
+                              )}
+                            </td>
+                            <td className="py-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                reg.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                              }`}>
+                                {reg.status === 'confirmed' ? 'Confermato' : 'In Attesa'}
+                              </span>
+                            </td>
+                            <td className="py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {reg.status !== 'confirmed' && (
+                                  <button 
+                                    onClick={() => updateRegistrationStatus(reg.id, 'confirmed')}
+                                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                    title="Conferma Iscrizione"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => deleteContestRegistration(reg)}
+                                  className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Elimina"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      {contestRegistrations.filter((r: any) => r.contestId === showRegistrationDetails.id).length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-stone-400 italic">Nessun iscritto per questo concorso.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        )}
+
         {selectedRegistration && (
           <div key="registration-detail-modal" className="fixed inset-0 z-[110] overflow-y-auto p-4 md:p-8">
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedRegistration(null)} />
@@ -2351,7 +2856,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         Approva Iscrizione
                       </button>
                       <button 
-                        onClick={() => deleteRegistration(selectedRegistration.id)}
+                        onClick={() => deleteRegistration(selectedRegistration)}
                         className="w-full bg-white/10 text-white py-4 rounded-xl font-bold hover:bg-white/20 transition-all"
                       >
                         Rifiuta
@@ -2527,6 +3032,203 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           </motion.div>
         )}
 
+        {/* Modali di Conferma Eliminazione */}
+        <AnimatePresence>
+          {contestToDelete && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              >
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-serif text-stone-900 mb-2">Elimina Concorso</h3>
+                <p className="text-stone-500 text-sm mb-8">
+                  Sei sicuro di voler eliminare il concorso <span className="font-bold text-stone-900">"{contestToDelete.title}"</span>? Questa azione eliminerà anche tutte le iscrizioni associate.
+                </p>
+                <div className="flex gap-3">
+                  <button 
+                    disabled={isDeleting}
+                    onClick={() => setContestToDelete(null)}
+                    className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 transition-all disabled:opacity-50"
+                  >
+                    Annulla
+                  </button>
+                  <button 
+                    disabled={isDeleting}
+                    onClick={async () => {
+                      setIsDeleting(true);
+                      try {
+                        const response = await fetch(`/api/contests/${contestToDelete.id}`, { method: 'DELETE' });
+                        if (response.ok) {
+                          setNotification({ message: 'Concorso eliminato con successo!', type: 'success' });
+                          await fetchData();
+                          setContestToDelete(null);
+                        } else {
+                          const errorData = await response.json();
+                          setNotification({ message: 'Errore: ' + (errorData.error || 'Impossibile eliminare'), type: 'error' });
+                        }
+                      } catch (error) {
+                        setNotification({ message: 'Errore di connessione', type: 'error' });
+                      } finally {
+                        setIsDeleting(false);
+                      }
+                    }}
+                    className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {isDeleting ? 'Eliminazione...' : 'Elimina'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {registrationToDelete && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              >
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
+                  <UserPlus className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-serif text-stone-900 mb-2">Elimina Iscrizione</h3>
+                <p className="text-stone-500 text-sm mb-8">
+                  Sei sicuro di voler eliminare l'iscrizione di <span className="font-bold text-stone-900">{registrationToDelete.name}</span>?
+                </p>
+                <div className="flex gap-3">
+                  <button 
+                    disabled={isDeleting}
+                    onClick={() => setRegistrationToDelete(null)}
+                    className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 transition-all disabled:opacity-50"
+                  >
+                    Annulla
+                  </button>
+                  <button 
+                    disabled={isDeleting}
+                    onClick={async () => {
+                      setIsDeleting(true);
+                      try {
+                        const response = await fetch(`/api/contest-registrations/${registrationToDelete.id}`, { method: 'DELETE' });
+                        if (response.ok) {
+                          setNotification({ message: 'Iscrizione eliminata!', type: 'success' });
+                          await fetchData();
+                          setRegistrationToDelete(null);
+                        }
+                      } catch (error) {
+                        setNotification({ message: 'Errore di connessione', type: 'error' });
+                      } finally {
+                        setIsDeleting(false);
+                      }
+                    }}
+                    className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                  >
+                    {isDeleting ? '...' : 'Elimina'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {lotteryToDelete && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              >
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
+                  <Ticket className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-serif text-stone-900 mb-2">Elimina Lotteria</h3>
+                <p className="text-stone-500 text-sm mb-8">
+                  Vuoi eliminare definitivamente la lotteria <span className="font-bold text-stone-900">"{lotteryToDelete.name}"</span> dall'archivio?
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setLotteryToDelete(null)} className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 transition-all">Annulla</button>
+                  <button 
+                    onClick={async () => {
+                      const updatedLottery = {
+                        ...lottery,
+                        history: lottery.history.filter((h: any) => h.id !== lotteryToDelete.id)
+                      };
+                      await saveLottery(updatedLottery);
+                      setNotification({ message: 'Lotteria eliminata dall\'archivio', type: 'success' });
+                      setLotteryToDelete(null);
+                    }}
+                    className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                  >
+                    Elimina
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {pollToDelete && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              >
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
+                  <Vote className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-serif text-stone-900 mb-2">Elimina Sondaggio</h3>
+                <p className="text-stone-500 text-sm mb-8">
+                  Vuoi eliminare il sondaggio <span className="font-bold text-stone-900">"{pollToDelete.question}"</span>?
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setPollToDelete(null)} className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 transition-all">Annulla</button>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        await fetch(`/api/polls/${pollToDelete.id}`, { method: 'DELETE' });
+                        setPolls(polls.filter((p: any) => p.id !== pollToDelete.id));
+                        if (poll?.id === pollToDelete.id) {
+                          createNewPoll();
+                        }
+                        setNotification({ message: 'Sondaggio eliminato', type: 'success' });
+                        setPollToDelete(null);
+                      } catch (error) {
+                        console.error('Error deleting poll:', error);
+                        setNotification({ message: 'Errore durante l\'eliminazione', type: 'error' });
+                      }
+                    }}
+                    className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                  >
+                    Elimina
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <MeetingMinutesWizard 
           isOpen={showWizard}
           onClose={() => setShowWizard(false)}
@@ -2535,6 +3237,36 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             setShowWizard(false);
           }}
         />
+
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
+            >
+              <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
+                notification.type === 'success' 
+                  ? 'bg-emerald-50 border-emerald-100 text-emerald-900' 
+                  : 'bg-red-50 border-red-100 text-red-900'
+              }`}>
+                {notification.type === 'success' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                )}
+                <span className="text-sm font-medium">{notification.message}</span>
+                <button 
+                  onClick={() => setNotification(null)}
+                  className="ml-2 p-1 hover:bg-black/5 rounded-lg transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </AnimatePresence>
     </div>
   );

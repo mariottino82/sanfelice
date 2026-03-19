@@ -115,6 +115,36 @@ export async function getDb() {
       date TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS contests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      type TEXT,
+      description TEXT,
+      image TEXT,
+      startDate TEXT,
+      endDate TEXT,
+      cost REAL,
+      prizes TEXT, -- JSON string
+      showOnHomepage INTEGER DEFAULT 0,
+      winners TEXT DEFAULT '[]' -- JSON string of {year, winnerName, prize}
+    );
+
+    CREATE TABLE IF NOT EXISTS contest_registrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contestId INTEGER,
+      name TEXT,
+      email TEXT,
+      phone TEXT,
+      isMinor INTEGER DEFAULT 0,
+      parentName TEXT,
+      parentEmail TEXT,
+      parentPhone TEXT,
+      privacyAccepted INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      date TEXT,
+      FOREIGN KEY(contestId) REFERENCES contests(id)
+    );
+
     CREATE TABLE IF NOT EXISTS lottery (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       active INTEGER DEFAULT 0,
@@ -187,5 +217,6 @@ export async function getDb() {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['membership_fees', JSON.stringify(defaultFees)]);
   }
 
+  console.log('Database initialized successfully');
   return db;
 }
