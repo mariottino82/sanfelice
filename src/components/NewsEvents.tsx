@@ -27,7 +27,7 @@ export function NewsEvents({ onNewsClick }: { onNewsClick: (news: any) => void }
       date: "2024-05-15",
       category: "evento",
       content: "La tradizionale festa con processione, musica dal vivo e stand gastronomici. Un momento di unione per tutta la comunità.",
-      imageUrl: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800"
+      image: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800"
     },
     {
       id: 2,
@@ -35,7 +35,7 @@ export function NewsEvents({ onNewsClick }: { onNewsClick: (news: any) => void }
       date: "2024-07-20",
       category: "evento",
       content: "Una serata dedicata ai sapori del territorio e alla convivialità. Degustazioni di prodotti tipici e musica popolare.",
-      imageUrl: "https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800"
+      image: "https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800"
     },
     {
       id: 3,
@@ -43,7 +43,7 @@ export function NewsEvents({ onNewsClick }: { onNewsClick: (news: any) => void }
       date: "2024-12-22",
       category: "news",
       content: "Si terrà l'assemblea annuale per il rinnovo delle cariche e la presentazione del bilancio. Partecipazione caldamente consigliata.",
-      imageUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=800"
+      image: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=800"
     }
   ];
 
@@ -73,7 +73,7 @@ export function NewsEvents({ onNewsClick }: { onNewsClick: (news: any) => void }
             >
               <div className="h-48 overflow-hidden relative">
                 <img
-                  src={item.imageUrl || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'}
+                  src={item.image || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'}
                   alt={item.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   referrerPolicy="no-referrer"

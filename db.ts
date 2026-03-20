@@ -39,7 +39,8 @@ export async function getDb() {
       password TEXT,
       status TEXT DEFAULT 'attivo',
       role TEXT DEFAULT 'Socio',
-      joinDate TEXT
+      joinDate TEXT,
+      payments TEXT DEFAULT '{}' -- JSON string of {year: boolean}
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -49,6 +50,7 @@ export async function getDb() {
       location TEXT,
       description TEXT,
       image TEXT,
+      video TEXT,
       category TEXT
     );
 
@@ -59,6 +61,7 @@ export async function getDb() {
       excerpt TEXT,
       content TEXT,
       image TEXT,
+      video TEXT,
       category TEXT
     );
 
@@ -66,6 +69,7 @@ export async function getDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       url TEXT,
       title TEXT,
+      type TEXT DEFAULT 'image',
       category TEXT,
       date TEXT
     );
@@ -112,7 +116,11 @@ export async function getDb() {
       event_name TEXT,
       type TEXT,
       amount REAL,
-      date TEXT
+      date TEXT,
+      company_details TEXT, -- JSON string
+      receipt_number TEXT,
+      social_year INTEGER,
+      receipt_path TEXT
     );
 
     CREATE TABLE IF NOT EXISTS contests (
@@ -152,7 +160,19 @@ export async function getDb() {
       name TEXT,
       drawDate TEXT,
       prizes TEXT, -- JSON string
-      history TEXT -- JSON string
+      history TEXT, -- JSON string
+      regulations_path TEXT,
+      municipality_request_path TEXT,
+      minutes_path TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS sponsors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      image TEXT,
+      startDate TEXT,
+      endDate TEXT,
+      active INTEGER DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS settings (
@@ -172,7 +192,19 @@ export async function getDb() {
     'ALTER TABLE users ADD COLUMN lastLogin TEXT',
     'ALTER TABLE members ADD COLUMN password TEXT',
     'ALTER TABLE registrations ADD COLUMN password TEXT',
-    'ALTER TABLE minutes ADD COLUMN file_path TEXT'
+    'ALTER TABLE minutes ADD COLUMN file_path TEXT',
+    'ALTER TABLE finances ADD COLUMN company_details TEXT',
+    'ALTER TABLE finances ADD COLUMN receipt_number TEXT',
+    'ALTER TABLE finances ADD COLUMN social_year INTEGER',
+    'ALTER TABLE finances ADD COLUMN receipt_path TEXT',
+    'ALTER TABLE members ADD COLUMN payments TEXT DEFAULT "{}"',
+    'ALTER TABLE news ADD COLUMN video TEXT',
+    'ALTER TABLE events ADD COLUMN video TEXT',
+    'ALTER TABLE gallery ADD COLUMN type TEXT DEFAULT "image"',
+    'ALTER TABLE lottery ADD COLUMN regulations_path TEXT',
+    'ALTER TABLE lottery ADD COLUMN municipality_request_path TEXT',
+    'ALTER TABLE lottery ADD COLUMN minutes_path TEXT',
+    'CREATE TABLE IF NOT EXISTS sponsors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, image TEXT, startDate TEXT, endDate TEXT, active INTEGER DEFAULT 1)'
   ];
 
   for (const migration of migrations) {
@@ -202,7 +234,7 @@ export async function getDb() {
   const socialLinks = await db.get('SELECT * FROM settings WHERE key = ?', ['social_links']);
   if (!socialLinks) {
     const defaultLinks = {
-      facebook: 'https://facebook.com',
+      facebook: 'https://www.facebook.com/p/Associazione-Pro-San-Felice-61550793063179/',
       instagram: 'https://instagram.com',
       youtube: 'https://youtube.com',
       twitter: 'https://twitter.com'
@@ -215,6 +247,25 @@ export async function getDb() {
   if (!membershipFees) {
     const defaultFees = { 2024: 100, 2025: 100, 2026: 100 };
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['membership_fees', JSON.stringify(defaultFees)]);
+  }
+
+  // Seed email settings if not exists
+  const emailSettings = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+  if (!emailSettings) {
+    const defaultEmailSettings = {
+      smtp_host: 'smtp.gmail.com',
+      smtp_port: 587,
+      smtp_user: '',
+      smtp_pass: '',
+      imap_host: 'imap.gmail.com',
+      imap_port: 993,
+      imap_user: '',
+      imap_pass: '',
+      protocol: 'imap',
+      from_email: '',
+      from_name: ''
+    };
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['email_settings', JSON.stringify(defaultEmailSettings)]);
   }
 
   console.log('Database initialized successfully');
