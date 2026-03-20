@@ -48,6 +48,66 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Sponsors API
+  app.get('/api/sponsors', async (req, res) => {
+    try {
+      const sponsors = await db.all('SELECT * FROM sponsors ORDER BY id DESC');
+      res.json(sponsors);
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/sponsors/active', async (req, res) => {
+    try {
+      const now = new Date().toISOString();
+      const sponsors = await db.all(
+        'SELECT * FROM sponsors WHERE active = 1 AND (startDate IS NULL OR startDate <= ?) AND (endDate IS NULL OR endDate >= ?)',
+        [now, now]
+      );
+      res.json(sponsors);
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/sponsors', async (req, res) => {
+    try {
+      const { name, image, startDate, endDate, active } = req.body;
+      const result = await db.run(
+        'INSERT INTO sponsors (name, image, startDate, endDate, active) VALUES (?, ?, ?, ?, ?)',
+        [name, image, startDate, endDate, active ? 1 : 0]
+      );
+      res.json({ id: result.lastID });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/sponsors/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, image, startDate, endDate, active } = req.body;
+      await db.run(
+        'UPDATE sponsors SET name = ?, image = ?, startDate = ?, endDate = ?, active = ? WHERE id = ?',
+        [name, image, startDate, endDate, active ? 1 : 0, id]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.delete('/api/sponsors/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db.run('DELETE FROM sponsors WHERE id = ?', [id]);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Health check
   app.get('/api/health', async (req, res) => {
     let dbStatus = 'unknown';

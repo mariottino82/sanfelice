@@ -8,6 +8,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { NewsEvents } from './components/NewsEvents';
 import { Gallery } from './components/Gallery';
+import { SponsorsSection } from './components/SponsorsSection';
 import { Dashboard } from './components/Dashboard';
 import { LotterySection } from './components/LotterySection';
 import { PollSection } from './components/PollSection';
@@ -155,6 +156,7 @@ export default function App() {
         <Navbar onLoginClick={() => setShowLoginModal(true)} onRegisterClick={() => setShowRegistrationModal(true)} />
         <main>
           <Hero />
+          <SponsorsSection />
           <PollSection />
           <LotterySection />
           <NewsEvents onNewsClick={(item) => setSelectedNews(item)} />

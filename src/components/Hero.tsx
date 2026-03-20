@@ -45,7 +45,7 @@ export function Hero() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </motion.a>
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/p/Associazione-Pro-San-Felice-61550793063179/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-white border-b border-white/30 pb-1 text-sm uppercase tracking-widest font-bold hover:border-white transition-all group"

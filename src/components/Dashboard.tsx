@@ -307,6 +307,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [newsToDelete, setNewsToDelete] = React.useState<any>(null);
   const [galleryItemToDelete, setGalleryItemToDelete] = React.useState<any>(null);
   const [memberRegistrationToDelete, setMemberRegistrationToDelete] = React.useState<any>(null);
+  const [sponsors, setSponsors] = React.useState([]);
+  const [editingSponsor, setEditingSponsor] = React.useState<any>(null);
+  const [sponsorToDelete, setSponsorToDelete] = React.useState<any>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [editingContest, setEditingContest] = React.useState<any>(null);
   const [showRegistrationDetails, setShowRegistrationDetails] = React.useState<any>(null);
@@ -383,6 +386,67 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const deleteContestRegistration = (registration: any) => {
     setRegistrationToDelete(registration);
+  };
+
+  const addSponsor = async (newSponsor: any) => {
+    try {
+      const method = newSponsor.id ? 'PUT' : 'POST';
+      const url = newSponsor.id ? `/api/sponsors/${newSponsor.id}` : '/api/sponsors';
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSponsor)
+      });
+      
+      if (response.ok) {
+        setEditingSponsor(null);
+        setNotification({ message: newSponsor.id ? 'Sponsor aggiornato con successo!' : 'Sponsor creato con successo!', type: 'success' });
+        await fetchData();
+      } else {
+        const errorData = await response.json();
+        setNotification({ message: 'Errore dal server: ' + (errorData.error || 'Errore sconosciuto'), type: 'error' });
+      }
+    } catch (error) {
+      setNotification({ message: 'Errore di connessione', type: 'error' });
+    }
+  };
+
+  const deleteSponsor = async (id: number) => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/sponsors/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setSponsorToDelete(null);
+        setNotification({ message: 'Sponsor eliminato con successo!', type: 'success' });
+        await fetchData();
+      }
+    } catch (error) {
+      setNotification({ message: 'Errore di connessione', type: 'error' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSponsorImageUpload = async (sponsorId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`/api/sponsors/${sponsorId}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotification({ message: 'Immagine caricata con successo!', type: 'success' });
+        fetchData();
+        return data.path;
+      }
+    } catch (error) {
+      console.error('Error uploading sponsor image:', error);
+      setNotification({ message: 'Errore durante il caricamento dell\'immagine.', type: 'error' });
+    }
+    return null;
   };
   const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState<any>(null);
 
@@ -470,7 +534,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         }
       } },
       { key: 'association_details', url: '/api/settings/association_details', setter: (data: any) => data?.value && setAssociationDetails(data.value) },
-      { key: 'membership_fees', url: '/api/settings/membership_fees', setter: (data: any) => data?.value && setMembershipFees(data.value) }
+      { key: 'membership_fees', url: '/api/settings/membership_fees', setter: (data: any) => data?.value && setMembershipFees(data.value) },
+      { key: 'sponsors', url: '/api/sponsors', setter: setSponsors }
     ];
 
     for (const endpoint of endpoints) {
@@ -1827,6 +1892,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'appointments', label: 'Agenda', icon: Calendar, minRole: 'Operator' },
                 { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
                 { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
+                { id: 'sponsors', label: 'Sponsor & Pubblicità', icon: Building, minRole: 'Operator' },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
                 { id: 'email', label: 'Email & Comunicazioni', icon: Mail, minRole: 'Operator' },
                 { id: 'association', label: 'Associazione', icon: Building, minRole: 'SuperAdmin' },
@@ -4096,6 +4162,86 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
+            {isStaff && activeTab === 'sponsors' && (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-serif text-stone-900">Sponsor & Pubblicità</h2>
+                    <p className="text-stone-500 mt-1">Gestisci gli sponsor da visualizzare sulla homepage.</p>
+                  </div>
+                  <button 
+                    onClick={() => setEditingSponsor({ name: '', image: '', startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], active: 1 })}
+                    className="flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Nuovo Sponsor
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {sponsors.map((sponsor: any) => (
+                    <div key={sponsor.id} className="bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group">
+                      <div className="aspect-video bg-stone-100 relative overflow-hidden">
+                        {sponsor.image ? (
+                          <img src={sponsor.image} alt={sponsor.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-stone-400">
+                            <ImageIcon className="w-12 h-12 opacity-20" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                          <button 
+                            onClick={() => setEditingSponsor(sponsor)}
+                            className="p-3 bg-white text-stone-900 rounded-xl hover:scale-110 transition-transform"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => setSponsorToDelete(sponsor)}
+                            className="p-3 bg-red-600 text-white rounded-xl hover:scale-110 transition-transform"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <div className="absolute top-4 right-4">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${sponsor.active ? 'bg-emerald-500 text-white' : 'bg-stone-500 text-white'}`}>
+                            {sponsor.active ? 'Attivo' : 'Inattivo'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-6">
+                        <h3 className="font-serif text-xl text-stone-900 mb-2">{sponsor.name}</h3>
+                        <div className="flex items-center gap-4 text-xs text-stone-500">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(sponsor.startDate).toLocaleDateString('it-IT')}
+                          </div>
+                          <ChevronRight className="w-3 h-3" />
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(sponsor.endDate).toLocaleDateString('it-IT')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {sponsors.length === 0 && (
+                  <div className="text-center py-20 bg-stone-50 rounded-[2rem] border-2 border-dashed border-stone-200">
+                    <Building className="w-16 h-16 text-stone-200 mx-auto mb-4" />
+                    <p className="text-stone-400 font-serif text-xl">Nessun sponsor registrato</p>
+                    <button 
+                      onClick={() => setEditingSponsor({ name: '', image: '', startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], active: 1 })}
+                      className="mt-4 text-stone-900 font-bold hover:underline"
+                    >
+                      Aggiungi il primo sponsor
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {isSuperAdmin && activeTab === 'association' && (
               <div className="space-y-8">
                 <div className="flex items-center justify-between">
@@ -5647,6 +5793,143 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             isDeleting={isDeleting}
             icon={<UserPlus className="w-8 h-8 text-red-600" />}
           />
+        )}
+
+        {sponsorToDelete && (
+          <ConfirmationModal 
+            isOpen={!!sponsorToDelete}
+            onClose={() => setSponsorToDelete(null)}
+            onConfirm={() => deleteSponsor(sponsorToDelete.id)}
+            title="Elimina Sponsor"
+            message={`Sei sicuro di voler eliminare lo sponsor "${sponsorToDelete?.name}"? Questa azione non può essere annullata.`}
+            isDeleting={isDeleting}
+            icon={<Building className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {editingSponsor && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-[2rem] p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-serif text-stone-900">
+                  {editingSponsor.id ? 'Modifica Sponsor' : 'Nuovo Sponsor'}
+                </h3>
+                <button onClick={() => setEditingSponsor(null)} className="p-2 hover:bg-stone-100 rounded-full transition-colors">
+                  <X className="w-6 h-6 text-stone-400" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Nome Sponsor</label>
+                  <input 
+                    value={editingSponsor.name}
+                    onChange={(e) => setEditingSponsor({ ...editingSponsor, name: e.target.value })}
+                    className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                    placeholder="es. Ristorante Da Mario"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Data Inizio</label>
+                    <input 
+                      type="date"
+                      value={editingSponsor.startDate}
+                      onChange={(e) => setEditingSponsor({ ...editingSponsor, startDate: e.target.value })}
+                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Data Fine</label>
+                    <input 
+                      type="date"
+                      value={editingSponsor.endDate}
+                      onChange={(e) => setEditingSponsor({ ...editingSponsor, endDate: e.target.value })}
+                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Stato</label>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => setEditingSponsor({ ...editingSponsor, active: 1 })}
+                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold text-xs uppercase tracking-widest ${editingSponsor.active ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-stone-100 text-stone-400'}`}
+                    >
+                      Attivo
+                    </button>
+                    <button 
+                      onClick={() => setEditingSponsor({ ...editingSponsor, active: 0 })}
+                      className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold text-xs uppercase tracking-widest ${!editingSponsor.active ? 'border-stone-500 bg-stone-50 text-stone-700' : 'border-stone-100 text-stone-400'}`}
+                    >
+                      Inattivo
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Immagine Sponsor</label>
+                  <div className="flex flex-col gap-4">
+                    {editingSponsor.image && (
+                      <div className="aspect-video rounded-2xl overflow-hidden border border-stone-200">
+                        <img src={editingSponsor.image} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input 
+                        type="file" 
+                        id="sponsor-image-upload" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingSponsor.id) {
+                            const path = await handleSponsorImageUpload(editingSponsor.id, file);
+                            if (path) setEditingSponsor({ ...editingSponsor, image: path });
+                          } else if (file) {
+                            setNotification({ message: 'Salva lo sponsor prima di caricare l\'immagine', type: 'error' });
+                          }
+                        }}
+                      />
+                      <button 
+                        onClick={() => document.getElementById('sponsor-image-upload')?.click()}
+                        className="flex-1 py-3 bg-stone-100 text-stone-900 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-stone-200 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Carica Immagine
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-6 flex gap-3">
+                  <button 
+                    onClick={() => setEditingSponsor(null)}
+                    className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 transition-all"
+                  >
+                    Annulla
+                  </button>
+                  <button 
+                    onClick={() => addSponsor(editingSponsor)}
+                    className="flex-1 py-4 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                  >
+                    {editingSponsor.id ? 'Aggiorna' : 'Crea'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

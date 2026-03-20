@@ -166,6 +166,15 @@ export async function getDb() {
       minutes_path TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS sponsors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      image TEXT,
+      startDate TEXT,
+      endDate TEXT,
+      active INTEGER DEFAULT 1
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -194,7 +203,8 @@ export async function getDb() {
     'ALTER TABLE gallery ADD COLUMN type TEXT DEFAULT "image"',
     'ALTER TABLE lottery ADD COLUMN regulations_path TEXT',
     'ALTER TABLE lottery ADD COLUMN municipality_request_path TEXT',
-    'ALTER TABLE lottery ADD COLUMN minutes_path TEXT'
+    'ALTER TABLE lottery ADD COLUMN minutes_path TEXT',
+    'CREATE TABLE IF NOT EXISTS sponsors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, image TEXT, startDate TEXT, endDate TEXT, active INTEGER DEFAULT 1)'
   ];
 
   for (const migration of migrations) {
@@ -224,7 +234,7 @@ export async function getDb() {
   const socialLinks = await db.get('SELECT * FROM settings WHERE key = ?', ['social_links']);
   if (!socialLinks) {
     const defaultLinks = {
-      facebook: 'https://facebook.com',
+      facebook: 'https://www.facebook.com/p/Associazione-Pro-San-Felice-61550793063179/',
       instagram: 'https://instagram.com',
       youtube: 'https://youtube.com',
       twitter: 'https://twitter.com'
