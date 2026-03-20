@@ -147,6 +147,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     showOnHomepage: true,
     name: '',
     drawDate: '',
+    ticketsCount: 1000,
+    ticketPrice: 2.50,
     prizes: [],
     history: []
   });
@@ -659,35 +661,46 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const generateLotteryMinutesPDF = async (lotteryData: any) => {
     const doc = new jsPDF();
     try {
+      // Header with Logo
       try {
         const logoImg = await loadImage('/logo.png');
         doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
       } catch (e) {}
 
+      // Association Info
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(associationDetails.name.toUpperCase(), 45, 15);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`${associationDetails.address} - ${associationDetails.municipality}`, 45, 20);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(15, 38, 195, 38);
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
-      doc.text('VERBALE DI ESTRAZIONE LOTTERIA', 105, 45, { align: 'center' });
+      doc.text('VERBALE DI ESTRAZIONE DEI PREMI', 105, 50, { align: 'center' });
+      doc.setFontSize(13);
+      doc.text(`LOTTERIA "${lotteryData.name.toUpperCase()}"`, 105, 58, { align: 'center' });
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Associazione: ${associationDetails.name}`, 15, 60);
-      doc.text(`Sede: ${associationDetails.address}`, 15, 65);
-
+      
       const drawDate = new Date(lotteryData.drawDate);
-      doc.text(`In data ${drawDate.toLocaleDateString('it-IT')}, alle ore 18:00, presso la sede dell'Associazione,`, 15, 75);
-      doc.text(`si è svolta l’estrazione pubblica della lotteria organizzata dall’Associazione ${associationDetails.name}.`, 15, 80);
+      const text = `L'anno ${drawDate.getFullYear()}, il giorno ${drawDate.getDate()} del mese di ${drawDate.toLocaleString('it-IT', { month: 'long' })}, alle ore 18:00, presso la sede dell'Associazione "${associationDetails.name}" sita in ${associationDetails.address}, si è proceduto alle operazioni di estrazione dei premi relativi alla lotteria locale denominata "${lotteryData.name}".`;
+      
+      doc.text(doc.splitTextToSize(text, 180), 15, 75);
 
-      doc.text(`La lotteria è stata autorizzata con comunicazione al Comune di ${associationDetails.municipality} in data ${new Date().toLocaleDateString('it-IT')}.`, 15, 90);
+      doc.text(`Sono presenti per la Commissione di Estrazione:`, 15, 95);
+      doc.text(`1. ${associationDetails.legalRepresentative} (Presidente)`, 20, 102);
+      doc.text(`2. _________________________________ (Segretario)`, 20, 109);
+      doc.text(`3. _________________________________ (Testimone/Rappresentante Comune)`, 20, 116);
 
+      doc.text(`Si dà atto che le operazioni di vendita dei biglietti si sono concluse regolarmente e che sono stati venduti n. ${lotteryData.ticketsCount || '____'} biglietti.`, 15, 130);
+      
       doc.setFont('helvetica', 'bold');
-      doc.text('Commissione presente:', 15, 100);
+      doc.text('RISULTATI DELL\'ESTRAZIONE:', 15, 145);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Sono presenti i seguenti membri della commissione: ${associationDetails.legalRepresentative}, e altri membri dell'Associazione.`, 15, 105, { maxWidth: 180 });
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Operazioni di estrazione:', 15, 115);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Si è proceduto all’estrazione dei premi messi in palio, con i seguenti risultati:', 15, 120);
 
       const tableData = lotteryData.prizes.map((p: any, index: number) => [
         `${index + 1}° Premio`,
@@ -696,18 +709,23 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       ]);
 
       autoTable(doc, {
-        startY: 125,
-        head: [['Posizione', 'Premio', 'Numero Vincente']],
+        startY: 150,
+        head: [['Posizione', 'Descrizione Premio', 'Numero Vincente']],
         body: tableData,
         theme: 'grid',
-        headStyles: { fillColor: [40, 40, 40] }
+        headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
+        styles: { fontSize: 9 }
       });
 
-      const finalY = (doc as any).lastAutoTable.finalY + 20;
-      doc.text('Le operazioni si sono concluse regolarmente.', 15, finalY);
-      doc.text('Firma della Commissione:', 15, finalY + 20);
-      doc.text('___________________________', 15, finalY + 30);
-      doc.text('___________________________', 150, finalY + 30, { align: 'right' });
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      
+      const conclusionText = `Le operazioni di estrazione si sono svolte in modo pubblico e regolare, senza alcun reclamo da parte dei presenti. Il presente verbale, redatto in duplice copia, viene letto, confermato e sottoscritto.`;
+      doc.text(doc.splitTextToSize(conclusionText, 180), 15, finalY);
+
+      doc.text('Firme della Commissione:', 15, finalY + 25);
+      doc.text('___________________________', 15, finalY + 40);
+      doc.text('___________________________', 105, finalY + 40, { align: 'center' });
+      doc.text('___________________________', 195, finalY + 40, { align: 'right' });
 
       return doc;
     } catch (err) {
@@ -719,34 +737,77 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const generateLotteryRequestPDF = async (lotteryData: any) => {
     const doc = new jsPDF();
     try {
+      // Header with Logo
       try {
         const logoImg = await loadImage('/logo.png');
         doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
       } catch (e) {}
 
-      doc.setFontSize(10);
-      doc.text(`Al Comune di ${associationDetails.municipality}`, 150, 45, { align: 'right' });
-      doc.text('Ufficio Commercio / Manifestazioni', 150, 50, { align: 'right' });
-
+      // Association Info in Header
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text('COMUNICAZIONE DI SVOLGIMENTO LOTTERIA', 15, 65);
+      doc.setFontSize(10);
+      doc.text(associationDetails.name.toUpperCase(), 45, 15);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`${associationDetails.address} - ${associationDetails.municipality} (${associationDetails.province})`, 45, 20);
+      doc.text(`C.F. ${associationDetails.cf} - Email: ${associationDetails.email}`, 45, 24);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(15, 38, 195, 38);
 
+      // Recipients
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      let recipientY = 50;
+      doc.text('Spett.le', 120, recipientY);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Sig. Sindaco del Comune di ${associationDetails.municipality || 'Colle d\'Anchise'}`, 120, recipientY + 5);
+      doc.text('Resp. Ufficio SUAP Manifestazioni', 120, recipientY + 10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Sede Municipale', 120, recipientY + 15);
+      
+      doc.text('e p.c.', 120, recipientY + 25);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Al Segretario Comunale', 120, recipientY + 30);
+
+      // Subject
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`OGGETTO: Comunicazione di svolgimento di lotteria locale ai sensi del D.P.R. 430/2001.`, 15, 95);
+      doc.line(15, 97, 195, 97);
+
+      // Body
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      const text = `Il sottoscritto ${associationDetails.legalRepresentative}, in qualità di Rappresentante Legale dell'Associazione ${associationDetails.name}, con sede in ${associationDetails.address}, C.F. ${associationDetails.cf}, comunica che l'Associazione intende organizzare una lotteria locale denominata "${lotteryData.name}".`;
-      doc.text(doc.splitTextToSize(text, 180), 15, 75);
+      const bodyText = `Il sottoscritto ${associationDetails.legalRepresentative}, nato a ________________ il _______________, residente in ____________________, in qualità di Presidente e Legale Rappresentante dell'Associazione "${associationDetails.name}", con sede legale in ${associationDetails.address}, C.F. ${associationDetails.cf},`;
+      
+      const bodyLines = doc.splitTextToSize(bodyText, 180);
+      doc.text(bodyLines, 15, 105);
 
-      doc.text(`Scopo della lotteria: Sostegno alle attività istituzionali e promozione del territorio.`, 15, 95);
-      doc.text(`Periodo di svolgimento: dal ${new Date().toLocaleDateString('it-IT')} al ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')}.`, 15, 100);
-      doc.text(`Data e luogo dell'estrazione: ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')} presso la sede sociale.`, 15, 105);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DICHIARA', 105, 125, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
 
-      doc.text('Si allega il regolamento della lotteria con l\'elenco dei premi.', 15, 115);
+      const declarationText = `che l'Associazione intende organizzare una lotteria locale denominata "${lotteryData.name}", il cui ricavato sarà destinato al finanziamento delle attività istituzionali e alla promozione del territorio, come previsto dallo statuto associativo.`;
+      doc.text(doc.splitTextToSize(declarationText, 180), 15, 135);
 
-      doc.text('Luogo e data:', 15, 135);
-      doc.text(`${associationDetails.municipality}, ${new Date().toLocaleDateString('it-IT')}`, 15, 140);
-      doc.text('Firma del Rappresentante Legale', 150, 140, { align: 'right' });
-      doc.text('___________________________', 150, 150, { align: 'right' });
+      doc.setFont('helvetica', 'bold');
+      doc.text('COMUNICA ALTRESI\'', 15, 155);
+      doc.setFont('helvetica', 'normal');
+      
+      doc.text(`- Periodo di svolgimento: dal ${new Date().toLocaleDateString('it-IT')} al ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')};`, 15, 162);
+      doc.text(`- Data e luogo dell'estrazione: ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')} alle ore 18:00 presso la sede sociale;`, 15, 169);
+      doc.text(`- Numero di biglietti emessi: ${lotteryData.ticketsCount || '____'} (serie unica);`, 15, 176);
+      doc.text(`- Prezzo unitario del biglietto: € ${lotteryData.ticketPrice || '2,50'}.`, 15, 183);
+
+      doc.text('Si allega alla presente il regolamento dettagliato della lotteria con l\'elenco completo dei premi in palio.', 15, 195);
+
+      // Footer
+      doc.text('Distinti saluti.', 15, 215);
+      doc.text('Luogo e data:', 15, 230);
+      doc.text(`${associationDetails.municipality}, ${new Date().toLocaleDateString('it-IT')}`, 15, 235);
+      
+      doc.text('Firma del Rappresentante Legale', 140, 235, { align: 'center' });
+      doc.text('___________________________', 140, 245, { align: 'center' });
 
       return doc;
     } catch (err) {
@@ -758,35 +819,107 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const generateLotteryRegulationsPDF = async (lotteryData: any) => {
     const doc = new jsPDF();
     try {
+      // Header with Logo
       try {
         const logoImg = await loadImage('/logo.png');
         doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
       } catch (e) {}
 
+      // Association Info
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(associationDetails.name.toUpperCase(), 45, 15);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`${associationDetails.address} - ${associationDetails.municipality}`, 45, 20);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(15, 38, 195, 38);
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
-      doc.text('REGOLAMENTO DELLA LOTTERIA', 105, 45, { align: 'center' });
-      doc.setFontSize(12);
-      doc.text(`"${lotteryData.name}"`, 105, 52, { align: 'center' });
+      doc.text('REGOLAMENTO DELLA LOTTERIA LOCALE', 105, 50, { align: 'center' });
+      doc.setFontSize(13);
+      doc.text(`"${lotteryData.name.toUpperCase()}"`, 105, 58, { align: 'center' });
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Art. 1 - Organizzazione: La lotteria è organizzata dall'Associazione ${associationDetails.name}.`, 15, 65);
-      doc.text(`Art. 2 - Scopo: Il ricavato sarà devoluto al finanziamento delle attività associative.`, 15, 72);
-      doc.text(`Art. 3 - Biglietti: I biglietti sono venduti al prezzo di € 2,50 cadauno.`, 15, 79);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Art. 4 - Premi in palio:', 15, 89);
       
-      const prizesText = lotteryData.prizes.map((p: any, i: number) => `${i + 1}° Premio: ${p.name}`).join('\n');
-      doc.setFont('helvetica', 'normal');
-      doc.text(prizesText, 20, 96);
+      let currentY = 75;
+      const margin = 15;
+      const width = 180;
 
-      const nextY = 96 + (lotteryData.prizes.length * 7) + 10;
-      doc.text(`Art. 5 - Estrazione: L'estrazione avverrà il giorno ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')} alle ore 18:00.`, 15, nextY);
-      doc.text(`Art. 6 - Ritiro premi: I premi potranno essere ritirati entro 30 giorni dall'estrazione.`, 15, nextY + 7);
+      const articles = [
+        {
+          title: 'Art. 1 - Organizzazione',
+          content: `La lotteria è organizzata dall'Associazione "${associationDetails.name}", con sede in ${associationDetails.address}, C.F. ${associationDetails.cf}, rappresentata dal Presidente ${associationDetails.legalRepresentative}.`
+        },
+        {
+          title: 'Art. 2 - Finalità',
+          content: `Il ricavato della vendita dei biglietti sarà interamente devoluto al finanziamento delle attività istituzionali dell'Associazione e alla promozione di eventi socio-culturali nel territorio di ${associationDetails.municipality}.`
+        },
+        {
+          title: 'Art. 3 - Partecipazione',
+          content: `La partecipazione è aperta a tutti i cittadini. I biglietti sono numerati in serie unica da 0001 a ${lotteryData.ticketsCount || '____'}. Il prezzo di vendita di ogni singolo biglietto è fissato in € ${lotteryData.ticketPrice || '2,50'}.`
+        },
+        {
+          title: 'Art. 4 - Premi in palio',
+          content: `I premi messi in palio, in ordine di importanza, sono i seguenti:`
+        }
+      ];
 
-      doc.text('Il presente regolamento è affisso presso la sede sociale.', 15, nextY + 20);
+      articles.forEach(art => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(art.title, margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(art.content, width);
+        doc.text(lines, margin, currentY);
+        currentY += (lines.length * 5) + 5;
+      });
+
+      // Prizes Table
+      const tableData = lotteryData.prizes.map((p: any, i: number) => [`${i + 1}° Premio`, p.name]);
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Posizione', 'Descrizione del Premio']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255] },
+        margin: { left: margin }
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 10;
+
+      const remainingArticles = [
+        {
+          title: 'Art. 5 - Estrazione',
+          content: `L'estrazione pubblica dei premi avverrà il giorno ${new Date(lotteryData.drawDate).toLocaleDateString('it-IT')} alle ore 18:00 presso la sede dell'Associazione. Durante l'estrazione sarà redatto apposito verbale.`
+        },
+        {
+          title: 'Art. 6 - Ritiro dei premi',
+          content: `I vincitori potranno ritirare i premi entro 30 giorni dalla data di estrazione, previa presentazione del biglietto vincente in originale. Decorso tale termine, i premi non ritirati resteranno di proprietà dell'Associazione.`
+        },
+        {
+          title: 'Art. 7 - Privacy',
+          content: `I dati personali dei partecipanti saranno trattati nel rispetto della normativa vigente (GDPR 679/2016) esclusivamente per le finalità legate alla presente lotteria.`
+        }
+      ];
+
+      remainingArticles.forEach(art => {
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.text(art.title, margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(art.content, width);
+        doc.text(lines, margin, currentY);
+        currentY += (lines.length * 5) + 5;
+      });
+
+      doc.text('Il presente regolamento è a disposizione dei soci e dei partecipanti presso la sede sociale.', margin, currentY + 10);
 
       return doc;
     } catch (err) {
@@ -1311,12 +1444,34 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const saveLottery = async (updated: any) => {
     try {
+      // Auto-generate regulations if missing and name/drawDate are present
+      let finalLottery = { ...updated };
+      if (!finalLottery.regulations_path && finalLottery.name && finalLottery.drawDate) {
+        try {
+          const doc = await generateLotteryRegulationsPDF(finalLottery);
+          const blob = doc.output('blob');
+          const file = new File([blob], 'regolamento_lotteria.pdf', { type: 'application/pdf' });
+          const formData = new FormData();
+          formData.append('file', file);
+          const uploadResponse = await fetch('/api/lottery/upload-doc', {
+            method: 'POST',
+            body: formData
+          });
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            finalLottery.regulations_path = uploadData.path;
+          }
+        } catch (err) {
+          console.error('Error auto-generating regulations:', err);
+        }
+      }
+
       await fetch('/api/lottery', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
+        body: JSON.stringify(finalLottery)
       });
-      setLottery(updated);
+      setLottery(finalLottery);
     } catch (error) {
       console.error('Error saving lottery:', error);
     }
@@ -2302,6 +2457,27 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm"
                         />
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-500 uppercase mb-1">N. Biglietti</label>
+                          <input 
+                            type="number" 
+                            value={lottery.ticketsCount || ''}
+                            onChange={(e) => setLottery({ ...lottery, ticketsCount: parseInt(e.target.value) })}
+                            className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Prezzo (€)</label>
+                          <input 
+                            type="number" 
+                            step="0.10"
+                            value={lottery.ticketPrice || ''}
+                            onChange={(e) => setLottery({ ...lottery, ticketPrice: parseFloat(e.target.value) })}
+                            className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm"
+                          />
+                        </div>
+                      </div>
                       <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Aggiungi Premio</label>
                         <form 
@@ -2322,7 +2498,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </form>
                       </div>
 
-                      <div className="pt-4 border-t border-stone-100 flex justify-end">
+                      <div className="pt-4 border-t border-stone-100 flex flex-col items-end gap-2">
                         <button 
                           onClick={() => {
                             saveLottery(lottery);
@@ -2332,6 +2508,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         >
                           Salva Configurazione
                         </button>
+                        {lottery.regulations_path && (
+                          <a 
+                            href={lottery.regulations_path} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-stone-400 hover:text-stone-900 flex items-center gap-1 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" />
+                            Visualizza Regolamento Attuale
+                          </a>
+                        )}
                       </div>
                     </div>
                   </div>
