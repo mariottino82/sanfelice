@@ -4,10 +4,26 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import multer from 'multer';
+import { ImapFlow } from 'imapflow';
+import { simpleParser } from 'mailparser';
 import { getDb } from './db';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Multer configuration for gallery uploads
+const galleryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(process.cwd(), 'public', 'gallery');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const emailUpload = multer({ storage: galleryStorage });
 
 async function startServer() {
   const app = express();
@@ -755,6 +771,246 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     }
   });
 
+  // Email Client API
+  app.get('/api/emails', async (req, res) => {
+    const { folder = 'INBOX', page = '1', search = '' } = req.query;
+    const pageSize = 20;
+    const skip = (parseInt(page as string) - 1) * pageSize;
+
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
+      const settings = JSON.parse(emailSettingsRow.value);
+
+      if (!settings.imap_user || !settings.imap_pass) {
+        return res.status(400).json({ error: 'IMAP credentials missing' });
+      }
+
+      const client = new ImapFlow({
+        host: settings.imap_host || 'imap.gmail.com',
+        port: parseInt(settings.imap_port) || 993,
+        secure: true,
+        auth: {
+          user: settings.imap_user,
+          pass: settings.imap_pass,
+        },
+        logger: false
+      });
+
+      await client.connect();
+      const lock = await client.getMailboxLock(folder as string);
+      try {
+        let searchCriteria: any = { all: true };
+        if (search) {
+          searchCriteria = { or: [{ subject: search }, { from: search }, { body: search }] };
+        }
+
+        const messages = [];
+        // Fetch in reverse order to get newest first
+        const status = await client.status(folder as string, { messages: true });
+        const totalMessages = status.messages || 0;
+        
+        // Fetch headers for the current page
+        // imapflow fetch uses sequence numbers or UIDs.
+        // We'll fetch by sequence number from newest to oldest.
+        const start = Math.max(1, totalMessages - skip - pageSize + 1);
+        const end = Math.max(1, totalMessages - skip);
+
+        if (totalMessages > 0) {
+          for await (let msg of client.fetch(`${start}:${end}`, { envelope: true, flags: true, internalDate: true, uid: true })) {
+            messages.push({
+              uid: msg.uid,
+              seq: msg.seq,
+              from: msg.envelope.from[0],
+              subject: msg.envelope.subject,
+              date: msg.envelope.date || msg.internalDate,
+              flags: Array.from(msg.flags || []),
+              hasAttachments: false // We'd need to check structure for this, skipping for speed in list
+            });
+          }
+        }
+
+        // Sort by date descending (newest first)
+        messages.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        res.json({
+          messages,
+          total: totalMessages,
+          page: parseInt(page as string),
+          pageSize
+        });
+      } finally {
+        lock.release();
+        await client.logout();
+      }
+    } catch (error: any) {
+      console.error('IMAP Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/emails/folders', async (req, res) => {
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
+      const settings = JSON.parse(emailSettingsRow.value);
+
+      const client = new ImapFlow({
+        host: settings.imap_host || 'imap.gmail.com',
+        port: parseInt(settings.imap_port) || 993,
+        secure: true,
+        auth: {
+          user: settings.imap_user,
+          pass: settings.imap_pass,
+        },
+        logger: false
+      });
+
+      await client.connect();
+      const folders = await client.list();
+      await client.logout();
+      res.json(folders.map(f => ({ path: f.path, name: f.name, delimiter: f.delimiter })));
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/emails/:uid', async (req, res) => {
+    const { uid } = req.params;
+    const { folder = 'INBOX' } = req.query;
+
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      const settings = JSON.parse(emailSettingsRow.value);
+
+      const client = new ImapFlow({
+        host: settings.imap_host || 'imap.gmail.com',
+        port: parseInt(settings.imap_port) || 993,
+        secure: true,
+        auth: {
+          user: settings.imap_user,
+          pass: settings.imap_pass,
+        },
+        logger: false
+      });
+
+      await client.connect();
+      const lock = await client.getMailboxLock(folder as string);
+      try {
+        const msg = await client.fetchOne(uid, { source: true }, { uid: true });
+        if (!msg) return res.status(404).json({ error: 'Email not found' });
+
+        const parsed = await simpleParser(msg.source);
+        
+        const getAddressText = (addr: any) => {
+          if (!addr) return '';
+          if (Array.isArray(addr)) return addr.map(a => a.text).join(', ');
+          return addr.text || '';
+        };
+
+        res.json({
+          uid: msg.uid,
+          from: getAddressText(parsed.from),
+          to: getAddressText(parsed.to),
+          subject: parsed.subject,
+          date: parsed.date,
+          html: parsed.html || parsed.textAsHtml,
+          text: parsed.text,
+          attachments: parsed.attachments.map(a => ({
+            filename: a.filename,
+            contentType: a.contentType,
+            size: a.size,
+            contentId: a.contentId,
+            partId: (a as any).partId || (a as any).checksum // Use checksum or partId if available
+          }))
+        });
+      } finally {
+        lock.release();
+        await client.logout();
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/emails/send', emailUpload.array('attachments'), async (req: any, res) => {
+    const { to, subject, html, replyToUid, forwardFromUid } = req.body;
+    const attachments = (req.files as any[])?.map(f => ({
+      filename: f.originalname,
+      path: f.path
+    })) || [];
+
+    try {
+      const nodemailer = await import('nodemailer');
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      const settings = JSON.parse(emailSettingsRow.value);
+
+      const transporter = nodemailer.createTransport({
+        host: settings.smtp_host || 'smtp.gmail.com',
+        port: parseInt(settings.smtp_port) || 587,
+        secure: parseInt(settings.smtp_port) === 465,
+        auth: {
+          user: settings.smtp_user,
+          pass: settings.smtp_pass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"${settings.from_name || 'Associazione'}" <${settings.from_email || settings.smtp_user}>`,
+        to,
+        subject,
+        html,
+        attachments
+      });
+
+      // Cleanup uploaded attachments
+      attachments.forEach(a => {
+        if (fs.existsSync(a.path)) fs.unlinkSync(a.path);
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/emails/:uid/trash', async (req, res) => {
+    const { uid } = req.params;
+    const { folder = 'INBOX' } = req.query;
+
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      const settings = JSON.parse(emailSettingsRow.value);
+
+      const client = new ImapFlow({
+        host: settings.imap_host || 'imap.gmail.com',
+        port: parseInt(settings.imap_port) || 993,
+        secure: true,
+        auth: {
+          user: settings.imap_user,
+          pass: settings.imap_pass,
+        },
+        logger: false
+      });
+
+      await client.connect();
+      const lock = await client.getMailboxLock(folder as string);
+      try {
+        // Find Trash folder
+        const folders = await client.list();
+        const trashFolder = folders.find(f => f.specialUse === '\\Trash' || f.name.toLowerCase().includes('trash') || f.name.toLowerCase().includes('cestino'))?.path || '[Gmail]/Cestino';
+        
+        await client.messageMove(uid, trashFolder, { uid: true });
+        res.json({ success: true });
+      } finally {
+        lock.release();
+        await client.logout();
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Settings API
   app.get('/api/settings/:key', async (req, res) => {
     try {
@@ -821,7 +1077,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     fs.mkdirSync(publicDir, { recursive: true });
   }
 
-  const storage = multer.diskStorage({
+  const logoStorage = multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, 'public/');
     },
@@ -829,9 +1085,9 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       cb(null, 'logo.png');
     }
   });
-  const upload = multer({ storage });
+  const logoUpload = multer({ storage: logoStorage });
 
-  app.post('/api/upload-logo', upload.single('logo'), (req: any, res) => {
+  app.post('/api/upload-logo', logoUpload.single('logo'), (req: any, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'Nessun file caricato' });
     }

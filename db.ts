@@ -247,6 +247,10 @@ export async function getDb() {
       smtp_port: 587,
       smtp_user: '',
       smtp_pass: '',
+      imap_host: 'imap.gmail.com',
+      imap_port: 993,
+      imap_user: '',
+      imap_pass: '',
       from_email: '',
       from_name: ''
     };

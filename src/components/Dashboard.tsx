@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2 } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -137,6 +137,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const isMember = user?.role === 'Socio';
   
   const [activeTab, setActiveTab] = React.useState(isStaff ? (isSuperAdmin ? 'members' : 'appointments') : 'member-home');
+  
+  // Email Client State
+  const [emails, setEmails] = React.useState<any[]>([]);
+  const [folders, setFolders] = React.useState<string[]>([]);
+  const [selectedFolder, setSelectedFolder] = React.useState('INBOX');
+  const [selectedEmail, setSelectedEmail] = React.useState<any>(null);
+  const [isComposing, setIsComposing] = React.useState(false);
+  const [composeData, setComposeData] = React.useState<any>({ to: '', subject: '', body: '', attachments: [] });
+  const [emailSearchQuery, setEmailSearchQuery] = React.useState('');
+  const [emailPage, setEmailPage] = React.useState(1);
+  const [isLoadingEmails, setIsLoadingEmails] = React.useState(false);
+  const [emailTotalPages, setEmailTotalPages] = React.useState(1);
+  const [isReplying, setIsReplying] = React.useState(false);
+  const [isForwarding, setIsForwarding] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [members, setMembers] = React.useState([]);
   const [collections, setCollections] = React.useState([]);
@@ -475,6 +489,119 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleEmailFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setComposeData(prev => ({
+        ...prev,
+        attachments: [...prev.attachments, ...newFiles]
+      }));
+    }
+  };
+
+  const fetchEmailFolders = React.useCallback(async () => {
+    if (!isStaff) return;
+    try {
+      const res = await fetch('/api/emails/folders');
+      if (res.ok) {
+        const data = await res.json();
+        setFolders(data);
+      }
+    } catch (err) {
+      console.error('Error fetching folders:', err);
+    }
+  }, [isStaff]);
+
+  const fetchEmails = React.useCallback(async () => {
+    if (!isStaff) return;
+    setIsLoadingEmails(true);
+    try {
+      const params = new URLSearchParams({
+        folder: selectedFolder,
+        page: emailPage.toString(),
+        search: emailSearchQuery
+      });
+      const res = await fetch(`/api/emails?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmails(data.emails);
+        setEmailTotalPages(data.totalPages);
+      }
+    } catch (err) {
+      console.error('Error fetching emails:', err);
+    } finally {
+      setIsLoadingEmails(false);
+    }
+  }, [isStaff, selectedFolder, emailPage, emailSearchQuery]);
+
+  const fetchEmailDetail = async (uid: string) => {
+    try {
+      const res = await fetch(`/api/emails/${uid}?folder=${selectedFolder}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedEmail(data);
+      }
+    } catch (err) {
+      console.error('Error fetching email detail:', err);
+    }
+  };
+
+  const moveEmailToTrash = async (uid: string) => {
+    if (!confirm('Sei sicuro di voler spostare questa email nel cestino?')) return;
+    try {
+      const res = await fetch(`/api/emails/${uid}/trash`, { method: 'POST' });
+      if (res.ok) {
+        setSelectedEmail(null);
+        fetchEmails();
+      }
+    } catch (err) {
+      console.error('Error moving to trash:', err);
+    }
+  };
+
+  const sendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('to', composeData.to);
+    formData.append('subject', composeData.subject);
+    formData.append('body', composeData.body);
+    if (composeData.replyTo) formData.append('replyTo', composeData.replyTo);
+    if (composeData.inReplyTo) formData.append('inReplyTo', composeData.inReplyTo);
+    if (composeData.references) formData.append('references', JSON.stringify(composeData.references));
+    
+    if (composeData.attachments && composeData.attachments.length > 0) {
+      for (let i = 0; i < composeData.attachments.length; i++) {
+        formData.append('attachments', composeData.attachments[i]);
+      }
+    }
+
+    try {
+      const res = await fetch('/api/emails/send', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        setIsComposing(false);
+        setComposeData({ to: '', subject: '', body: '', attachments: [] });
+        alert('Email inviata con successo!');
+        if (selectedFolder === 'Sent') fetchEmails();
+      } else {
+        const err = await res.json();
+        alert('Errore nell\'invio: ' + err.error);
+      }
+    } catch (err) {
+      console.error('Error sending email:', err);
+      alert('Errore di rete nell\'invio.');
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'email') {
+      fetchEmailFolders();
+      fetchEmails();
+    }
+  }, [activeTab, fetchEmailFolders, fetchEmails]);
 
   const exportContestRegistrations = (contestId: number) => {
     const contest = contests.find(c => c.id === contestId);
@@ -1693,7 +1820,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
                 { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
-                { id: 'email', label: 'Email & Comunicazioni', icon: Mail, minRole: 'SuperAdmin' },
+                { id: 'email', label: 'Email & Comunicazioni', icon: Mail, minRole: 'Operator' },
                 { id: 'association', label: 'Associazione', icon: Building, minRole: 'SuperAdmin' },
                 { id: 'accounts', label: 'Account & Sicurezza', icon: Shield, minRole: 'SuperAdmin' },
               ].filter(tab => {
@@ -1784,6 +1911,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'association' && 'Dati Associazione'}
               {activeTab === 'accounts' && 'Gestione Account'}
               {activeTab === 'poll' && 'Gestione Sondaggi'}
+              {activeTab === 'email' && 'Email & Comunicazioni'}
               {activeTab === 'member-home' && `Benvenuto, ${user?.username}`}
               <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-2 py-1 rounded-full">v1.1.1</span>
             </h1>
@@ -3813,6 +3941,135 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
+            {isStaff && activeTab === 'email' && (
+              <div className="h-[calc(100vh-12rem)] flex flex-col bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+                {/* Email Header/Toolbar */}
+                <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
+                  <div className="flex items-center gap-4 flex-1 max-w-xl">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Cerca nelle email..." 
+                        value={emailSearchQuery}
+                        onChange={(e) => setEmailSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && fetchEmails()}
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => { setEmailPage(1); fetchEmails(); }}
+                      className="p-2 text-stone-500 hover:text-stone-900 bg-white border border-stone-200 rounded-xl transition-all"
+                      title="Aggiorna"
+                    >
+                      <RotateCcw className={`w-4 h-4 ${isLoadingEmails ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setComposeData({ to: '', subject: '', body: '', attachments: [] });
+                      setIsComposing(true);
+                    }}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Scrivi
+                  </button>
+                </div>
+
+                <div className="flex-1 flex overflow-hidden">
+                  {/* Folders Sidebar */}
+                  <div className="w-64 border-r border-stone-100 bg-stone-50/30 overflow-y-auto p-4 space-y-1 hidden md:block">
+                    {folders.map((folder) => (
+                      <button
+                        key={folder}
+                        onClick={() => { setSelectedFolder(folder); setEmailPage(1); }}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          selectedFolder === folder 
+                            ? 'bg-stone-900 text-white shadow-md' 
+                            : 'text-stone-600 hover:bg-stone-100'
+                        }`}
+                      >
+                        {folder.toLowerCase().includes('inbox') ? <Inbox className="w-4 h-4" /> :
+                         folder.toLowerCase().includes('sent') ? <Send className="w-4 h-4" /> :
+                         folder.toLowerCase().includes('trash') ? <Trash2 className="w-4 h-4" /> :
+                         folder.toLowerCase().includes('archive') ? <Archive className="w-4 h-4" /> :
+                         <Mail className="w-4 h-4" />}
+                        <span className="truncate">{folder}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Email List */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+                    {isLoadingEmails ? (
+                      <div className="h-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
+                      </div>
+                    ) : emails.length > 0 ? (
+                      <div className="divide-y divide-stone-50">
+                        {emails.map((email) => (
+                          <div 
+                            key={email.uid}
+                            onClick={() => fetchEmailDetail(email.uid)}
+                            className={`p-4 cursor-pointer transition-all hover:bg-stone-50 group border-l-4 ${
+                              email.flags?.includes('\\Seen') ? 'border-transparent' : 'border-stone-900 bg-stone-50/50'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <p className={`text-sm truncate flex-1 ${email.flags?.includes('\\Seen') ? 'text-stone-600' : 'font-bold text-stone-900'}`}>
+                                {email.from?.name || email.from?.address || 'Sconosciuto'}
+                              </p>
+                              <span className="text-[10px] text-stone-400 font-bold uppercase ml-2">
+                                {new Date(email.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                              </span>
+                            </div>
+                            <p className={`text-sm truncate ${email.flags?.includes('\\Seen') ? 'text-stone-500' : 'font-semibold text-stone-800'}`}>
+                              {email.subject || '(Nessun oggetto)'}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              {email.hasAttachments && <Paperclip className="w-3 h-3 text-stone-400" />}
+                              <p className="text-xs text-stone-400 line-clamp-1 flex-1">
+                                {email.preview || 'Nessuna anteprima disponibile'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-stone-400 p-8">
+                        <Mail className="w-12 h-12 mb-4 opacity-20" />
+                        <p>Nessuna email trovata in questa cartella.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pagination Footer */}
+                <div className="p-4 border-t border-stone-100 bg-stone-50/50 flex items-center justify-between">
+                  <p className="text-xs text-stone-500 font-medium">
+                    Pagina {emailPage} di {emailTotalPages}
+                  </p>
+                  <div className="flex gap-2">
+                    <button 
+                      disabled={emailPage === 1}
+                      onClick={() => setEmailPage(p => Math.max(1, p - 1))}
+                      className="p-2 rounded-lg border border-stone-200 bg-white disabled:opacity-50 hover:bg-stone-50 transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button 
+                      disabled={emailPage === emailTotalPages}
+                      onClick={() => setEmailPage(p => Math.min(emailTotalPages, p + 1))}
+                      className="p-2 rounded-lg border border-stone-200 bg-white disabled:opacity-50 hover:bg-stone-50 transition-all"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {isSuperAdmin && activeTab === 'association' && (
               <div className="space-y-8">
                 <div className="flex items-center justify-between">
@@ -4750,6 +5007,283 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             message={`Sei sicuro di voler eliminare l'operazione "${collectionToDelete.event_name}"? ${collectionToDelete.receipt_number ? `Questa azione ricalcolerà anche la numerazione delle ricevute per l'anno ${collectionToDelete.social_year}.` : ''}`}
             isDeleting={isDeleting}
           />
+        )}
+
+        {/* Email Detail Modal */}
+        {selectedEmail && (
+          <motion.div 
+            key="email-detail-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          >
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedEmail(null)} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-4xl h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setSelectedEmail(null)}
+                    className="p-2 hover:bg-white rounded-full transition-all text-stone-400 hover:text-stone-900 shadow-sm border border-transparent hover:border-stone-100"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <div>
+                    <h3 className="text-xl font-serif text-stone-900 line-clamp-1">{selectedEmail.subject || '(Nessun oggetto)'}</h3>
+                    <p className="text-xs text-stone-400 font-bold uppercase tracking-widest">Dettaglio Email</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      setComposeData({
+                        to: selectedEmail.from.address,
+                        subject: `Re: ${selectedEmail.subject}`,
+                        body: `\n\n--- Messaggio Originale ---\nDa: ${selectedEmail.from.address}\nData: ${new Date(selectedEmail.date).toLocaleString()}\nOggetto: ${selectedEmail.subject}\n\n${selectedEmail.text || ''}`,
+                        attachments: []
+                      });
+                      setIsReplying(true);
+                      setIsComposing(true);
+                    }}
+                    className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-600"
+                    title="Rispondi"
+                  >
+                    <Reply className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setComposeData({
+                        to: '',
+                        subject: `Fwd: ${selectedEmail.subject}`,
+                        body: `\n\n--- Messaggio Inoltrato ---\nDa: ${selectedEmail.from.address}\nData: ${new Date(selectedEmail.date).toLocaleString()}\nOggetto: ${selectedEmail.subject}\n\n${selectedEmail.text || ''}`,
+                        attachments: []
+                      });
+                      setIsForwarding(true);
+                      setIsComposing(true);
+                    }}
+                    className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-600"
+                    title="Inoltra"
+                  >
+                    <Forward className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => moveEmailToTrash(selectedEmail.uid)}
+                    className="p-2 hover:bg-red-50 rounded-xl transition-all text-stone-400 hover:text-red-600"
+                    title="Sposta nel cestino"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setSelectedEmail(null)}
+                    className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-400 hover:text-stone-900"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <div className="flex items-start justify-between mb-8 pb-8 border-b border-stone-100">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-stone-900 rounded-2xl flex items-center justify-center text-white font-bold text-xl">
+                      {(selectedEmail.from.name || selectedEmail.from.address || '?')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-bold text-stone-900">{selectedEmail.from.name || selectedEmail.from.address}</p>
+                      <p className="text-sm text-stone-400">{selectedEmail.from.address}</p>
+                      <p className="text-xs text-stone-400 mt-1">A: {selectedEmail.to.map((t: any) => t.address).join(', ')}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-stone-900">
+                      {new Date(selectedEmail.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    </p>
+                    <p className="text-xs text-stone-400">
+                      {new Date(selectedEmail.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Email Content */}
+                <div className="prose prose-stone max-w-none mb-8">
+                  {selectedEmail.html ? (
+                    <div dangerouslySetInnerHTML={{ __html: selectedEmail.html }} />
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-sans text-stone-700 leading-relaxed">
+                      {selectedEmail.text}
+                    </pre>
+                  )}
+                </div>
+
+                {/* Attachments Section */}
+                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                  <div className="mt-8 pt-8 border-t border-stone-100">
+                    <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Paperclip className="w-3 h-3" />
+                      Allegati ({selectedEmail.attachments.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {selectedEmail.attachments.map((att: any, idx: number) => (
+                        <div 
+                          key={idx}
+                          className="p-3 bg-stone-50 rounded-2xl border border-stone-100 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 bg-stone-200 rounded-lg flex items-center justify-center text-stone-500">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-stone-900 truncate">{att.filename}</p>
+                              <p className="text-[10px] text-stone-400">{(att.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                          </div>
+                          <a 
+                            href={`/api/emails/attachment/${selectedEmail.uid}/${att.partId}?filename=${encodeURIComponent(att.filename)}`}
+                            download={att.filename}
+                            className="p-2 text-stone-400 hover:text-stone-900 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Compose Email Modal */}
+        {isComposing && (
+          <motion.div 
+            key="compose-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[130] flex items-center justify-center p-4"
+          >
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsComposing(false)} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-3xl h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center text-white">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-serif text-stone-900">
+                      {isReplying ? 'Rispondi' : isForwarding ? 'Inoltra' : 'Nuovo Messaggio'}
+                    </h3>
+                    <p className="text-xs text-stone-400 font-bold uppercase tracking-widest">Componi Email</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsComposing(false)}
+                  className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-400 hover:text-stone-900"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 border-b border-stone-100 pb-2">
+                    <span className="text-sm font-bold text-stone-400 w-12">A:</span>
+                    <input 
+                      type="text"
+                      value={composeData.to}
+                      onChange={(e) => setComposeData({ ...composeData, to: e.target.value })}
+                      placeholder="Indirizzo email destinatario"
+                      className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-stone-900"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4 border-b border-stone-100 pb-2">
+                    <span className="text-sm font-bold text-stone-400 w-12">Oggetto:</span>
+                    <input 
+                      type="text"
+                      value={composeData.subject}
+                      onChange={(e) => setComposeData({ ...composeData, subject: e.target.value })}
+                      placeholder="Oggetto del messaggio"
+                      className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-stone-900"
+                    />
+                  </div>
+                </div>
+
+                <textarea 
+                  value={composeData.body}
+                  onChange={(e) => setComposeData({ ...composeData, body: e.target.value })}
+                  placeholder="Scrivi qui il tuo messaggio..."
+                  className="w-full h-64 bg-stone-50 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all resize-none border border-stone-100"
+                />
+
+                {/* Attachments List */}
+                {composeData.attachments.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Allegati ({composeData.attachments.length})</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {composeData.attachments.map((file, idx) => (
+                        <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-stone-100 rounded-lg text-xs font-medium text-stone-700 border border-stone-200">
+                          <Paperclip className="w-3 h-3" />
+                          <span className="truncate max-w-[150px]">{file.name}</span>
+                          <button 
+                            onClick={() => setComposeData({
+                              ...composeData,
+                              attachments: composeData.attachments.filter((_, i) => i !== idx)
+                            })}
+                            className="hover:text-red-600 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-stone-100 bg-stone-50/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <label className="p-2 hover:bg-stone-200 rounded-xl transition-all text-stone-600 cursor-pointer" title="Allega file">
+                    <Paperclip className="w-5 h-5" />
+                    <input 
+                      type="file" 
+                      multiple 
+                      className="hidden" 
+                      onChange={handleEmailFileChange}
+                    />
+                  </label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsComposing(false)}
+                    className="px-6 py-2.5 text-stone-600 font-bold hover:bg-stone-100 rounded-xl transition-all"
+                  >
+                    Annulla
+                  </button>
+                  <button 
+                    onClick={sendEmail}
+                    disabled={isLoadingEmails}
+                    className="flex items-center gap-2 px-8 py-2.5 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 disabled:opacity-50"
+                  >
+                    {isLoadingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Invia
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {contestToDelete && (
