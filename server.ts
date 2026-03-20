@@ -50,6 +50,26 @@ async function startServer() {
   app.use(express.json());
 
   // Sponsors API
+  const uploadSponsor = multer({ storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'sponsors');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'sponsor-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  }) });
+
+  app.post('/api/sponsors/upload', uploadSponsor.single('image'), (req: any, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const url = `/uploads/sponsors/${req.file.filename}`;
+    res.json({ path: url });
+  });
+
   app.get('/api/sponsors', async (req, res) => {
     try {
       const sponsors = await db.all('SELECT * FROM sponsors ORDER BY id DESC');
@@ -712,10 +732,14 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         host: settings.smtp_host || 'smtp.gmail.com',
         port: parseInt(settings.smtp_port) || 587,
         secure: parseInt(settings.smtp_port) === 465,
+        requireTLS: parseInt(settings.smtp_port) === 587,
         auth: {
           user: settings.smtp_user,
           pass: settings.smtp_pass,
         },
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       const info = await transporter.sendMail({
@@ -730,7 +754,11 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       res.json({ success: true, messageId: info.messageId });
     } catch (error: any) {
       console.error('Error sending email:', error);
-      res.status(500).json({ error: 'Failed to send email', details: error.message });
+      let errorMessage = error.message;
+      if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
+        errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, devi usare una "Password per le App" (16 caratteri) se la verifica in due passaggi è attiva.';
+      }
+      res.status(500).json({ error: 'Failed to send email', details: errorMessage });
     }
   });
 
@@ -837,15 +865,23 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   const getPop3Client = (settings: any) => {
     const popUser = settings.pop_user || settings.smtp_user;
     const popPass = settings.pop_pass || settings.smtp_pass;
+    const port = parseInt(settings.pop_port) || 995;
+    
+    // For POP3, SSL/TLS is standard on port 995.
+    // If port is 995, we force TLS.
+    const useTls = settings.pop_tls !== undefined ? settings.pop_tls : (port === 995);
     
     return new Pop3Command({
       user: popUser,
       password: popPass,
       host: settings.pop_host || 'pop.gmail.com',
-      port: parseInt(settings.pop_port) || 995,
-      tls: true,
+      port: port,
+      tls: useTls,
       timeout: 10000,
-      servername: settings.pop_host || 'pop.gmail.com'
+      servername: settings.pop_host || 'pop.gmail.com',
+      tlsOptions: {
+        rejectUnauthorized: false
+      }
     });
   };
 
@@ -856,34 +892,41 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
 
     try {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
-      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
       const settings = JSON.parse(emailSettingsRow.value);
-
+      const port = parseInt(settings.pop_port) || 995;
       const client = getPop3Client(settings);
 
       try {
+        console.log(`Connecting to POP3 server: ${settings.pop_host}:${port} (TLS: ${settings.pop_tls !== undefined ? settings.pop_tls : (port === 995)})`);
         await client.connect();
         
-        const list = await client.LIST();
-        const totalMessages = list.length;
+        // Use STAT to get count quickly
+        const stat = await client.STAT();
+        console.log('POP3 STAT response:', stat);
+        // STAT returns "+OK <count> <size>"
+        const parts = stat.split(' ');
+        const totalMessages = parseInt(parts[1] || '0');
+        console.log(`Total messages in POP3 inbox: ${totalMessages}`);
         
         const messages = [];
-        // POP3 list is 1-indexed. We want newest first, so we'll go from totalMessages down to 1.
-        const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
+        // POP3 list is 1-indexed. We want newest first.
         const endIdx = Math.max(1, totalMessages - skip);
+        const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
 
-        if (totalMessages > 0) {
+        if (totalMessages > 0 && endIdx >= startIdx) {
           for (let i = endIdx; i >= startIdx; i--) {
             try {
-              const raw = await client.TOP(i, 0); // 0 lines of body, just headers
+              // Fetch only headers to be fast
+              const raw = await client.TOP(i, 0);
               const parsed = await simpleParser(raw);
               messages.push({
-                uid: i.toString(), // Use index as UID for simplicity in POP3
+                uid: i.toString(),
                 seq: i,
-                from: parsed.from?.value[0] || { name: 'Unknown', address: 'unknown' },
+                from: parsed.from?.value[0] || { name: 'Sconosciuto', address: 'unknown' },
                 subject: parsed.subject || '(Nessun oggetto)',
                 date: parsed.date || new Date(),
-                flags: [], // POP3 doesn't have flags like IMAP
+                flags: [],
                 hasAttachments: (parsed.attachments && parsed.attachments.length > 0)
               });
             } catch (err) {
@@ -902,11 +945,15 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
           pageSize
         });
       } finally {
-        await client.QUIT();
+        try {
+          await client.QUIT();
+        } catch (e) {
+          // Ignore quit errors
+        }
       }
     } catch (error: any) {
       console.error('POP3 Error details:', error);
-      res.status(500).json({ error: `Errore POP3: ${error.message}. Verifica le credenziali e che l'accesso POP3 sia attivo su Gmail.` });
+      res.status(500).json({ error: `Errore POP3: ${error.message}. Verifica le credenziali e che il server POP3 sia raggiungibile.` });
     }
   });
 
@@ -917,18 +964,56 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       
       const client = getPop3Client(settings);
 
+      console.log(`Testing POP3 connection to ${settings.pop_host}:${parseInt(settings.pop_port) || 995}`);
       await client.connect();
       await client.QUIT();
       res.json({ success: true, message: 'Connessione POP3 riuscita!' });
     } catch (error: any) {
       console.error('POP3 Test Error:', error);
-      res.status(500).json({ error: `Errore di connessione POP3: ${error.message}` });
+      let errorMessage = error.message;
+      if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
+        errorMessage = 'Credenziali POP3 non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). La tua password normale non funzionerà anche se la verifica in due passaggi è disattivata.';
+      }
+      res.status(500).json({ error: `Errore POP3: ${errorMessage}` });
+    }
+  });
+
+  app.post('/api/emails/test-smtp', async (req, res) => {
+    try {
+      const settings = req.body;
+      if (!settings) return res.status(400).json({ error: 'Settings are required' });
+      
+      const nodemailer = await import('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: settings.smtp_host || 'smtp.gmail.com',
+        port: parseInt(settings.smtp_port) || 587,
+        secure: parseInt(settings.smtp_port) === 465,
+        requireTLS: parseInt(settings.smtp_port) === 587,
+        auth: {
+          user: settings.smtp_user,
+          pass: settings.smtp_pass,
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+
+      console.log(`Testing SMTP connection to ${settings.smtp_host}:${parseInt(settings.smtp_port) || 587}`);
+      await transporter.verify();
+      res.json({ success: true, message: 'Connessione SMTP riuscita!' });
+    } catch (error: any) {
+      console.error('SMTP Test Error:', error);
+      let errorMessage = error.message;
+      if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
+        errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Google blocca la tua password normale per motivi di sicurezza.';
+      }
+      res.status(500).json({ error: `Errore SMTP: ${errorMessage}` });
     }
   });
 
   app.get('/api/emails/folders', async (req, res) => {
     // POP3 only has INBOX
-    res.json([{ name: 'INBOX', path: 'INBOX' }]);
+    res.json(['INBOX']);
   });
 
   app.get('/api/emails/:uid', async (req, res) => {
@@ -1012,7 +1097,11 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
 
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      let errorMessage = error.message;
+      if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
+        errorMessage = 'Credenziali non accettate da Gmail. Assicurati di usare una "Password per le App" (16 caratteri) e non la tua password normale.';
+      }
+      res.status(500).json({ error: errorMessage });
     }
   });
 

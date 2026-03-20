@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -209,13 +209,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const [emailSettings, setEmailSettings] = React.useState<any>({
     smtp_host: 'smtp.gmail.com',
-    smtp_port: '587',
+    smtp_port: '465',
     smtp_user: '',
     smtp_pass: '',
     pop_host: 'pop.gmail.com',
     pop_port: '995',
     pop_user: '',
     pop_pass: '',
+    pop_tls: true,
     protocol: 'pop3',
     from_email: '',
     from_name: ''
@@ -312,6 +313,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [sponsors, setSponsors] = React.useState([]);
   const [editingSponsor, setEditingSponsor] = React.useState<any>(null);
   const [sponsorToDelete, setSponsorToDelete] = React.useState<any>(null);
+  const [sponsorImageFile, setSponsorImageFile] = React.useState<File | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [editingContest, setEditingContest] = React.useState<any>(null);
   const [showRegistrationDetails, setShowRegistrationDetails] = React.useState<any>(null);
@@ -392,16 +394,35 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const addSponsor = async (newSponsor: any) => {
     try {
+      let imagePath = newSponsor.image;
+      
+      if (sponsorImageFile) {
+        const formData = new FormData();
+        formData.append('image', sponsorImageFile);
+        const uploadRes = await fetch('/api/sponsors/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imagePath = uploadData.path;
+        } else {
+          throw new Error('Errore durante il caricamento dell\'immagine');
+        }
+      }
+
+      const sponsorData = { ...newSponsor, image: imagePath };
       const method = newSponsor.id ? 'PUT' : 'POST';
       const url = newSponsor.id ? `/api/sponsors/${newSponsor.id}` : '/api/sponsors';
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSponsor)
+        body: JSON.stringify(sponsorData)
       });
       
       if (response.ok) {
         setEditingSponsor(null);
+        setSponsorImageFile(null);
         setNotification({ message: newSponsor.id ? 'Sponsor aggiornato con successo!' : 'Sponsor creato con successo!', type: 'success' });
         await fetchData();
       } else {
@@ -409,7 +430,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         setNotification({ message: 'Errore dal server: ' + (errorData.error || 'Errore sconosciuto'), type: 'error' });
       }
     } catch (error) {
-      setNotification({ message: 'Errore di connessione', type: 'error' });
+      console.error('Error adding sponsor:', error);
+      setNotification({ message: error instanceof Error ? error.message : 'Errore di connessione', type: 'error' });
     }
   };
 
@@ -429,27 +451,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
-  const handleSponsorImageUpload = async (sponsorId: number, file: File) => {
-    const formData = new FormData();
-    formData.append('image', file);
-
-    try {
-      const response = await fetch(`/api/sponsors/${sponsorId}/upload`, {
-        method: 'POST',
-        body: formData
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setNotification({ message: 'Immagine caricata con successo!', type: 'success' });
-        fetchData();
-        return data.path;
-      }
-    } catch (error) {
-      console.error('Error uploading sponsor image:', error);
-      setNotification({ message: 'Errore durante il caricamento dell\'immagine.', type: 'error' });
-    }
-    return null;
-  };
   const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState<any>(null);
 
   const [minutes, setMinutes] = React.useState([]);
@@ -3116,10 +3117,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       <div className="space-y-6">
                         <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
                           <p className="text-sm text-amber-800 leading-relaxed">
-                            <strong>Importante per Gmail:</strong> Per scaricare e inviare email è <strong>obbligatorio</strong> utilizzare una <strong>Password per le App</strong>. 
-                            La tua password normale di Google non funzionerà. 
-                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="ml-1 underline font-bold hover:text-amber-900">Generala qui</a>.
-                            Assicurati inoltre che l'accesso <strong>POP3</strong> sia abilitato nelle impostazioni di Gmail.
+                            <strong className="text-amber-900">Importante per Gmail:</strong> Google ha rimosso il supporto alle "App meno sicure". 
+                            Dallo screenshot vedo che la tua <strong>Verifica in due passaggi è disattivata</strong>: per far funzionare l'email, <strong>DEVI attivarla</strong> e poi generare una <strong>Password per le App</strong> (16 caratteri). 
+                            <br />
+                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block underline font-bold hover:text-amber-900">Attiva la 2FA e genera qui la Password per le App &rarr;</a>
                           </p>
                         </div>
 
@@ -3134,12 +3135,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta SMTP</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta SMTP (SSL)</label>
                         <input 
                           value={emailSettings.smtp_port}
                           onChange={(e) => setEmailSettings({ ...emailSettings, smtp_port: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                          placeholder="587"
+                          placeholder="465"
                         />
                       </div>
                       <div className="space-y-2">
@@ -3152,31 +3153,43 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta POP3</label>
-                        <input 
-                          value={emailSettings.pop_port}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, pop_port: e.target.value })}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                          placeholder="995"
-                        />
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta POP3 (SSL)</label>
+                        <div className="flex gap-2">
+                          <input 
+                            value={emailSettings.pop_port}
+                            onChange={(e) => setEmailSettings({ ...emailSettings, pop_port: e.target.value, pop_tls: e.target.value === '995' })}
+                            className="flex-1 px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                            placeholder="995"
+                          />
+                          <button
+                            onClick={() => setEmailSettings({ ...emailSettings, pop_tls: !emailSettings.pop_tls })}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                              emailSettings.pop_tls 
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                : 'bg-stone-50 border-stone-200 text-stone-500'
+                            }`}
+                          >
+                            {emailSettings.pop_tls ? 'SSL ON' : 'SSL OFF'}
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username Gmail (SMTP/POP3)</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username (Email)</label>
                         <input 
                           value={emailSettings.smtp_user}
                           onChange={(e) => setEmailSettings({ ...emailSettings, smtp_user: e.target.value, pop_user: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                          placeholder="tuaemail@gmail.com"
+                          placeholder="tuaemail@esempio.it"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Password per le App (SMTP/POP3)</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Password</label>
                         <input 
                           type="password"
                           value={emailSettings.smtp_pass}
                           onChange={(e) => setEmailSettings({ ...emailSettings, smtp_pass: e.target.value, pop_pass: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                          placeholder="•••• •••• •••• ••••"
+                          placeholder="••••••••••••"
                         />
                       </div>
                       <div className="space-y-2">
@@ -3198,7 +3211,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                     </div>
-                    <div className="flex gap-4 pt-4">
+                    <div className="flex flex-wrap gap-4 pt-4">
                       <button 
                         onClick={async () => {
                           try {
@@ -3241,10 +3254,37 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             setIsTestingConnection(false);
                           }
                         }}
-                        className="flex items-center gap-2 px-6 py-3 bg-white border border-stone-200 text-stone-900 rounded-xl text-sm font-bold hover:bg-stone-50 transition-all"
+                        className="flex items-center gap-2 px-6 py-3 bg-white border border-stone-200 text-stone-900 rounded-xl text-sm font-bold hover:bg-stone-50 transition-all disabled:opacity-50"
                       >
-                        {isTestingConnection ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                        Testa Connessione POP3
+                        {isTestingConnection ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        Testa POP3
+                      </button>
+                      <button 
+                        disabled={isTestingConnection}
+                        onClick={async () => {
+                          setIsTestingConnection(true);
+                          try {
+                            const response = await fetch('/api/emails/test-smtp', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(emailSettings)
+                            });
+                            const data = await response.json();
+                            if (response.ok) {
+                              setNotification({ message: data.message, type: 'success' });
+                            } else {
+                              setNotification({ message: data.error, type: 'error' });
+                            }
+                          } catch (error) {
+                            setNotification({ message: 'Errore di connessione SMTP', type: 'error' });
+                          } finally {
+                            setIsTestingConnection(false);
+                          }
+                        }}
+                        className="flex items-center gap-2 px-6 py-3 bg-white border border-stone-200 text-stone-900 rounded-xl text-sm font-bold hover:bg-stone-50 transition-all disabled:opacity-50"
+                      >
+                        {isTestingConnection ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        Testa SMTP
                       </button>
                     </div>
                   </div>
@@ -4218,7 +4258,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <p className="text-stone-500 mt-1">Gestisci gli sponsor da visualizzare sulla homepage.</p>
                   </div>
                   <button 
-                    onClick={() => setEditingSponsor({ name: '', image: '', startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], active: 1 })}
+                    onClick={() => {
+                      setEditingSponsor({ name: '', image: '', startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], active: 1 });
+                      setSponsorImageFile(null);
+                    }}
                     className="flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
                   >
                     <Plus className="w-5 h-5" />
@@ -4239,7 +4282,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                           <button 
-                            onClick={() => setEditingSponsor(sponsor)}
+                            onClick={() => {
+                              setEditingSponsor(sponsor);
+                              setSponsorImageFile(null);
+                            }}
                             className="p-3 bg-white text-stone-900 rounded-xl hover:scale-110 transition-transform"
                           >
                             <Edit2 className="w-5 h-5" />
@@ -5929,9 +5975,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Immagine Sponsor</label>
                   <div className="flex flex-col gap-4">
-                    {editingSponsor.image && (
+                    { (editingSponsor.image || sponsorImageFile) && (
                       <div className="aspect-video rounded-2xl overflow-hidden border border-stone-200">
-                        <img src={editingSponsor.image} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img 
+                          src={sponsorImageFile ? URL.createObjectURL(sponsorImageFile) : editingSponsor.image} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer" 
+                        />
                       </div>
                     )}
                     <div className="flex gap-2">
@@ -5940,13 +5991,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         id="sponsor-image-upload" 
                         className="hidden" 
                         accept="image/*"
-                        onChange={async (e) => {
+                        onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file && editingSponsor.id) {
-                            const path = await handleSponsorImageUpload(editingSponsor.id, file);
-                            if (path) setEditingSponsor({ ...editingSponsor, image: path });
-                          } else if (file) {
-                            setNotification({ message: 'Salva lo sponsor prima di caricare l\'immagine', type: 'error' });
+                          if (file) {
+                            setSponsorImageFile(file);
                           }
                         }}
                       />
