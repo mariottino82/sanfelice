@@ -212,10 +212,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     smtp_port: '587',
     smtp_user: '',
     smtp_pass: '',
-    imap_host: 'imap.gmail.com',
-    imap_port: '993',
-    imap_user: '',
-    imap_pass: '',
+    pop_host: 'pop.gmail.com',
+    pop_port: '995',
+    pop_user: '',
+    pop_pass: '',
+    protocol: 'pop3',
     from_email: '',
     from_name: ''
   });
@@ -3104,7 +3105,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-serif text-stone-900 flex items-center gap-2">
                           <Mail className="w-5 h-5" />
-                          Configurazione Email (SMTP & IMAP Gmail)
+                          Configurazione Email (SMTP & POP3 Gmail)
                         </h3>
                         <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-amber-100">
                           <AlertCircle className="w-3 h-3" />
@@ -3118,6 +3119,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <strong>Importante per Gmail:</strong> Per scaricare e inviare email è <strong>obbligatorio</strong> utilizzare una <strong>Password per le App</strong>. 
                             La tua password normale di Google non funzionerà. 
                             <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="ml-1 underline font-bold hover:text-amber-900">Generala qui</a>.
+                            Assicurati inoltre che l'accesso <strong>POP3</strong> sia abilitato nelle impostazioni di Gmail.
                           </p>
                         </div>
 
@@ -3141,38 +3143,38 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server IMAP</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server POP3</label>
                         <input 
-                          value={emailSettings.imap_host}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, imap_host: e.target.value })}
+                          value={emailSettings.pop_host}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, pop_host: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                          placeholder="imap.gmail.com"
+                          placeholder="pop.gmail.com"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta IMAP</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta POP3</label>
                         <input 
-                          value={emailSettings.imap_port}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, imap_port: e.target.value })}
+                          value={emailSettings.pop_port}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, pop_port: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                          placeholder="993"
+                          placeholder="995"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username Gmail (SMTP/IMAP)</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username Gmail (SMTP/POP3)</label>
                         <input 
                           value={emailSettings.smtp_user}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_user: e.target.value, imap_user: e.target.value })}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_user: e.target.value, pop_user: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
                           placeholder="tuaemail@gmail.com"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Password per le App (SMTP/IMAP)</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Password per le App (SMTP/POP3)</label>
                         <input 
                           type="password"
                           value={emailSettings.smtp_pass}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_pass: e.target.value, imap_pass: e.target.value })}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_pass: e.target.value, pop_pass: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
                           placeholder="•••• •••• •••• ••••"
                         />
@@ -3222,7 +3224,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         onClick={async () => {
                           setIsTestingConnection(true);
                           try {
-                            const response = await fetch('/api/emails/test');
+                            const response = await fetch('/api/emails/test', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(emailSettings)
+                            });
                             const data = await response.json();
                             if (response.ok) {
                               setNotification({ message: data.message, type: 'success' });
@@ -3238,7 +3244,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         className="flex items-center gap-2 px-6 py-3 bg-white border border-stone-200 text-stone-900 rounded-xl text-sm font-bold hover:bg-stone-50 transition-all"
                       >
                         {isTestingConnection ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                        Testa Connessione IMAP
+                        Testa Connessione POP3
                       </button>
                     </div>
                   </div>

@@ -6,6 +6,7 @@ import fs from 'fs';
 import multer from 'multer';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import Pop3Command from 'node-pop3';
 import { getDb } from './db';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -832,6 +833,22 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   });
 
   // Email Client API
+  // Helper to get POP3 client from settings
+  const getPop3Client = (settings: any) => {
+    const popUser = settings.pop_user || settings.smtp_user;
+    const popPass = settings.pop_pass || settings.smtp_pass;
+    
+    return new Pop3Command({
+      user: popUser,
+      password: popPass,
+      host: settings.pop_host || 'pop.gmail.com',
+      port: parseInt(settings.pop_port) || 995,
+      tls: true,
+      timeout: 10000,
+      servername: settings.pop_host || 'pop.gmail.com'
+    });
+  };
+
   app.get('/api/emails', async (req, res) => {
     const { folder = 'INBOX', page = '1', search = '' } = req.query;
     const pageSize = 20;
@@ -842,61 +859,38 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
       const settings = JSON.parse(emailSettingsRow.value);
 
-      const imapUser = settings.imap_user || settings.smtp_user;
-      const imapPass = settings.imap_pass || settings.smtp_pass;
+      const client = getPop3Client(settings);
 
-      if (!imapUser || !imapPass) {
-        return res.status(400).json({ error: 'IMAP credentials missing' });
-      }
-
-      const client = new ImapFlow({
-        host: settings.imap_host || 'imap.gmail.com',
-        port: parseInt(settings.imap_port) || 993,
-        secure: parseInt(settings.imap_port) === 993,
-        auth: {
-          user: imapUser,
-          pass: imapPass,
-        },
-        logger: false,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await client.connect();
-      
-      // Select the mailbox first to ensure it exists and get status
-      const mailbox = await client.mailboxOpen(folder as string);
-      if (!mailbox) {
-        throw new Error(`Cartella "${folder}" non trovata.`);
-      }
-
-      const lock = await client.getMailboxLock(folder as string);
       try {
-        const totalMessages = mailbox.exists || 0;
+        await client.connect();
+        
+        const list = await client.LIST();
+        const totalMessages = list.length;
         
         const messages = [];
-        // imapflow fetch uses sequence numbers or UIDs.
-        // We'll fetch by sequence number from newest to oldest.
-        const start = Math.max(1, totalMessages - skip - pageSize + 1);
-        const end = Math.max(1, totalMessages - skip);
+        // POP3 list is 1-indexed. We want newest first, so we'll go from totalMessages down to 1.
+        const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
+        const endIdx = Math.max(1, totalMessages - skip);
 
         if (totalMessages > 0) {
-          for await (let msg of client.fetch(`${start}:${end}`, { envelope: true, flags: true, internalDate: true, uid: true })) {
-            messages.push({
-              uid: msg.uid,
-              seq: msg.seq,
-              from: msg.envelope.from[0],
-              subject: msg.envelope.subject,
-              date: msg.envelope.date || msg.internalDate,
-              flags: Array.from(msg.flags || []),
-              hasAttachments: false
-            });
+          for (let i = endIdx; i >= startIdx; i--) {
+            try {
+              const raw = await client.TOP(i, 0); // 0 lines of body, just headers
+              const parsed = await simpleParser(raw);
+              messages.push({
+                uid: i.toString(), // Use index as UID for simplicity in POP3
+                seq: i,
+                from: parsed.from?.value[0] || { name: 'Unknown', address: 'unknown' },
+                subject: parsed.subject || '(Nessun oggetto)',
+                date: parsed.date || new Date(),
+                flags: [], // POP3 doesn't have flags like IMAP
+                hasAttachments: (parsed.attachments && parsed.attachments.length > 0)
+              });
+            } catch (err) {
+              console.error(`Error fetching message ${i}:`, err);
+            }
           }
         }
-
-        // Sort by date descending (newest first)
-        messages.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         const totalPages = Math.ceil(totalMessages / pageSize);
 
@@ -908,141 +902,76 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
           pageSize
         });
       } finally {
-        if (lock) lock.release();
-        await client.logout();
+        await client.QUIT();
       }
     } catch (error: any) {
-      console.error('IMAP Error details:', {
-        message: error.message,
-        stack: error.stack,
-        code: error.code,
-        response: error.response
-      });
-      res.status(500).json({ error: `Errore IMAP: ${error.message}. Verifica le credenziali e che l'accesso IMAP sia attivo su Gmail.` });
+      console.error('POP3 Error details:', error);
+      res.status(500).json({ error: `Errore POP3: ${error.message}. Verifica le credenziali e che l'accesso POP3 sia attivo su Gmail.` });
     }
   });
 
-  app.get('/api/emails/test', async (req, res) => {
+  app.post('/api/emails/test', async (req, res) => {
     try {
-      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
-      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
-      const settings = JSON.parse(emailSettingsRow.value);
-      const imapUser = settings.imap_user || settings.smtp_user;
-      const imapPass = settings.imap_pass || settings.smtp_pass;
-
-      const client = new ImapFlow({
-        host: settings.imap_host || 'imap.gmail.com',
-        port: parseInt(settings.imap_port) || 993,
-        secure: parseInt(settings.imap_port) === 993,
-        auth: {
-          user: imapUser,
-          pass: imapPass,
-        },
-        logger: false,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
+      const settings = req.body;
+      if (!settings) return res.status(400).json({ error: 'Settings are required' });
+      
+      const client = getPop3Client(settings);
 
       await client.connect();
-      await client.logout();
-      res.json({ success: true, message: 'Connessione IMAP riuscita!' });
+      await client.QUIT();
+      res.json({ success: true, message: 'Connessione POP3 riuscita!' });
     } catch (error: any) {
-      res.status(500).json({ error: `Errore di connessione IMAP: ${error.message}` });
+      console.error('POP3 Test Error:', error);
+      res.status(500).json({ error: `Errore di connessione POP3: ${error.message}` });
     }
   });
 
   app.get('/api/emails/folders', async (req, res) => {
-    try {
-      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
-      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
-      const settings = JSON.parse(emailSettingsRow.value);
-      const imapUser = settings.imap_user || settings.smtp_user;
-      const imapPass = settings.imap_pass || settings.smtp_pass;
-
-      const client = new ImapFlow({
-        host: settings.imap_host || 'imap.gmail.com',
-        port: parseInt(settings.imap_port) || 993,
-        secure: parseInt(settings.imap_port) === 993,
-        auth: {
-          user: imapUser,
-          pass: imapPass,
-        },
-        logger: false,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await client.connect();
-      const folders = await client.list();
-      await client.logout();
-      res.json(folders.map(f => ({ path: f.path, name: f.name, delimiter: f.delimiter })));
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    // POP3 only has INBOX
+    res.json([{ name: 'INBOX', path: 'INBOX' }]);
   });
 
   app.get('/api/emails/:uid', async (req, res) => {
     const { uid } = req.params;
-    const { folder = 'INBOX' } = req.query;
-
     try {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
       const settings = JSON.parse(emailSettingsRow.value);
-      const imapUser = settings.imap_user || settings.smtp_user;
-      const imapPass = settings.imap_pass || settings.smtp_pass;
+      
+      const client = getPop3Client(settings);
 
-      const client = new ImapFlow({
-        host: settings.imap_host || 'imap.gmail.com',
-        port: parseInt(settings.imap_port) || 993,
-        secure: parseInt(settings.imap_port) === 993,
-        auth: {
-          user: imapUser,
-          pass: imapPass,
-        },
-        logger: false,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await client.connect();
-      const lock = await client.getMailboxLock(folder as string);
       try {
-        const msg = await client.fetchOne(uid, { source: true }, { uid: true });
-        if (!msg) return res.status(404).json({ error: 'Email not found' });
-
-        const parsed = await simpleParser(msg.source);
+        await client.connect();
+        const index = parseInt(uid);
+        const raw = await client.RETR(index);
+        const parsed = await simpleParser(raw);
         
         const getAddressText = (addr: any) => {
           if (!addr) return '';
-          if (Array.isArray(addr)) return addr.map(a => a.text).join(', ');
+          if (Array.isArray(addr)) return addr.map((a: any) => a.text).join(', ');
           return addr.text || '';
         };
 
         res.json({
-          uid: msg.uid,
+          uid,
           from: getAddressText(parsed.from),
           to: getAddressText(parsed.to),
           subject: parsed.subject,
           date: parsed.date,
           html: parsed.html || parsed.textAsHtml,
           text: parsed.text,
-          attachments: parsed.attachments.map(a => ({
-            filename: a.filename,
-            contentType: a.contentType,
-            size: a.size,
-            contentId: a.contentId,
-            partId: (a as any).partId || (a as any).checksum // Use checksum or partId if available
+          attachments: parsed.attachments?.map(att => ({
+            filename: att.filename,
+            contentType: att.contentType,
+            size: att.size
           }))
         });
       } finally {
-        lock.release();
-        await client.logout();
+        await client.QUIT();
       }
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('POP3 Fetch Error:', error);
+      res.status(500).json({ error: `Errore recupero email POP3: ${error.message}` });
     }
   });
 
@@ -1089,40 +1018,20 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
 
   app.post('/api/emails/:uid/trash', async (req, res) => {
     const { uid } = req.params;
-    const { folder = 'INBOX' } = req.query;
 
     try {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
       const settings = JSON.parse(emailSettingsRow.value);
-      const imapUser = settings.imap_user || settings.smtp_user;
-      const imapPass = settings.imap_pass || settings.smtp_pass;
+      
+      const client = getPop3Client(settings);
 
-      const client = new ImapFlow({
-        host: settings.imap_host || 'imap.gmail.com',
-        port: parseInt(settings.imap_port) || 993,
-        secure: parseInt(settings.imap_port) === 993,
-        auth: {
-          user: imapUser,
-          pass: imapPass,
-        },
-        logger: false,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await client.connect();
-      const lock = await client.getMailboxLock(folder as string);
       try {
-        // Find Trash folder
-        const folders = await client.list();
-        const trashFolder = folders.find(f => f.specialUse === '\\Trash' || f.name.toLowerCase().includes('trash') || f.name.toLowerCase().includes('cestino'))?.path || '[Gmail]/Cestino';
-        
-        await client.messageMove(uid, trashFolder, { uid: true });
+        await client.connect();
+        const index = parseInt(uid);
+        await client.DELE(index);
         res.json({ success: true });
       } finally {
-        lock.release();
-        await client.logout();
+        await client.QUIT();
       }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
