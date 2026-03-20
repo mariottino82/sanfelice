@@ -212,6 +212,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     smtp_port: '587',
     smtp_user: '',
     smtp_pass: '',
+    imap_host: 'imap.gmail.com',
+    imap_port: '993',
+    imap_user: '',
+    imap_pass: '',
     from_email: '',
     from_name: ''
   });
@@ -460,7 +464,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       { key: 'gallery', url: '/api/gallery', setter: setGallery },
       { key: 'users', url: '/api/users', setter: setAccounts },
       { key: 'social_links', url: '/api/settings/social_links', setter: (data: any) => data?.value && setSocialLinks(data.value) },
-      { key: 'email_settings', url: '/api/settings/email_settings', setter: (data: any) => data?.value && setEmailSettings(data.value) },
+      { key: 'email_settings', url: '/api/settings/email_settings', setter: (data: any) => {
+        if (data?.value) {
+          setEmailSettings((prev: any) => ({ ...prev, ...data.value }));
+        }
+      } },
       { key: 'association_details', url: '/api/settings/association_details', setter: (data: any) => data?.value && setAssociationDetails(data.value) },
       { key: 'membership_fees', url: '/api/settings/membership_fees', setter: (data: any) => data?.value && setMembershipFees(data.value) }
     ];
@@ -3024,11 +3032,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
                   <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
                     <Mail className="w-5 h-5" />
-                    Configurazione Email (SMTP Gmail)
+                    Configurazione Email (SMTP & IMAP Gmail)
                   </h3>
                   <div className="space-y-6">
                     <p className="text-sm text-stone-500">
-                      Configura l'account Gmail per l'invio automatico delle comunicazioni. 
+                      Configura l'account Gmail per l'invio e la ricezione automatica delle comunicazioni. 
                       <strong>Nota:</strong> Per Gmail, devi utilizzare una "Password per le App" se hai l'autenticazione a due fattori attiva.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3051,20 +3059,38 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username Gmail</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server IMAP</label>
+                        <input 
+                          value={emailSettings.imap_host}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, imap_host: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="imap.gmail.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta IMAP</label>
+                        <input 
+                          value={emailSettings.imap_port}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, imap_port: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="993"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username Gmail (SMTP/IMAP)</label>
                         <input 
                           value={emailSettings.smtp_user}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_user: e.target.value })}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_user: e.target.value, imap_user: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
                           placeholder="tuaemail@gmail.com"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Password per le App</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Password per le App (SMTP/IMAP)</label>
                         <input 
                           type="password"
                           value={emailSettings.smtp_pass}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_pass: e.target.value })}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_pass: e.target.value, imap_pass: e.target.value })}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
                           placeholder="•••• •••• •••• ••••"
                         />

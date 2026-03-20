@@ -782,7 +782,10 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
       const settings = JSON.parse(emailSettingsRow.value);
 
-      if (!settings.imap_user || !settings.imap_pass) {
+      const imapUser = settings.imap_user || settings.smtp_user;
+      const imapPass = settings.imap_pass || settings.smtp_pass;
+
+      if (!imapUser || !imapPass) {
         return res.status(400).json({ error: 'IMAP credentials missing' });
       }
 
@@ -791,8 +794,8 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         port: parseInt(settings.imap_port) || 993,
         secure: true,
         auth: {
-          user: settings.imap_user,
-          pass: settings.imap_pass,
+          user: imapUser,
+          pass: imapPass,
         },
         logger: false
       });
@@ -854,14 +857,16 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
       if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
       const settings = JSON.parse(emailSettingsRow.value);
+      const imapUser = settings.imap_user || settings.smtp_user;
+      const imapPass = settings.imap_pass || settings.smtp_pass;
 
       const client = new ImapFlow({
         host: settings.imap_host || 'imap.gmail.com',
         port: parseInt(settings.imap_port) || 993,
         secure: true,
         auth: {
-          user: settings.imap_user,
-          pass: settings.imap_pass,
+          user: imapUser,
+          pass: imapPass,
         },
         logger: false
       });
@@ -882,14 +887,16 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     try {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
       const settings = JSON.parse(emailSettingsRow.value);
+      const imapUser = settings.imap_user || settings.smtp_user;
+      const imapPass = settings.imap_pass || settings.smtp_pass;
 
       const client = new ImapFlow({
         host: settings.imap_host || 'imap.gmail.com',
         port: parseInt(settings.imap_port) || 993,
         secure: true,
         auth: {
-          user: settings.imap_user,
-          pass: settings.imap_pass,
+          user: imapUser,
+          pass: imapPass,
         },
         logger: false
       });
@@ -981,14 +988,16 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     try {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
       const settings = JSON.parse(emailSettingsRow.value);
+      const imapUser = settings.imap_user || settings.smtp_user;
+      const imapPass = settings.imap_pass || settings.smtp_pass;
 
       const client = new ImapFlow({
         host: settings.imap_host || 'imap.gmail.com',
         port: parseInt(settings.imap_port) || 993,
         secure: true,
         auth: {
-          user: settings.imap_user,
-          pass: settings.imap_pass,
+          user: imapUser,
+          pass: imapPass,
         },
         logger: false
       });
