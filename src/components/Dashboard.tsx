@@ -3161,36 +3161,101 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server IMAP</label>
-                            <input 
-                              value={emailSettings.imap_host}
-                              onChange={(e) => setEmailSettings({ ...emailSettings, imap_host: e.target.value })}
-                              className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                              placeholder="imap.gmail.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta IMAP (SSL)</label>
-                            <div className="flex gap-2">
-                              <input 
-                                value={emailSettings.imap_port}
-                                onChange={(e) => setEmailSettings({ ...emailSettings, imap_port: e.target.value, imap_tls: e.target.value === '993' })}
-                                className="flex-1 px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                                placeholder="993"
-                              />
-                              <button
-                                onClick={() => setEmailSettings({ ...emailSettings, imap_tls: !emailSettings.imap_tls })}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
-                                  emailSettings.imap_tls 
-                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
-                                    : 'bg-stone-50 border-stone-200 text-stone-500'
-                                }`}
-                              >
-                                {emailSettings.imap_tls ? 'SSL ON' : 'SSL OFF'}
-                              </button>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Protocollo Ricezione</label>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                  type="radio" 
+                                  name="protocol" 
+                                  value="imap" 
+                                  checked={emailSettings.protocol === 'imap' || !emailSettings.protocol} 
+                                  onChange={() => setEmailSettings({ ...emailSettings, protocol: 'imap' })}
+                                  className="w-4 h-4 text-stone-900 focus:ring-stone-900"
+                                />
+                                <span className="text-sm font-medium text-stone-700">IMAP (Consigliato)</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                  type="radio" 
+                                  name="protocol" 
+                                  value="pop3" 
+                                  checked={emailSettings.protocol === 'pop3'} 
+                                  onChange={() => setEmailSettings({ ...emailSettings, protocol: 'pop3' })}
+                                  className="w-4 h-4 text-stone-900 focus:ring-stone-900"
+                                />
+                                <span className="text-sm font-medium text-stone-700">POP3</span>
+                              </label>
                             </div>
                           </div>
+
+                          {(!emailSettings.protocol || emailSettings.protocol === 'imap') ? (
+                            <>
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server IMAP</label>
+                                <input 
+                                  value={emailSettings.imap_host || ''}
+                                  onChange={(e) => setEmailSettings({ ...emailSettings, imap_host: e.target.value })}
+                                  className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                                  placeholder="imap.gmail.com"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta IMAP (SSL)</label>
+                                <div className="flex gap-2">
+                                  <input 
+                                    value={emailSettings.imap_port || ''}
+                                    onChange={(e) => setEmailSettings({ ...emailSettings, imap_port: e.target.value, imap_tls: e.target.value === '993' })}
+                                    className="flex-1 px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                                    placeholder="993"
+                                  />
+                                  <button
+                                    onClick={() => setEmailSettings({ ...emailSettings, imap_tls: !emailSettings.imap_tls })}
+                                    className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                      emailSettings.imap_tls 
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                        : 'bg-stone-50 border-stone-200 text-stone-500'
+                                    }`}
+                                  >
+                                    {emailSettings.imap_tls ? 'SSL ON' : 'SSL OFF'}
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server POP3</label>
+                                <input 
+                                  value={emailSettings.pop_host || ''}
+                                  onChange={(e) => setEmailSettings({ ...emailSettings, pop_host: e.target.value })}
+                                  className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                                  placeholder="pop.gmail.com"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta POP3 (SSL)</label>
+                                <div className="flex gap-2">
+                                  <input 
+                                    value={emailSettings.pop_port || ''}
+                                    onChange={(e) => setEmailSettings({ ...emailSettings, pop_port: e.target.value, pop_tls: e.target.value === '995' })}
+                                    className="flex-1 px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                                    placeholder="995"
+                                  />
+                                  <button
+                                    onClick={() => setEmailSettings({ ...emailSettings, pop_tls: !emailSettings.pop_tls })}
+                                    className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                      emailSettings.pop_tls 
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                        : 'bg-stone-50 border-stone-200 text-stone-500'
+                                    }`}
+                                  >
+                                    {emailSettings.pop_tls ? 'SSL ON' : 'SSL OFF'}
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
 
                       <div className="space-y-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server SMTP</label>
