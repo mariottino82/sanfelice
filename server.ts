@@ -756,9 +756,9 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       console.error('Error sending email:', error);
       let errorMessage = error.message;
       if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
-        errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, devi usare una "Password per le App" (16 caratteri) se la verifica in due passaggi è attiva.';
+        errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Google blocca la tua password normale per motivi di sicurezza.';
       }
-      res.status(500).json({ error: 'Failed to send email', details: errorMessage });
+      res.status(500).json({ error: `Errore invio email: ${errorMessage}` });
     }
   });
 
@@ -982,6 +982,9 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     try {
       const settings = req.body;
       if (!settings) return res.status(400).json({ error: 'Settings are required' });
+      if (!settings.smtp_user || !settings.smtp_pass) {
+        return res.status(400).json({ error: 'Username e Password SMTP sono obbligatori' });
+      }
       
       const nodemailer = await import('nodemailer');
       const transporter = nodemailer.createTransport({
