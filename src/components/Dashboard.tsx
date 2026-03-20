@@ -618,7 +618,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       } catch (err: any) {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
-          setNotification({ message: 'La richiesta è andata in timeout. Il server POP3 potrebbe essere lento o non raggiungibile.', type: 'error' });
+          setNotification({ message: 'La richiesta è andata in timeout. Il server email potrebbe essere lento o non raggiungibile.', type: 'error' });
         } else {
           console.error('Error fetching emails:', err);
           setNotification({ message: 'Errore di connessione durante il recupero delle email', type: 'error' });
@@ -678,15 +678,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       if (res.ok) {
         setIsComposing(false);
         setComposeData({ to: '', subject: '', body: '', attachments: [] });
-        alert('Email inviata con successo!');
+        setNotification({ message: 'Email inviata con successo!', type: 'success' });
         if (selectedFolder === 'Sent') fetchEmails();
       } else {
         const err = await res.json();
-        alert('Errore nell\'invio: ' + err.error);
+        setNotification({ message: 'Errore nell\'invio: ' + err.error, type: 'error' });
       }
     } catch (err) {
       console.error('Error sending email:', err);
-      alert('Errore di rete nell\'invio.');
+      setNotification({ message: 'Errore di rete nell\'invio.', type: 'error' });
     }
   };
 
@@ -4060,10 +4060,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 try {
                                   const success = await savePoll(poll);
                                   if (success) {
-                                    alert('Sondaggio salvato con successo!');
+                                    setNotification({ message: 'Sondaggio salvato con successo!', type: 'success' });
                                   }
                                 } catch (err: any) {
-                                  alert('Errore durante il salvataggio: ' + err.message);
+                                  setNotification({ message: 'Errore durante il salvataggio: ' + err.message, type: 'error' });
                                 }
                               }}
                               className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:shadow-lg transition-all active:scale-95"
@@ -4130,8 +4130,39 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <p className="text-stone-500 text-sm italic text-center py-4">Nessuna opzione configurata</p>
                           )}
                         </div>
-                        <div className="mt-8 pt-8 border-t border-white/10">
+                        <div className="mt-8 pt-8 border-t border-white/10 flex items-center justify-between">
                           <p className="text-xs text-stone-400">Totale votanti: <span className="text-white font-bold">{poll.votes?.length || 0}</span></p>
+                          {poll.votes?.length > 0 && (
+                            <button 
+                              onClick={() => {
+                                const headers = ['Email', 'Cellulare', 'Opzione Scelta', 'Data'];
+                                const csvContent = [
+                                  headers.join(','),
+                                  ...poll.votes.map((v: any) => {
+                                    const option = poll.options.find((o: any) => o.id === v.optionId);
+                                    return [
+                                      `"${v.email}"`,
+                                      `"${v.phone}"`,
+                                      `"${option?.text || 'Sconosciuta'}"`,
+                                      `"${new Date(v.date).toLocaleString('it-IT')}"`
+                                    ].join(',');
+                                  })
+                                ].join('\n');
+                                
+                                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                                const link = document.createElement('a');
+                                link.href = URL.createObjectURL(blob);
+                                link.setAttribute('download', `risultati_sondaggio_${poll.id}.csv`);
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-white transition-colors flex items-center gap-1.5"
+                            >
+                              <Download className="w-3 h-3" />
+                              Esporta CSV
+                            </button>
+                          )}
                         </div>
                       </div>
 

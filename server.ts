@@ -382,6 +382,11 @@ async function startServer() {
         const options = JSON.parse(poll.options || '[]');
         const votes = JSON.parse(poll.votes || '[]');
         
+        // Check if email already voted
+        if (email && votes.some((v: any) => v.email === email)) {
+          return res.status(400).json({ error: 'Hai già votato in questo sondaggio con questa email' });
+        }
+
         if (optionIndex === undefined || optionIndex < 0 || optionIndex >= options.length) {
           console.error('Invalid option index:', optionIndex);
           return res.status(400).json({ error: 'Indice opzione non valido' });
@@ -866,9 +871,6 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     const popUser = (settings.pop_user || settings.smtp_user || '').trim();
     const popPass = (settings.pop_pass || settings.smtp_pass || '').trim();
     const port = parseInt(settings.pop_port) || 995;
-    
-    // For POP3, SSL/TLS is standard on port 995.
-    // If port is 995, we force TLS.
     const useTls = settings.pop_tls !== undefined ? settings.pop_tls : (port === 995);
     
     return new Pop3Command({
@@ -877,11 +879,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       host: settings.pop_host || 'pop.gmail.com',
       port: port,
       tls: useTls,
-      timeout: 15000, // Increased timeout
-      servername: settings.pop_host || 'pop.gmail.com',
-      tlsOptions: {
-        rejectUnauthorized: false
-      }
+      timeout: 15000
     });
   };
 
@@ -1045,9 +1043,8 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
       if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
       const settings = JSON.parse(emailSettingsRow.value);
-      const protocol = settings.protocol || 'pop3';
 
-      if (protocol === 'imap') {
+      if (settings.protocol === 'imap' || !settings.protocol) {
         console.log('Using IMAP protocol');
         const client = getImapClient(settings);
         try {
@@ -1060,8 +1057,23 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
             const messages = [];
             if (totalMessages > 0) {
                 // Fetch last 20 messages
-                const range = `${Math.max(1, totalMessages - skip - pageSize + 1)}:${Math.max(1, totalMessages - skip)}`;
+                const end = Math.max(1, totalMessages - skip);
+                const start = Math.max(1, totalMessages - skip - pageSize + 1);
+                const range = `${start}:${end}`;
+                
                 for await (const message of client.fetch(range, { envelope: true, flags: true, bodyStructure: true })) {
+                  let preview = '';
+                  if (message.bodyStructure.childNodes) {
+                    const textPart = message.bodyStructure.childNodes.find(part => part.type === 'text/plain');
+                    if (textPart) {
+                        const part = await client.fetchOne(message.uid, { bodyParts: [textPart.part] });
+                        if (part && part.bodyParts) {
+                            const text = part.bodyParts.get(textPart.part);
+                            preview = text ? text.toString().substring(0, 100).replace(/[\r\n\t]+/g, ' ').trim() : '';
+                        }
+                    }
+                  }
+                  
                   messages.push({
                     uid: message.uid.toString(),
                     seq: message.seq,
@@ -1073,7 +1085,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
                     date: message.envelope.date || new Date(),
                     flags: Array.from(message.flags || []),
                     hasAttachments: message.bodyStructure.childNodes?.some(part => part.disposition === 'attachment') || false,
-                    preview: ''
+                    preview
                   });
                 }
                 // Reverse to show newest first
@@ -1094,13 +1106,10 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         } finally {
           await client.logout();
         }
-      } else {
-        // POP3 logic
-        const port = parseInt(settings.pop_port) || 995;
-        const client = getPop3Client(settings);
-        
-        try {
-          const pop3Operation = (async () => {
+      } else if (settings.protocol === 'pop3') {
+        const pop3Operation = (async () => {
+          const port = parseInt(settings.pop_port) || 995;
+            const client = getPop3Client(settings);
             console.log(`Connecting to POP3 server: ${settings.pop_host}:${port} (TLS: ${settings.pop_tls !== undefined ? settings.pop_tls : (port === 995)})`);
             
             // Add timeout to connect
@@ -1187,16 +1196,6 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
             new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout globale operazione POP3 (45s)')), 45000))
           ]) as any;
           res.json(result);
-        } finally {
-          try {
-            await Promise.race([
-              client.QUIT(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout QUIT')), 2000))
-            ]);
-          } catch (e) {
-            // Ignore quit errors
-          }
-        }
       }
     } catch (error: any) {
       console.error('Email Fetch Error details:', error);
@@ -1205,7 +1204,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
           errorMessage.includes('AUTHENTICATIONFAILED') || 
           errorMessage.includes('invalid user or password') || 
           errorMessage.includes('535')) {
-        errorMessage = 'Credenziali non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Assicurati inoltre che il protocollo (POP3 o IMAP) sia ABILITATO nelle impostazioni del tuo account email.';
+        errorMessage = 'Credenziali non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Assicurati inoltre che il protocollo IMAP sia ABILITATO nelle impostazioni del tuo account email.';
       }
       res.status(500).json({ error: `Errore email: ${errorMessage}. Verifica le credenziali e le impostazioni del server.` });
     }
@@ -1302,7 +1301,8 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   });
 
   app.post('/api/emails/send', emailUpload.array('attachments'), async (req: any, res) => {
-    const { to, subject, html, replyToUid, forwardFromUid } = req.body;
+    const { to, subject, body, html, replyToUid, forwardFromUid } = req.body;
+    const emailContent = html || body;
     const attachments = (req.files as any[])?.map(f => ({
       filename: f.originalname,
       path: f.path
@@ -1335,7 +1335,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         from: `"${settings.from_name || 'Associazione'}" <${settings.from_email || settings.smtp_user}>`,
         to,
         subject,
-        html,
+        html: emailContent,
         attachments
       });
 
@@ -1356,22 +1356,50 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
 
   app.post('/api/emails/:uid/trash', async (req, res) => {
     const { uid } = req.params;
+    const { folder = 'INBOX' } = req.query;
 
     try {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
       const settings = JSON.parse(emailSettingsRow.value);
-      
-      const client = getPop3Client(settings);
+      const protocol = settings.protocol || 'pop3';
 
-      try {
-        await client.connect();
-        const index = parseInt(uid);
-        await client.DELE(index);
-        res.json({ success: true });
-      } finally {
-        await client.QUIT();
+      if (protocol === 'imap') {
+        const client = getImapClient(settings);
+        try {
+          await client.connect();
+          const lock = await client.getMailboxLock(folder as string);
+          try {
+            // Find trash folder
+            const list = await client.list();
+            const trashFolder = list.find(f => f.specialUse === '\\Trash' || f.path.toLowerCase().includes('trash') || f.path.toLowerCase().includes('cestino'));
+            
+            if (trashFolder) {
+              await client.messageMove(uid, trashFolder.path);
+            } else {
+              // If no trash folder, just delete (add \Deleted flag and expunge)
+              await client.messageFlagsAdd(uid, ['\\Deleted']);
+            }
+            res.json({ success: true });
+          } finally {
+            lock.release();
+          }
+        } finally {
+          await client.logout();
+        }
+      } else {
+        const client = getPop3Client(settings);
+        try {
+          await client.connect();
+          const index = parseInt(uid);
+          await client.DELE(index);
+          res.json({ success: true });
+        } finally {
+          await client.QUIT();
+        }
       }
     } catch (error: any) {
+      console.error('Trash Error:', error);
       res.status(500).json({ error: error.message });
     }
   });

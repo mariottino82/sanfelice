@@ -24,6 +24,8 @@ export function PollSection() {
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [voted, setVoted] = React.useState(false);
+  const [hasAlreadyVoted, setHasAlreadyVoted] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     const fetchPoll = async () => {
@@ -36,6 +38,14 @@ export function PollSection() {
           // Ensure we compare with boolean true or integer 1
           const homepagePoll = data.find((p: any) => p.showOnHomepage === true || p.showOnHomepage === 1 || !!p.showOnHomepage);
           setPoll(homepagePoll || null);
+
+          if (homepagePoll) {
+            // Check if user already voted in this poll (from localStorage)
+            const votedPolls = JSON.parse(localStorage.getItem('voted_polls') || '[]');
+            if (votedPolls.includes(homepagePoll.id)) {
+              setHasAlreadyVoted(true);
+            }
+          }
         } else {
           setPoll(null);
         }
@@ -49,8 +59,9 @@ export function PollSection() {
 
   const handleVote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poll || !selectedOption) return;
+    if (!poll || !selectedOption || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       const optionIndex = poll.options.findIndex(o => o.id === selectedOption.id);
       if (optionIndex === -1) {
@@ -71,6 +82,13 @@ export function PollSection() {
 
       setVoted(true);
       
+      // Store in localStorage
+      const votedPolls = JSON.parse(localStorage.getItem('voted_polls') || '[]');
+      if (!votedPolls.includes(poll.id)) {
+        votedPolls.push(poll.id);
+        localStorage.setItem('voted_polls', JSON.stringify(votedPolls));
+      }
+
       // Refresh poll data to show updated results
       const pollRes = await fetch('/api/polls');
       if (pollRes.ok) {
@@ -82,6 +100,7 @@ export function PollSection() {
       setTimeout(() => {
         setShowVoteModal(false);
         setVoted(false);
+        setHasAlreadyVoted(true);
         setEmail('');
         setPhone('');
         setSelectedOption(null);
@@ -89,6 +108,9 @@ export function PollSection() {
     } catch (error: any) {
       console.error('Error voting:', error);
       alert(error.message || 'Errore durante la votazione. Riprova più tardi.');
+    } finally {
+      setIsSubmitting(true); // Keep it true to prevent double clicks during the timeout
+      setTimeout(() => setIsSubmitting(false), 2000);
     }
   };
 
@@ -145,11 +167,13 @@ export function PollSection() {
               {poll.question}
             </h3>
 
-            {isExpired ? (
+            {isExpired || voted || hasAlreadyVoted ? (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 text-stone-500 mb-6 justify-center">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Sondaggio Chiuso - Risultati Finali</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                    {isExpired ? 'Sondaggio Chiuso - Risultati Finali' : (hasAlreadyVoted ? 'Hai già votato - Risultati' : 'Voto registrato - Risultati')}
+                  </span>
                 </div>
                 {poll.options.map((option) => {
                   const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
@@ -286,9 +310,10 @@ export function PollSection() {
 
                     <button
                       type="submit"
-                      className="w-full bg-stone-900 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-stone-900/20 mt-2 md:mt-4 text-sm md:text-base"
+                      disabled={isSubmitting}
+                      className="w-full bg-stone-900 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 shadow-xl shadow-stone-900/20 mt-2 md:mt-4 text-sm md:text-base"
                     >
-                      Invia il mio voto
+                      {isSubmitting ? 'Invio in corso...' : 'Invia il mio voto'}
                       <Send className="w-4 h-4" />
                     </button>
                     
