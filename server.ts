@@ -613,6 +613,50 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   }
 });
 
+  // Email API
+  app.post('/api/send-email', async (req, res) => {
+    const { to, subject, html, text } = req.body;
+    
+    try {
+      const nodemailer = await import('nodemailer');
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      
+      if (!emailSettingsRow) {
+        return res.status(400).json({ error: 'Email settings not configured' });
+      }
+      
+      const settings = JSON.parse(emailSettingsRow.value);
+      
+      if (!settings.smtp_user || !settings.smtp_pass) {
+        return res.status(400).json({ error: 'SMTP credentials missing' });
+      }
+
+      const transporter = nodemailer.createTransport({
+        host: settings.smtp_host || 'smtp.gmail.com',
+        port: parseInt(settings.smtp_port) || 587,
+        secure: parseInt(settings.smtp_port) === 465,
+        auth: {
+          user: settings.smtp_user,
+          pass: settings.smtp_pass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"${settings.from_name || 'Associazione'}" <${settings.from_email || settings.smtp_user}>`,
+        to,
+        subject,
+        text,
+        html,
+      });
+
+      console.log('Message sent: %s', info.messageId);
+      res.json({ success: true, messageId: info.messageId });
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      res.status(500).json({ error: 'Failed to send email', details: error.message });
+    }
+  });
+
 // Lottery API
   app.get('/api/lottery', async (req, res) => {
     const lottery = await db.get('SELECT * FROM lottery LIMIT 1');
@@ -661,6 +705,54 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     }
     const filePath = `/lottery-docs/${req.file.filename}`;
     res.json({ success: true, path: filePath });
+  });
+
+  const galleryStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+  const galleryUpload = multer({ storage: galleryStorage });
+
+  // Gallery Upload
+  app.post('/api/upload-gallery', galleryUpload.single('file'), async (req: any, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const type = req.body.type || 'image';
+    const url = `/uploads/${req.file.filename}`;
+    
+    try {
+      const result = await db.run('INSERT INTO gallery (url, type) VALUES (?, ?)', [url, type]);
+      res.json({ id: result.lastID, url, type });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Gallery Delete
+  app.delete('/api/gallery/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const row = await db.get('SELECT url FROM gallery WHERE id = ?', [id]);
+      if (!row) return res.status(404).json({ error: 'Item not found' });
+      
+      const filePath = path.join(process.cwd(), 'public', row.url);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      await db.run('DELETE FROM gallery WHERE id = ?', [id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Settings API

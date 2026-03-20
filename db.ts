@@ -239,6 +239,20 @@ export async function getDb() {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['membership_fees', JSON.stringify(defaultFees)]);
   }
 
+  // Seed email settings if not exists
+  const emailSettings = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+  if (!emailSettings) {
+    const defaultEmailSettings = {
+      smtp_host: 'smtp.gmail.com',
+      smtp_port: 587,
+      smtp_user: '',
+      smtp_pass: '',
+      from_email: '',
+      from_name: ''
+    };
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['email_settings', JSON.stringify(defaultEmailSettings)]);
+  }
+
   console.log('Database initialized successfully');
   return db;
 }

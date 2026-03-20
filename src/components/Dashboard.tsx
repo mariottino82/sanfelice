@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2 } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -193,6 +193,61 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     phone: ''
   });
 
+  const [emailSettings, setEmailSettings] = React.useState<any>({
+    smtp_host: 'smtp.gmail.com',
+    smtp_port: '587',
+    smtp_user: '',
+    smtp_pass: '',
+    from_email: '',
+    from_name: ''
+  });
+
+  const [emailForm, setEmailForm] = React.useState({
+    to: '',
+    subject: '',
+    message: ''
+  });
+  const [isSendingEmail, setIsSendingEmail] = React.useState(false);
+
+  const handleSendEmail = async () => {
+    if (!emailForm.to || !emailForm.subject || !emailForm.message) {
+      setNotification({ message: 'Compila tutti i campi', type: 'error' });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailForm.to,
+          subject: emailForm.subject,
+          text: emailForm.message,
+          html: `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+            ${emailForm.message.replace(/\n/g, '<br>')}
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #777;">
+              Questa è una comunicazione automatica da <strong>${associationDetails.name}</strong>.
+            </p>
+          </div>`
+        })
+      });
+
+      if (response.ok) {
+        setNotification({ message: 'Email inviata con successo!', type: 'success' });
+        setEmailForm({ to: '', subject: '', message: '' });
+      } else {
+        const error = await response.json();
+        setNotification({ message: `Errore: ${error.error}`, type: 'error' });
+      }
+    } catch (error) {
+      setNotification({ message: 'Errore di connessione', type: 'error' });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const [editingMember, setEditingMember] = React.useState<any>(null);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
   const [showSponsorshipModal, setShowSponsorshipModal] = React.useState(false);
@@ -327,6 +382,55 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [uploadingMinuteId, setUploadingMinuteId] = React.useState<number | null>(null);
   const [uploadingContestId, setUploadingContestId] = React.useState<number | null>(null);
 
+  const handleGalleryUpload = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = fileInput?.files?.[0];
+    if (!file) {
+      setNotification({ message: 'Seleziona un file', type: 'error' });
+      return;
+    }
+
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+    uploadData.append('type', formData.get('type') as string);
+
+    try {
+      const res = await fetch('/api/upload-gallery', {
+        method: 'POST',
+        body: uploadData
+      });
+      if (res.ok) {
+        const newItem = await res.json();
+        setGallery(prev => [newItem, ...prev]);
+        setNotification({ message: 'Elemento aggiunto alla gallery!', type: 'success' });
+        (e.target as HTMLFormElement).reset();
+      } else {
+        setNotification({ message: 'Errore durante il caricamento', type: 'error' });
+      }
+    } catch (err) {
+      console.error(err);
+      setNotification({ message: 'Errore di rete', type: 'error' });
+    }
+  };
+
+  const handleDeleteGallery = async (id: number) => {
+    if (!confirm('Sei sicuro di voler eliminare questo elemento?')) return;
+    try {
+      const res = await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setGallery(prev => prev.filter(item => item.id !== id));
+        setNotification({ message: 'Elemento eliminato!', type: 'success' });
+      } else {
+        setNotification({ message: 'Errore durante l\'eliminazione', type: 'error' });
+      }
+    } catch (err) {
+      console.error(err);
+      setNotification({ message: 'Errore di rete', type: 'error' });
+    }
+  };
+
   const fetchData = React.useCallback(async () => {
     const endpoints = [
       { key: 'members', url: '/api/members', setter: setMembers },
@@ -342,6 +446,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       { key: 'gallery', url: '/api/gallery', setter: setGallery },
       { key: 'users', url: '/api/users', setter: setAccounts },
       { key: 'social_links', url: '/api/settings/social_links', setter: (data: any) => data?.value && setSocialLinks(data.value) },
+      { key: 'email_settings', url: '/api/settings/email_settings', setter: (data: any) => data?.value && setEmailSettings(data.value) },
       { key: 'association_details', url: '/api/settings/association_details', setter: (data: any) => data?.value && setAssociationDetails(data.value) },
       { key: 'membership_fees', url: '/api/settings/membership_fees', setter: (data: any) => data?.value && setMembershipFees(data.value) }
     ];
@@ -1588,6 +1693,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
                 { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
+                { id: 'email', label: 'Email & Comunicazioni', icon: Mail, minRole: 'SuperAdmin' },
                 { id: 'association', label: 'Associazione', icon: Building, minRole: 'SuperAdmin' },
                 { id: 'accounts', label: 'Account & Sicurezza', icon: Shield, minRole: 'SuperAdmin' },
               ].filter(tab => {
@@ -2789,134 +2895,91 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                 <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
                   <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5" />
-                    Gestione Logo Associazione
+                    <Mail className="w-5 h-5" />
+                    Configurazione Email (SMTP Gmail)
                   </h3>
-                  <div className="flex flex-col md:flex-row items-center gap-8">
-                    <div className="w-32 h-32 bg-stone-50 rounded-2xl border border-stone-100 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={`/logo.png?t=${Date.now()}`} 
-                        alt="Logo Attuale" 
-                        className="max-w-full max-h-full object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Logo';
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 space-y-4">
-                      <p className="text-sm text-stone-500">
-                        Carica un nuovo logo per l'associazione. Il file deve essere in formato <strong>PNG</strong> e verrà rinominato automaticamente in <code>logo.png</code>.
-                      </p>
-                      <div className="flex gap-4">
+                  <div className="space-y-6">
+                    <p className="text-sm text-stone-500">
+                      Configura l'account Gmail per l'invio automatico delle comunicazioni. 
+                      <strong>Nota:</strong> Per Gmail, devi utilizzare una "Password per le App" se hai l'autenticazione a due fattori attiva.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server SMTP</label>
                         <input 
-                          type="file" 
-                          id="logo-upload" 
-                          accept="image/png" 
-                          className="hidden" 
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            
-                            const formData = new FormData();
-                            formData.append('logo', file);
-                            
-                            try {
-                              const res = await fetch('/api/upload-logo', {
-                                method: 'POST',
-                                body: formData
-                              });
-                              if (res.ok) {
-                                alert('Logo aggiornato con successo! Ricarica la pagina per vedere le modifiche ovunque.');
-                                window.location.reload();
-                              } else {
-                                alert('Errore durante il caricamento del logo.');
-                              }
-                            } catch (err) {
-                              console.error(err);
-                              alert('Errore di rete.');
-                            }
-                          }}
+                          value={emailSettings.smtp_host}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_host: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="smtp.gmail.com"
                         />
-                        <label 
-                          htmlFor="logo-upload"
-                          className="bg-stone-900 text-white px-6 py-3 rounded-xl text-sm font-bold cursor-pointer hover:bg-stone-800 transition-colors inline-flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Seleziona Nuovo Logo
-                        </label>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta SMTP</label>
+                        <input 
+                          value={emailSettings.smtp_port}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_port: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="587"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username Gmail</label>
+                        <input 
+                          value={emailSettings.smtp_user}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_user: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="tuaemail@gmail.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Password per le App</label>
+                        <input 
+                          type="password"
+                          value={emailSettings.smtp_pass}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_pass: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="•••• •••• •••• ••••"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Email Mittente</label>
+                        <input 
+                          value={emailSettings.from_email}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, from_email: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="tuaemail@gmail.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Nome Mittente</label>
+                        <input 
+                          value={emailSettings.from_name}
+                          onChange={(e) => setEmailSettings({ ...emailSettings, from_name: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                          placeholder="Associazione Colle d'Anchise"
+                        />
                       </div>
                     </div>
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/settings/email_settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ value: emailSettings })
+                          });
+                          if (response.ok) {
+                            setNotification({ message: 'Impostazioni email salvate!', type: 'success' });
+                          }
+                        } catch (error) {
+                          setNotification({ message: 'Errore durante il salvataggio', type: 'error' });
+                        }
+                      }}
+                      className="bg-stone-900 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors"
+                    >
+                      Salva Impostazioni Email
+                    </button>
                   </div>
-                </div>
-
-                <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
-                  <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
-                    <Share2 className="w-5 h-5" />
-                    Gestione Link Social
-                  </h3>
-                  <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const formData = new FormData(e.currentTarget);
-                      const links = Object.fromEntries(formData);
-                      saveSocialLinks(links);
-                    }}
-                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
-                  >
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Facebook</label>
-                      <div className="relative">
-                        <Facebook className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                        <input 
-                          name="facebook" 
-                          defaultValue={socialLinks.facebook} 
-                          placeholder="https://facebook.com/..." 
-                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Instagram</label>
-                      <div className="relative">
-                        <Instagram className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                        <input 
-                          name="instagram" 
-                          defaultValue={socialLinks.instagram} 
-                          placeholder="https://instagram.com/..." 
-                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">YouTube</label>
-                      <div className="relative">
-                        <Youtube className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                        <input 
-                          name="youtube" 
-                          defaultValue={socialLinks.youtube} 
-                          placeholder="https://youtube.com/..." 
-                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Twitter / X</label>
-                      <div className="relative">
-                        <Share2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                        <input 
-                          name="twitter" 
-                          defaultValue={socialLinks.twitter} 
-                          placeholder="https://twitter.com/..." 
-                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
-                        />
-                      </div>
-                    </div>
-                    <div className="md:col-span-2 pt-4">
-                      <button type="submit" className="bg-stone-900 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors">
-                        Salva Link Social
-                      </button>
-                    </div>
-                  </form>
                 </div>
               </div>
             )}
@@ -3414,21 +3477,28 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
                 {isStaff && (
                   <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const formData = new FormData(e.currentTarget);
-                      const data = Object.fromEntries(formData);
-                      addGalleryItem(data);
-                      e.currentTarget.reset();
-                    }}
+                    onSubmit={handleGalleryUpload}
                     className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                   >
-                    <input name="url" placeholder="URL Immagine o Video" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none md:col-span-2" required />
-                    <select name="type" className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none">
-                      <option value="image">Immagine</option>
-                      <option value="video">Video</option>
-                    </select>
-                    <button type="submit" className="md:col-span-3 bg-stone-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors">
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Carica Immagine o Video</label>
+                      <input 
+                        type="file" 
+                        name="file" 
+                        accept="image/*,video/*"
+                        className="w-full px-4 py-2 bg-white rounded-xl border border-stone-200 text-sm outline-none" 
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Tipo</label>
+                      <select name="type" className="w-full px-4 py-2 bg-white rounded-xl border border-stone-200 text-sm outline-none">
+                        <option value="image">Immagine</option>
+                        <option value="video">Video</option>
+                      </select>
+                    </div>
+                    <button type="submit" className="md:col-span-3 bg-stone-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center justify-center gap-2">
+                      <Plus className="w-4 h-4" />
                       Aggiungi alla Gallery
                     </button>
                   </form>
@@ -3437,12 +3507,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {gallery.map((item: any) => (
                     <div key={item.id} className="relative aspect-square rounded-2xl overflow-hidden group">
-                      <img src={item.url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      {item.type === 'video' ? (
+                        <div className="w-full h-full bg-stone-100 flex items-center justify-center">
+                          <Video className="w-12 h-12 text-stone-300" />
+                        </div>
+                      ) : (
+                        <img src={item.url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         {item.type === 'video' && <Video className="w-6 h-6 text-white" />}
                         {isStaff && (
                           <button 
-                            onClick={() => deleteGalleryItem(item)}
+                            onClick={() => handleDeleteGallery(item.id)}
                             className="p-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-lg flex items-center gap-2"
                             title="Elimina Definitivamente"
                           >
@@ -3844,6 +3920,138 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
+                  <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5" />
+                    Gestione Logo Associazione
+                  </h3>
+                  <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="w-32 h-32 bg-stone-50 rounded-2xl border border-stone-100 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={`/logo.png?t=${Date.now()}`} 
+                        alt="Logo Attuale" 
+                        className="max-w-full max-h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Logo';
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <p className="text-sm text-stone-500">
+                        Carica un nuovo logo per l'associazione. Il file deve essere in formato <strong>PNG</strong> e verrà rinominato automaticamente in <code>logo.png</code>.
+                      </p>
+                      <div className="flex gap-4">
+                        <input 
+                          type="file" 
+                          id="logo-upload" 
+                          accept="image/png" 
+                          className="hidden" 
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            const formData = new FormData();
+                            formData.append('logo', file);
+                            
+                            try {
+                              const res = await fetch('/api/upload-logo', {
+                                method: 'POST',
+                                body: formData
+                              });
+                              if (res.ok) {
+                                alert('Logo aggiornato con successo! Ricarica la pagina per vedere le modifiche ovunque.');
+                                window.location.reload();
+                              } else {
+                                alert('Errore durante il caricamento del logo.');
+                              }
+                            } catch (err) {
+                              console.error(err);
+                              alert('Errore di rete.');
+                            }
+                          }}
+                        />
+                        <label 
+                          htmlFor="logo-upload"
+                          className="bg-stone-900 text-white px-6 py-3 rounded-xl text-sm font-bold cursor-pointer hover:bg-stone-800 transition-colors inline-flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Seleziona Nuovo Logo
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
+                  <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
+                    <Share2 className="w-5 h-5" />
+                    Gestione Link Social
+                  </h3>
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const links = Object.fromEntries(formData);
+                      saveSocialLinks(links);
+                    }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  >
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Facebook</label>
+                      <div className="relative">
+                        <Facebook className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="facebook" 
+                          defaultValue={socialLinks.facebook} 
+                          placeholder="https://facebook.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Instagram</label>
+                      <div className="relative">
+                        <Instagram className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="instagram" 
+                          defaultValue={socialLinks.instagram} 
+                          placeholder="https://instagram.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">YouTube</label>
+                      <div className="relative">
+                        <Youtube className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="youtube" 
+                          defaultValue={socialLinks.youtube} 
+                          placeholder="https://youtube.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Twitter / X</label>
+                      <div className="relative">
+                        <Share2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input 
+                          name="twitter" 
+                          defaultValue={socialLinks.twitter} 
+                          placeholder="https://twitter.com/..." 
+                          className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all" 
+                        />
+                      </div>
+                    </div>
+                    <div className="md:col-span-2 pt-4">
+                      <button type="submit" className="bg-stone-900 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors">
+                        Salva Link Social
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
