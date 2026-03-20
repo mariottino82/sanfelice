@@ -852,28 +852,30 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const client = new ImapFlow({
         host: settings.imap_host || 'imap.gmail.com',
         port: parseInt(settings.imap_port) || 993,
-        secure: true,
+        secure: parseInt(settings.imap_port) === 993,
         auth: {
           user: imapUser,
           pass: imapPass,
         },
-        logger: false
+        logger: false,
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       await client.connect();
+      
+      // Select the mailbox first to ensure it exists and get status
+      const mailbox = await client.mailboxOpen(folder as string);
+      if (!mailbox) {
+        throw new Error(`Cartella "${folder}" non trovata.`);
+      }
+
       const lock = await client.getMailboxLock(folder as string);
       try {
-        let searchCriteria: any = { all: true };
-        if (search) {
-          searchCriteria = { or: [{ subject: search }, { from: search }, { body: search }] };
-        }
-
-        const messages = [];
-        // Fetch in reverse order to get newest first
-        const status = await client.status(folder as string, { messages: true });
-        const totalMessages = status.messages || 0;
+        const totalMessages = mailbox.exists || 0;
         
-        // Fetch headers for the current page
+        const messages = [];
         // imapflow fetch uses sequence numbers or UIDs.
         // We'll fetch by sequence number from newest to oldest.
         const start = Math.max(1, totalMessages - skip - pageSize + 1);
@@ -888,7 +890,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
               subject: msg.envelope.subject,
               date: msg.envelope.date || msg.internalDate,
               flags: Array.from(msg.flags || []),
-              hasAttachments: false // We'd need to check structure for this, skipping for speed in list
+              hasAttachments: false
             });
           }
         }
@@ -896,19 +898,57 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         // Sort by date descending (newest first)
         messages.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+        const totalPages = Math.ceil(totalMessages / pageSize);
+
         res.json({
-          messages,
+          emails: messages,
           total: totalMessages,
+          totalPages,
           page: parseInt(page as string),
           pageSize
         });
       } finally {
-        lock.release();
+        if (lock) lock.release();
         await client.logout();
       }
     } catch (error: any) {
-      console.error('IMAP Error:', error);
-      res.status(500).json({ error: error.message });
+      console.error('IMAP Error details:', {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        response: error.response
+      });
+      res.status(500).json({ error: `Errore IMAP: ${error.message}. Verifica le credenziali e che l'accesso IMAP sia attivo su Gmail.` });
+    }
+  });
+
+  app.get('/api/emails/test', async (req, res) => {
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
+      const settings = JSON.parse(emailSettingsRow.value);
+      const imapUser = settings.imap_user || settings.smtp_user;
+      const imapPass = settings.imap_pass || settings.smtp_pass;
+
+      const client = new ImapFlow({
+        host: settings.imap_host || 'imap.gmail.com',
+        port: parseInt(settings.imap_port) || 993,
+        secure: parseInt(settings.imap_port) === 993,
+        auth: {
+          user: imapUser,
+          pass: imapPass,
+        },
+        logger: false,
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+
+      await client.connect();
+      await client.logout();
+      res.json({ success: true, message: 'Connessione IMAP riuscita!' });
+    } catch (error: any) {
+      res.status(500).json({ error: `Errore di connessione IMAP: ${error.message}` });
     }
   });
 
@@ -923,12 +963,15 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const client = new ImapFlow({
         host: settings.imap_host || 'imap.gmail.com',
         port: parseInt(settings.imap_port) || 993,
-        secure: true,
+        secure: parseInt(settings.imap_port) === 993,
         auth: {
           user: imapUser,
           pass: imapPass,
         },
-        logger: false
+        logger: false,
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       await client.connect();
@@ -953,12 +996,15 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const client = new ImapFlow({
         host: settings.imap_host || 'imap.gmail.com',
         port: parseInt(settings.imap_port) || 993,
-        secure: true,
+        secure: parseInt(settings.imap_port) === 993,
         auth: {
           user: imapUser,
           pass: imapPass,
         },
-        logger: false
+        logger: false,
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       await client.connect();
@@ -1054,12 +1100,15 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const client = new ImapFlow({
         host: settings.imap_host || 'imap.gmail.com',
         port: parseInt(settings.imap_port) || 993,
-        secure: true,
+        secure: parseInt(settings.imap_port) === 993,
         auth: {
           user: imapUser,
           pass: imapPass,
         },
-        logger: false
+        logger: false,
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       await client.connect();

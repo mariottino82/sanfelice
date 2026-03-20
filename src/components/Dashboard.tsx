@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -226,6 +226,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     message: ''
   });
   const [isSendingEmail, setIsSendingEmail] = React.useState(false);
+  const [isTestingConnection, setIsTestingConnection] = React.useState(false);
 
   const handleSendEmail = async () => {
     if (!emailForm.to || !emailForm.subject || !emailForm.message) {
@@ -598,11 +599,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       const res = await fetch(`/api/emails?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setEmails(data.emails);
-        setEmailTotalPages(data.totalPages);
+        setEmails(data.emails || []);
+        setEmailTotalPages(data.totalPages || 1);
+      } else {
+        const errorData = await res.json();
+        setNotification({ message: errorData.error || 'Errore nel recupero delle email', type: 'error' });
       }
     } catch (err) {
       console.error('Error fetching emails:', err);
+      setNotification({ message: 'Errore di connessione durante il recupero delle email', type: 'error' });
     } finally {
       setIsLoadingEmails(false);
     }
@@ -3095,17 +3100,28 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   ))}
                 </div>
 
-                <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
-                  <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
-                    <Mail className="w-5 h-5" />
-                    Configurazione Email (SMTP & IMAP Gmail)
-                  </h3>
-                  <div className="space-y-6">
-                    <p className="text-sm text-stone-500">
-                      Configura l'account Gmail per l'invio e la ricezione automatica delle comunicazioni. 
-                      <strong>Nota:</strong> Per Gmail, devi utilizzare una "Password per le App" se hai l'autenticazione a due fattori attiva.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-serif text-stone-900 flex items-center gap-2">
+                          <Mail className="w-5 h-5" />
+                          Configurazione Email (SMTP & IMAP Gmail)
+                        </h3>
+                        <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-amber-100">
+                          <AlertCircle className="w-3 h-3" />
+                          Nota per Gmail
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-6">
+                        <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                          <p className="text-sm text-amber-800 leading-relaxed">
+                            <strong>Importante per Gmail:</strong> Per scaricare e inviare email è <strong>obbligatorio</strong> utilizzare una <strong>Password per le App</strong>. 
+                            La tua password normale di Google non funzionerà. 
+                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="ml-1 underline font-bold hover:text-amber-900">Generala qui</a>.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server SMTP</label>
                         <input 
@@ -3180,25 +3196,51 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                     </div>
-                    <button 
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/settings/email_settings', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ value: emailSettings })
-                          });
-                          if (response.ok) {
-                            setNotification({ message: 'Impostazioni email salvate!', type: 'success' });
+                    <div className="flex gap-4 pt-4">
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/settings/email_settings', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ value: emailSettings })
+                            });
+                            if (response.ok) {
+                              setNotification({ message: 'Impostazioni email salvate!', type: 'success' });
+                            }
+                          } catch (error) {
+                            setNotification({ message: 'Errore durante il salvataggio', type: 'error' });
                           }
-                        } catch (error) {
-                          setNotification({ message: 'Errore durante il salvataggio', type: 'error' });
-                        }
-                      }}
-                      className="bg-stone-900 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors"
-                    >
-                      Salva Impostazioni Email
-                    </button>
+                        }}
+                        className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl text-sm font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                      >
+                        <Save className="w-4 h-4" />
+                        Salva Impostazioni
+                      </button>
+                      <button 
+                        disabled={isTestingConnection}
+                        onClick={async () => {
+                          setIsTestingConnection(true);
+                          try {
+                            const response = await fetch('/api/emails/test');
+                            const data = await response.json();
+                            if (response.ok) {
+                              setNotification({ message: data.message, type: 'success' });
+                            } else {
+                              setNotification({ message: data.error, type: 'error' });
+                            }
+                          } catch (error) {
+                            setNotification({ message: 'Errore di connessione al server', type: 'error' });
+                          } finally {
+                            setIsTestingConnection(false);
+                          }
+                        }}
+                        className="flex items-center gap-2 px-6 py-3 bg-white border border-stone-200 text-stone-900 rounded-xl text-sm font-bold hover:bg-stone-50 transition-all"
+                      >
+                        {isTestingConnection ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                        Testa Connessione IMAP
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
