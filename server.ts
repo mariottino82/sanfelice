@@ -907,6 +907,135 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     });
   };
 
+  // Email Client API
+  // Helper to list folders
+  app.get('/api/emails/folders', async (req, res) => {
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
+      const settings = JSON.parse(emailSettingsRow.value);
+      
+      if (settings.protocol !== 'imap') {
+        return res.json({ folders: [{ path: 'INBOX', name: 'Inbox', special: '' }] });
+      }
+
+      const client = getImapClient(settings);
+      try {
+        await client.connect();
+        const list = await client.list();
+        const folders = list.map(f => ({
+          path: f.path,
+          name: f.name,
+          special: f.specialUse || ''
+        }));
+        res.json({ folders });
+      } finally {
+        await client.logout();
+      }
+    } catch (error: any) {
+      console.error('Folders Fetch Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Helper to get full email content
+  app.get('/api/emails/:uid', async (req, res) => {
+    const { uid } = req.params;
+    const { folder = 'INBOX' } = req.query;
+
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
+      const settings = JSON.parse(emailSettingsRow.value);
+
+      if (settings.protocol !== 'imap') {
+        return res.status(400).json({ error: 'Dettaglio email supportato solo tramite IMAP' });
+      }
+
+      const client = getImapClient(settings);
+      try {
+        await client.connect();
+        const lock = await client.getMailboxLock(folder as string);
+        try {
+          const message = await client.fetchOne(uid, { source: true, envelope: true, flags: true, bodyStructure: true });
+          if (!message) return res.status(404).json({ error: 'Email non trovata' });
+
+          const parsed = await simpleParser(message.source);
+          
+          const getAddress = (addr: any) => {
+            if (!addr) return { name: 'Sconosciuto', address: 'unknown' };
+            const val = addr.value ? addr.value[0] : (Array.isArray(addr) ? addr[0] : addr);
+            return {
+              name: val.name || '',
+              address: val.address || 'unknown'
+            };
+          };
+
+          res.json({
+            uid: message.uid.toString(),
+            from: getAddress(parsed.from),
+            to: getAddress(parsed.to),
+            subject: parsed.subject || '(Nessun oggetto)',
+            date: parsed.date || new Date(),
+            html: parsed.html || parsed.textAsHtml || '',
+            text: parsed.text || '',
+            attachments: parsed.attachments.map((a, idx) => ({
+              filename: a.filename,
+              contentType: a.contentType,
+              size: a.size,
+              part: idx.toString()
+            }))
+          });
+        } finally {
+          lock.release();
+        }
+      } finally {
+        await client.logout();
+      }
+    } catch (error: any) {
+      console.error('Email Detail Fetch Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Download attachment
+  app.get('/api/emails/:uid/attachment/:part', async (req, res) => {
+    const { uid, part } = req.params;
+    const { folder = 'INBOX' } = req.query;
+
+    try {
+      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
+      const settings = JSON.parse(emailSettingsRow.value);
+
+      const client = getImapClient(settings);
+      try {
+        await client.connect();
+        const lock = await client.getMailboxLock(folder as string);
+        try {
+          const message = await client.fetchOne(uid, { source: true });
+          if (!message) return res.status(404).json({ error: 'Email non trovata' });
+
+          const parsed = await simpleParser(message.source);
+          const attachment = parsed.attachments[parseInt(part)];
+          
+          if (!attachment) return res.status(404).json({ error: 'Allegato non trovato' });
+
+          res.setHeader('Content-Type', attachment.contentType);
+          res.setHeader('Content-Disposition', `attachment; filename="${attachment.filename}"`);
+          res.send(attachment.content);
+        } finally {
+          lock.release();
+        }
+      } finally {
+        await client.logout();
+      }
+    } catch (error: any) {
+      console.error('Attachment Download Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/emails', async (req, res) => {
     const { folder = 'INBOX', page = '1', search = '' } = req.query;
     const pageSize = 20;
@@ -1169,55 +1298,6 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Assicurati inoltre che l\'indirizzo email sia corretto.';
       }
       res.status(500).json({ error: `Errore SMTP: ${errorMessage}` });
-    }
-  });
-
-  app.get('/api/emails/folders', async (req, res) => {
-    // POP3 only has INBOX
-    res.json(['INBOX']);
-  });
-
-  app.get('/api/emails/:uid', async (req, res) => {
-    const { uid } = req.params;
-    try {
-      const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
-      if (!emailSettingsRow) return res.status(400).json({ error: 'Email settings not configured' });
-      const settings = JSON.parse(emailSettingsRow.value);
-      
-      const client = getPop3Client(settings);
-
-      try {
-        await client.connect();
-        const index = parseInt(uid);
-        const raw = await client.RETR(index);
-        const parsed = await simpleParser(raw);
-        
-        const getAddressText = (addr: any) => {
-          if (!addr) return '';
-          if (Array.isArray(addr)) return addr.map((a: any) => a.text).join(', ');
-          return addr.text || '';
-        };
-
-        res.json({
-          uid,
-          from: getAddressText(parsed.from),
-          to: getAddressText(parsed.to),
-          subject: parsed.subject,
-          date: parsed.date,
-          html: parsed.html || parsed.textAsHtml,
-          text: parsed.text,
-          attachments: parsed.attachments?.map(att => ({
-            filename: att.filename,
-            contentType: att.contentType,
-            size: att.size
-          }))
-        });
-      } finally {
-        await client.QUIT();
-      }
-    } catch (error: any) {
-      console.error('POP3 Fetch Error:', error);
-      res.status(500).json({ error: `Errore recupero email POP3: ${error.message}` });
     }
   });
 

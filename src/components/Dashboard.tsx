@@ -140,7 +140,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   
   // Email Client State
   const [emails, setEmails] = React.useState<any[]>([]);
-  const [folders, setFolders] = React.useState<string[]>([]);
+  const [folders, setFolders] = React.useState<any[]>([]);
   const [selectedFolder, setSelectedFolder] = React.useState('INBOX');
   const [selectedEmail, setSelectedEmail] = React.useState<any>(null);
   const [isComposing, setIsComposing] = React.useState(false);
@@ -582,7 +582,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       const res = await fetch('/api/emails/folders');
       if (res.ok) {
         const data = await res.json();
-        setFolders(data);
+        setFolders(data.folders || []);
       }
     } catch (err) {
       console.error('Error fetching folders:', err);
@@ -4183,6 +4183,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   <button 
                     onClick={() => {
                       setComposeData({ to: '', subject: '', body: '', attachments: [] });
+                      setIsReplying(false);
+                      setIsForwarding(false);
                       setIsComposing(true);
                     }}
                     className="flex items-center gap-2 px-6 py-2.5 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
@@ -4197,27 +4199,161 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   <div className="w-64 border-r border-stone-100 bg-stone-50/30 overflow-y-auto p-4 space-y-1 hidden md:block">
                     {folders.map((folder) => (
                       <button
-                        key={folder}
-                        onClick={() => { setSelectedFolder(folder); setEmailPage(1); }}
+                        key={folder.path}
+                        onClick={() => { setSelectedFolder(folder.path); setEmailPage(1); setSelectedEmail(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                          selectedFolder === folder 
+                          selectedFolder === folder.path 
                             ? 'bg-stone-900 text-white shadow-md' 
                             : 'text-stone-600 hover:bg-stone-100'
                         }`}
                       >
-                        {folder.toLowerCase().includes('inbox') ? <Inbox className="w-4 h-4" /> :
-                         folder.toLowerCase().includes('sent') ? <Send className="w-4 h-4" /> :
-                         folder.toLowerCase().includes('trash') ? <Trash2 className="w-4 h-4" /> :
-                         folder.toLowerCase().includes('archive') ? <Archive className="w-4 h-4" /> :
+                        {folder.name.toLowerCase().includes('inbox') || folder.special === '\\Inbox' ? <Inbox className="w-4 h-4" /> :
+                         folder.name.toLowerCase().includes('sent') || folder.special === '\\Sent' ? <Send className="w-4 h-4" /> :
+                         folder.name.toLowerCase().includes('trash') || folder.special === '\\Trash' ? <Trash2 className="w-4 h-4" /> :
+                         folder.name.toLowerCase().includes('archive') || folder.special === '\\Archive' ? <Archive className="w-4 h-4" /> :
+                         folder.name.toLowerCase().includes('draft') || folder.special === '\\Drafts' ? <FileText className="w-4 h-4" /> :
+                         folder.name.toLowerCase().includes('spam') || folder.special === '\\Junk' ? <AlertCircle className="w-4 h-4" /> :
                          <Mail className="w-4 h-4" />}
-                        <span className="truncate">{folder}</span>
+                        <span className="truncate">{folder.name}</span>
                       </button>
                     ))}
                   </div>
 
-                  {/* Email List */}
+                  {/* Email List or Detail */}
                   <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
-                    {isLoadingEmails ? (
+                    {selectedEmail ? (
+                      <div className="h-full flex flex-col bg-white">
+                        {/* Detail Header */}
+                        <div className="p-4 border-b border-stone-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setSelectedEmail(null)}
+                              className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-500"
+                              title="Indietro"
+                            >
+                              <ArrowLeft className="w-5 h-5" />
+                            </button>
+                            <div className="h-8 w-[1px] bg-stone-100 mx-2"></div>
+                            <button 
+                              onClick={() => {
+                                setComposeData({
+                                  to: selectedEmail.from.address,
+                                  subject: `Re: ${selectedEmail.subject}`,
+                                  body: `\n\n--- In data ${new Date(selectedEmail.date).toLocaleString('it-IT')}, ${selectedEmail.from.name || selectedEmail.from.address} ha scritto:\n\n${selectedEmail.text}`,
+                                  replyToUid: selectedEmail.uid
+                                });
+                                setIsReplying(true);
+                                setIsForwarding(false);
+                                setIsComposing(true);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 hover:bg-stone-100 rounded-xl transition-all text-sm font-medium text-stone-600"
+                            >
+                              <Reply className="w-4 h-4" />
+                              Rispondi
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setComposeData({
+                                  to: '',
+                                  subject: `Fwd: ${selectedEmail.subject}`,
+                                  body: `\n\n--- Messaggio Inoltrato ---\nDa: ${selectedEmail.from.name || selectedEmail.from.address}\nData: ${new Date(selectedEmail.date).toLocaleString('it-IT')}\nOggetto: ${selectedEmail.subject}\n\n${selectedEmail.text}`,
+                                  forwardFromUid: selectedEmail.uid
+                                });
+                                setIsForwarding(true);
+                                setIsReplying(false);
+                                setIsComposing(true);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 hover:bg-stone-100 rounded-xl transition-all text-sm font-medium text-stone-600"
+                            >
+                              <Forward className="w-4 h-4" />
+                              Inoltra
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => moveEmailToTrash(selectedEmail.uid)}
+                              className="p-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all text-stone-400"
+                              title="Elimina"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Detail Content */}
+                        <div className="p-8 max-w-4xl mx-auto w-full">
+                          <h1 className="text-2xl font-serif text-stone-900 mb-6">{selectedEmail.subject}</h1>
+                          
+                          <div className="flex items-start gap-4 mb-8">
+                            <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-400 font-bold text-lg">
+                              {(selectedEmail.from.name || selectedEmail.from.address)[0].toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="font-bold text-stone-900 truncate">
+                                  {selectedEmail.from.name || selectedEmail.from.address}
+                                </p>
+                                <p className="text-xs text-stone-400 font-medium">
+                                  {new Date(selectedEmail.date).toLocaleString('it-IT', { 
+                                    day: '2-digit', month: 'long', year: 'numeric', 
+                                    hour: '2-digit', minute: '2-digit' 
+                                  })}
+                                </p>
+                              </div>
+                              <p className="text-xs text-stone-500 truncate">
+                                A: {selectedEmail.to.name || selectedEmail.to.address || 'Me'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Email Body */}
+                          <div className="prose prose-stone max-w-none mb-12">
+                            {selectedEmail.html ? (
+                              <div 
+                                dangerouslySetInnerHTML={{ __html: selectedEmail.html }} 
+                                className="email-content-html"
+                              />
+                            ) : (
+                              <pre className="whitespace-pre-wrap font-sans text-stone-700 leading-relaxed">
+                                {selectedEmail.text}
+                              </pre>
+                            )}
+                          </div>
+
+                          {/* Attachments */}
+                          {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                            <div className="border-t border-stone-100 pt-8">
+                              <h3 className="text-sm font-bold text-stone-900 mb-4 flex items-center gap-2">
+                                <Paperclip className="w-4 h-4" />
+                                Allegati ({selectedEmail.attachments.length})
+                              </h3>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {selectedEmail.attachments.map((att: any, idx: number) => (
+                                  <a 
+                                    key={idx}
+                                    href={`/api/emails/${selectedEmail.uid}/attachment/${att.part}?folder=${selectedFolder}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-3 border border-stone-100 rounded-2xl hover:bg-stone-50 transition-all group"
+                                  >
+                                    <div className="w-10 h-10 rounded-xl bg-stone-50 flex items-center justify-center text-stone-400 group-hover:bg-white transition-all">
+                                      <FileText className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-stone-900 truncate">{att.filename}</p>
+                                      <p className="text-[10px] text-stone-400 uppercase font-bold">
+                                        {(att.size / 1024).toFixed(1)} KB
+                                      </p>
+                                    </div>
+                                    <Download className="w-4 h-4 text-stone-300 group-hover:text-stone-900 transition-all" />
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : isLoadingEmails ? (
                       <div className="h-full flex items-center justify-center">
                         <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
                       </div>
