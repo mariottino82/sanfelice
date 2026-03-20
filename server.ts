@@ -863,8 +863,8 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   // Email Client API
   // Helper to get POP3 client from settings
   const getPop3Client = (settings: any) => {
-    const popUser = settings.pop_user || settings.smtp_user;
-    const popPass = settings.pop_pass || settings.smtp_pass;
+    const popUser = (settings.pop_user || settings.smtp_user || '').trim();
+    const popPass = (settings.pop_pass || settings.smtp_pass || '').trim();
     const port = parseInt(settings.pop_port) || 995;
     
     // For POP3, SSL/TLS is standard on port 995.
@@ -877,9 +877,31 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       host: settings.pop_host || 'pop.gmail.com',
       port: port,
       tls: useTls,
-      timeout: 10000,
+      timeout: 15000, // Increased timeout
       servername: settings.pop_host || 'pop.gmail.com',
       tlsOptions: {
+        rejectUnauthorized: false
+      }
+    });
+  };
+
+  // Helper to get IMAP client from settings
+  const getImapClient = (settings: any) => {
+    const imapUser = (settings.imap_user || settings.smtp_user || '').trim();
+    const imapPass = (settings.imap_pass || settings.smtp_pass || '').trim();
+    const port = parseInt(settings.imap_port) || 993;
+    const useTls = settings.imap_tls !== undefined ? settings.imap_tls : (port === 993);
+    
+    return new ImapFlow({
+      host: settings.imap_host || 'imap.gmail.com',
+      port: port,
+      secure: useTls,
+      auth: {
+        user: imapUser,
+        pass: imapPass
+      },
+      logger: false,
+      tls: {
         rejectUnauthorized: false
       }
     });
@@ -894,102 +916,169 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
       if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
       const settings = JSON.parse(emailSettingsRow.value);
-      const port = parseInt(settings.pop_port) || 995;
-      const client = getPop3Client(settings);
-      
-      try {
-        const pop3Operation = (async () => {
-          console.log(`Connecting to POP3 server: ${settings.pop_host}:${port} (TLS: ${settings.pop_tls !== undefined ? settings.pop_tls : (port === 995)})`);
-          
-          // Add timeout to connect
-          await Promise.race([
-            client.connect(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione POP3 (10s)')), 10000))
-          ]);
-          
-          console.log('POP3 connected successfully');
-          
-          // Use STAT to get count quickly with timeout
-          const stat = await Promise.race([
-            client.STAT(),
-            new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Timeout STAT POP3 (5s)')), 5000))
-          ]);
-          console.log('POP3 STAT response:', stat);
-          
-          const statMatch = stat.match(/^\+OK\s+(\d+)/i);
-          const totalMessages = statMatch ? parseInt(statMatch[1]) : 0;
-          console.log(`Total messages in POP3 inbox: ${totalMessages}`);
-          
-          const messages = [];
-          const endIdx = totalMessages - skip;
-          const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
+      const protocol = settings.protocol || 'pop3';
 
-          console.log(`Fetching messages from ${endIdx} down to ${startIdx}`);
-
-          if (totalMessages > 0 && endIdx >= 1) {
-            const actualEndIdx = Math.min(totalMessages, endIdx);
+      if (protocol === 'imap') {
+        console.log('Using IMAP protocol');
+        const client = getImapClient(settings);
+        try {
+          await client.connect();
+          const lock = await client.getMailboxLock(folder as string);
+          try {
+            const status = await client.status(folder as string, { messages: true });
+            const totalMessages = status.messages || 0;
             
-            for (let i = actualEndIdx; i >= startIdx; i--) {
-              try {
-                console.log(`Fetching headers and preview for message ${i}...`);
-                // Set a shorter timeout for each message fetch
-                const fetchPromise = client.TOP(i, 10);
-                const timeoutPromise = new Promise<string>((_, reject) => 
-                  setTimeout(() => reject(new Error('Timeout fetching message headers')), 2000)
-                );
-                
-                const raw = await Promise.race([fetchPromise, timeoutPromise]);
-                
-                if (raw) {
-                  const parsed = await simpleParser(raw);
+            const messages = [];
+            if (totalMessages > 0) {
+                // Fetch last 20 messages
+                const range = `${Math.max(1, totalMessages - skip - pageSize + 1)}:${Math.max(1, totalMessages - skip)}`;
+                for await (const message of client.fetch(range, { envelope: true, flags: true, bodyStructure: true })) {
                   messages.push({
-                    uid: i.toString(),
-                    seq: i,
-                    from: parsed.from?.value[0] || { name: 'Sconosciuto', address: 'unknown' },
-                    subject: parsed.subject || '(Nessun oggetto)',
-                    date: parsed.date || new Date(),
-                    flags: [],
-                    hasAttachments: (parsed.attachments && parsed.attachments.length > 0),
-                    preview: parsed.text?.substring(0, 100) || ''
+                    uid: message.uid.toString(),
+                    seq: message.seq,
+                    from: { 
+                        name: message.envelope.from[0].name || '', 
+                        address: message.envelope.from[0].address || '' 
+                    },
+                    subject: message.envelope.subject || '(Nessun oggetto)',
+                    date: message.envelope.date || new Date(),
+                    flags: Array.from(message.flags || []),
+                    hasAttachments: message.bodyStructure.childNodes?.some(part => part.disposition === 'attachment') || false,
+                    preview: ''
                   });
-                  console.log(`Successfully fetched message ${i}`);
                 }
-              } catch (err) {
-                console.error(`Error fetching message ${i}:`, err);
+                // Reverse to show newest first
+                messages.reverse();
+            }
+
+            const totalPages = Math.ceil(totalMessages / pageSize);
+            return res.json({
+              emails: messages,
+              total: totalMessages,
+              totalPages,
+              page: parseInt(page as string),
+              pageSize
+            });
+          } finally {
+            lock.release();
+          }
+        } finally {
+          await client.logout();
+        }
+      } else {
+        // POP3 logic
+        const port = parseInt(settings.pop_port) || 995;
+        const client = getPop3Client(settings);
+        
+        try {
+          const pop3Operation = (async () => {
+            console.log(`Connecting to POP3 server: ${settings.pop_host}:${port} (TLS: ${settings.pop_tls !== undefined ? settings.pop_tls : (port === 995)})`);
+            
+            // Add timeout to connect
+            await Promise.race([
+              client.connect(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione POP3 (15s)')), 15000))
+            ]);
+            
+            console.log('POP3 connected successfully');
+            
+            // Use STAT to get count quickly with timeout
+            const stat = await Promise.race([
+              client.STAT(),
+              new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Timeout STAT POP3 (5s)')), 5000))
+            ]);
+            console.log('POP3 STAT response:', stat);
+            
+            const statMatch = stat.match(/^\+OK\s+(\d+)/i);
+            const totalMessages = statMatch ? parseInt(statMatch[1]) : 0;
+            console.log(`Total messages in POP3 inbox: ${totalMessages}`);
+            
+            const messages = [];
+            const endIdx = totalMessages - skip;
+            const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
+
+            console.log(`Fetching messages from ${endIdx} down to ${startIdx}`);
+
+            if (totalMessages > 0 && endIdx >= 1) {
+              const actualEndIdx = Math.min(totalMessages, endIdx);
+              
+              for (let i = actualEndIdx; i >= startIdx; i--) {
+                try {
+                  console.log(`Fetching headers and preview for message ${i}...`);
+                  // Try TOP first, fallback to RETR if it fails
+                  let raw;
+                  try {
+                    const fetchPromise = client.TOP(i, 10);
+                    const timeoutPromise = new Promise<string>((_, reject) => 
+                      setTimeout(() => reject(new Error('Timeout fetching message headers')), 3000)
+                    );
+                    raw = await Promise.race([fetchPromise, timeoutPromise]);
+                  } catch (topErr: any) {
+                    console.warn(`TOP failed for message ${i}, falling back to RETR:`, topErr.message);
+                    const fetchPromise = client.RETR(i);
+                    const timeoutPromise = new Promise<string>((_, reject) => 
+                      setTimeout(() => reject(new Error('Timeout fetching message with RETR')), 10000)
+                    );
+                    raw = await Promise.race([fetchPromise, timeoutPromise]);
+                  }
+                  
+                  if (raw) {
+                    const parsed = await simpleParser(raw);
+                    messages.push({
+                      uid: i.toString(),
+                      seq: i,
+                      from: parsed.from?.value[0] || { name: 'Sconosciuto', address: 'unknown' },
+                      subject: parsed.subject || '(Nessun oggetto)',
+                      date: parsed.date || new Date(),
+                      flags: [],
+                      hasAttachments: (parsed.attachments && parsed.attachments.length > 0),
+                      preview: parsed.text?.substring(0, 100) || ''
+                    });
+                    console.log(`Successfully fetched message ${i}`);
+                  }
+                } catch (err) {
+                  console.error(`Error fetching message ${i}:`, err);
+                }
               }
             }
+
+            const totalPages = Math.ceil(totalMessages / pageSize);
+            console.log(`Finished fetching emails. Returning ${messages.length} messages.`);
+            return {
+              emails: messages,
+              total: totalMessages,
+              totalPages,
+              page: parseInt(page as string),
+              pageSize
+            };
+          })();
+
+          const result = await Promise.race([
+            pop3Operation, 
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout globale operazione POP3 (45s)')), 45000))
+          ]) as any;
+          res.json(result);
+        } finally {
+          try {
+            await Promise.race([
+              client.QUIT(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout QUIT')), 2000))
+            ]);
+          } catch (e) {
+            // Ignore quit errors
           }
-
-          const totalPages = Math.ceil(totalMessages / pageSize);
-          console.log(`Finished fetching emails. Returning ${messages.length} messages.`);
-          return {
-            emails: messages,
-            total: totalMessages,
-            totalPages,
-            page: parseInt(page as string),
-            pageSize
-          };
-        })();
-
-        const result = await Promise.race([
-          pop3Operation, 
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout globale operazione POP3 (30s)')), 30000))
-        ]) as any;
-        res.json(result);
-      } finally {
-        try {
-          // Add timeout to QUIT
-          await Promise.race([
-            client.QUIT(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout QUIT')), 2000))
-          ]);
-        } catch (e) {
-          // Ignore quit errors
         }
       }
     } catch (error: any) {
-      console.error('POP3 Error details:', error);
-      res.status(500).json({ error: `Errore POP3: ${error.message}. Verifica le credenziali e che il server POP3 sia raggiungibile.` });
+      console.error('Email Fetch Error details:', error);
+      let errorMessage = error.message;
+      if (errorMessage.includes('Username and Password not accepted') || 
+          errorMessage.includes('AUTHENTICATIONFAILED') || 
+          errorMessage.includes('invalid user or password') || 
+          errorMessage.includes('535')) {
+        errorMessage = 'Credenziali non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Assicurati inoltre che il protocollo (POP3 o IMAP) sia ABILITATO nelle impostazioni del tuo account email.';
+      }
+      res.status(500).json({ error: `Errore email: ${errorMessage}. Verifica le credenziali e le impostazioni del server.` });
     }
   });
 
@@ -1020,6 +1109,30 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     }
   });
 
+  app.post('/api/emails/test-imap', async (req, res) => {
+    try {
+      const settings = req.body;
+      if (!settings) return res.status(400).json({ error: 'Settings are required' });
+      
+      const client = getImapClient(settings);
+
+      console.log(`Testing IMAP connection to ${settings.imap_host}:${parseInt(settings.imap_port) || 993}`);
+      await Promise.race([
+        client.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione IMAP (15s)')), 15000))
+      ]);
+      await client.logout();
+      res.json({ success: true, message: 'Connessione IMAP riuscita!' });
+    } catch (error: any) {
+      console.error('IMAP Test Error:', error);
+      let errorMessage = error.message;
+      if (errorMessage.includes('AUTHENTICATIONFAILED') || errorMessage.includes('invalid user or password') || errorMessage.includes('535')) {
+        errorMessage = 'Credenziali IMAP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App". Assicurati inoltre di aver ABILITATO l\'IMAP nelle impostazioni di Gmail (Ingranaggio -> Visualizza tutte le impostazioni -> Inoltro e POP/IMAP).';
+      }
+      res.status(500).json({ error: `Errore IMAP: ${errorMessage}` });
+    }
+  });
+
   app.post('/api/emails/test-smtp', async (req, res) => {
     try {
       const settings = req.body;
@@ -1035,8 +1148,8 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         secure: parseInt(settings.smtp_port) === 465,
         requireTLS: parseInt(settings.smtp_port) === 587,
         auth: {
-          user: settings.smtp_user,
-          pass: settings.smtp_pass,
+          user: (settings.smtp_user || '').trim(),
+          pass: (settings.smtp_pass || '').trim(),
         },
         tls: {
           rejectUnauthorized: false
@@ -1053,7 +1166,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       console.error('SMTP Test Error:', error);
       let errorMessage = error.message;
       if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
-        errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Google blocca la tua password normale per motivi di sicurezza.';
+        errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Assicurati inoltre che l\'indirizzo email sia corretto.';
       }
       res.status(500).json({ error: `Errore SMTP: ${errorMessage}` });
     }

@@ -257,11 +257,11 @@ export async function getDb() {
       smtp_port: 587,
       smtp_user: '',
       smtp_pass: '',
-      pop_host: 'pop.gmail.com',
-      pop_port: 995,
-      pop_user: '',
-      pop_pass: '',
-      protocol: 'pop3',
+      imap_host: 'imap.gmail.com',
+      imap_port: 993,
+      imap_user: '',
+      imap_pass: '',
+      protocol: 'imap',
       from_email: '',
       from_name: ''
     };

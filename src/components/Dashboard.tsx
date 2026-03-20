@@ -212,12 +212,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     smtp_port: '465',
     smtp_user: '',
     smtp_pass: '',
-    pop_host: 'pop.gmail.com',
-    pop_port: '995',
-    pop_user: '',
-    pop_pass: '',
-    pop_tls: true,
-    protocol: 'pop3',
+    imap_host: 'imap.gmail.com',
+    imap_port: '993',
+    imap_user: '',
+    imap_pass: '',
+    imap_tls: true,
+    protocol: 'imap',
     from_email: '',
     from_name: ''
   });
@@ -3132,13 +3132,46 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
                           <p className="text-sm text-amber-800 leading-relaxed">
                             <strong className="text-amber-900">Importante per Gmail:</strong> Google ha rimosso il supporto alle "App meno sicure". 
-                            Dallo screenshot vedo che la tua <strong>Verifica in due passaggi è disattivata</strong>: per far funzionare l'email, <strong>DEVI attivarla</strong> e poi generare una <strong>Password per le App</strong> (16 caratteri). 
-                            <br />
-                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block underline font-bold hover:text-amber-900">Attiva la 2FA e genera qui la Password per le App &rarr;</a>
+                            <br /><br />
+                            1. <strong>DEVI attivare la Verifica in due passaggi</strong> e generare una <strong>Password per le App</strong> (16 caratteri). 
+                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="ml-1 underline font-bold hover:text-amber-900">Genera qui la Password per le App &rarr;</a>
+                            <br /><br />
+                            2. <strong>DEVI ABILITARE IMAP/POP3</strong> nelle impostazioni di Gmail: Ingranaggio &rarr; Visualizza tutte le impostazioni &rarr; Inoltro e POP/IMAP &rarr; Attiva IMAP.
                           </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server IMAP</label>
+                            <input 
+                              value={emailSettings.imap_host}
+                              onChange={(e) => setEmailSettings({ ...emailSettings, imap_host: e.target.value })}
+                              className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                              placeholder="imap.gmail.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta IMAP (SSL)</label>
+                            <div className="flex gap-2">
+                              <input 
+                                value={emailSettings.imap_port}
+                                onChange={(e) => setEmailSettings({ ...emailSettings, imap_port: e.target.value, imap_tls: e.target.value === '993' })}
+                                className="flex-1 px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                                placeholder="993"
+                              />
+                              <button
+                                onClick={() => setEmailSettings({ ...emailSettings, imap_tls: !emailSettings.imap_tls })}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                  emailSettings.imap_tls 
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                    : 'bg-stone-50 border-stone-200 text-stone-500'
+                                }`}
+                              >
+                                {emailSettings.imap_tls ? 'SSL ON' : 'SSL OFF'}
+                              </button>
+                            </div>
+                          </div>
+
                       <div className="space-y-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server SMTP</label>
                         <input 
@@ -3149,7 +3182,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta SMTP (SSL)</label>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta SMTP</label>
                         <input 
                           value={emailSettings.smtp_port}
                           onChange={(e) => setEmailSettings({ ...emailSettings, smtp_port: e.target.value })}
@@ -3158,40 +3191,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Server POP3</label>
-                        <input 
-                          value={emailSettings.pop_host}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, pop_host: e.target.value })}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                          placeholder="pop.gmail.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Porta POP3 (SSL)</label>
-                        <div className="flex gap-2">
-                          <input 
-                            value={emailSettings.pop_port}
-                            onChange={(e) => setEmailSettings({ ...emailSettings, pop_port: e.target.value, pop_tls: e.target.value === '995' })}
-                            className="flex-1 px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
-                            placeholder="995"
-                          />
-                          <button
-                            onClick={() => setEmailSettings({ ...emailSettings, pop_tls: !emailSettings.pop_tls })}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
-                              emailSettings.pop_tls 
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
-                                : 'bg-stone-50 border-stone-200 text-stone-500'
-                            }`}
-                          >
-                            {emailSettings.pop_tls ? 'SSL ON' : 'SSL OFF'}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
                         <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Username (Email)</label>
                         <input 
                           value={emailSettings.smtp_user}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_user: e.target.value, pop_user: e.target.value })}
+                          onChange={(e) => {
+                              const val = e.target.value;
+                              setEmailSettings({ 
+                                  ...emailSettings, 
+                                  smtp_user: val, 
+                                  pop_user: val,
+                                  imap_user: val,
+                                  from_email: emailSettings.from_email || val
+                              });
+                          }}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
                           placeholder="tuaemail@esempio.it"
                         />
@@ -3201,7 +3213,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <input 
                           type="password"
                           value={emailSettings.smtp_pass}
-                          onChange={(e) => setEmailSettings({ ...emailSettings, smtp_pass: e.target.value, pop_pass: e.target.value })}
+                          onChange={(e) => {
+                              const val = e.target.value;
+                              setEmailSettings({ 
+                                  ...emailSettings, 
+                                  smtp_pass: val, 
+                                  pop_pass: val,
+                                  imap_pass: val
+                              });
+                          }}
                           className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
                           placeholder="••••••••••••"
                         />
@@ -3251,7 +3271,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         onClick={async () => {
                           setIsTestingConnection(true);
                           try {
-                            const response = await fetch('/api/emails/test', {
+                            const endpoint = emailSettings.protocol === 'imap' ? '/api/emails/test-imap' : '/api/emails/test';
+                            const response = await fetch(endpoint, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify(emailSettings)
@@ -3271,7 +3292,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         className="flex items-center gap-2 px-6 py-3 bg-white border border-stone-200 text-stone-900 rounded-xl text-sm font-bold hover:bg-stone-50 transition-all disabled:opacity-50"
                       >
                         {isTestingConnection ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                        Testa POP3
+                        Testa {emailSettings.protocol === 'imap' ? 'IMAP' : 'POP3'}
                       </button>
                       <button 
                         disabled={isTestingConnection}
