@@ -896,79 +896,93 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const settings = JSON.parse(emailSettingsRow.value);
       const port = parseInt(settings.pop_port) || 995;
       const client = getPop3Client(settings);
-
+      
       try {
-        console.log(`Connecting to POP3 server: ${settings.pop_host}:${port} (TLS: ${settings.pop_tls !== undefined ? settings.pop_tls : (port === 995)})`);
-        await client.connect();
-        console.log('POP3 connected successfully');
-        
-        // Use STAT to get count quickly
-        const stat = await client.STAT();
-        console.log('POP3 STAT response:', stat);
-        
-        // STAT returns "+OK <count> <size>" or "+OK <count> messages (<size> octets)"
-        // More robust parsing using regex
-        const statMatch = stat.match(/^\+OK\s+(\d+)/i);
-        const totalMessages = statMatch ? parseInt(statMatch[1]) : 0;
-        console.log(`Total messages in POP3 inbox: ${totalMessages}`);
-        
-        const messages = [];
-        // POP3 list is 1-indexed. We want newest first.
-        const endIdx = totalMessages - skip;
-        const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
-
-        console.log(`Fetching messages from ${endIdx} down to ${startIdx}`);
-
-        if (totalMessages > 0 && endIdx >= 1) {
-          // Limit the number of messages to fetch to avoid long hangs
-          const actualEndIdx = Math.min(totalMessages, endIdx);
+        const pop3Operation = (async () => {
+          console.log(`Connecting to POP3 server: ${settings.pop_host}:${port} (TLS: ${settings.pop_tls !== undefined ? settings.pop_tls : (port === 995)})`);
           
-          for (let i = actualEndIdx; i >= startIdx; i--) {
-            try {
-              console.log(`Fetching headers and preview for message ${i}...`);
-              // Set a shorter timeout for each message fetch
-              const fetchPromise = client.TOP(i, 10);
-              const timeoutPromise = new Promise<string>((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout fetching message headers')), 1500)
-              );
-              
-              const raw = await Promise.race([fetchPromise, timeoutPromise]);
-              
-              if (raw) {
-                const parsed = await simpleParser(raw);
-                messages.push({
-                  uid: i.toString(),
-                  seq: i,
-                  from: parsed.from?.value[0] || { name: 'Sconosciuto', address: 'unknown' },
-                  subject: parsed.subject || '(Nessun oggetto)',
-                  date: parsed.date || new Date(),
-                  flags: [],
-                  hasAttachments: (parsed.attachments && parsed.attachments.length > 0),
-                  preview: parsed.text?.substring(0, 100) || ''
-                });
-                console.log(`Successfully fetched message ${i}`);
-              } else {
-                console.warn(`Empty raw response for message ${i}`);
+          // Add timeout to connect
+          await Promise.race([
+            client.connect(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione POP3 (10s)')), 10000))
+          ]);
+          
+          console.log('POP3 connected successfully');
+          
+          // Use STAT to get count quickly with timeout
+          const stat = await Promise.race([
+            client.STAT(),
+            new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Timeout STAT POP3 (5s)')), 5000))
+          ]);
+          console.log('POP3 STAT response:', stat);
+          
+          const statMatch = stat.match(/^\+OK\s+(\d+)/i);
+          const totalMessages = statMatch ? parseInt(statMatch[1]) : 0;
+          console.log(`Total messages in POP3 inbox: ${totalMessages}`);
+          
+          const messages = [];
+          const endIdx = totalMessages - skip;
+          const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
+
+          console.log(`Fetching messages from ${endIdx} down to ${startIdx}`);
+
+          if (totalMessages > 0 && endIdx >= 1) {
+            const actualEndIdx = Math.min(totalMessages, endIdx);
+            
+            for (let i = actualEndIdx; i >= startIdx; i--) {
+              try {
+                console.log(`Fetching headers and preview for message ${i}...`);
+                // Set a shorter timeout for each message fetch
+                const fetchPromise = client.TOP(i, 10);
+                const timeoutPromise = new Promise<string>((_, reject) => 
+                  setTimeout(() => reject(new Error('Timeout fetching message headers')), 2000)
+                );
+                
+                const raw = await Promise.race([fetchPromise, timeoutPromise]);
+                
+                if (raw) {
+                  const parsed = await simpleParser(raw);
+                  messages.push({
+                    uid: i.toString(),
+                    seq: i,
+                    from: parsed.from?.value[0] || { name: 'Sconosciuto', address: 'unknown' },
+                    subject: parsed.subject || '(Nessun oggetto)',
+                    date: parsed.date || new Date(),
+                    flags: [],
+                    hasAttachments: (parsed.attachments && parsed.attachments.length > 0),
+                    preview: parsed.text?.substring(0, 100) || ''
+                  });
+                  console.log(`Successfully fetched message ${i}`);
+                }
+              } catch (err) {
+                console.error(`Error fetching message ${i}:`, err);
               }
-            } catch (err) {
-              console.error(`Error fetching message ${i}:`, err);
-              // Continue to next message
             }
           }
-        }
 
-        const totalPages = Math.ceil(totalMessages / pageSize);
+          const totalPages = Math.ceil(totalMessages / pageSize);
+          console.log(`Finished fetching emails. Returning ${messages.length} messages.`);
+          return {
+            emails: messages,
+            total: totalMessages,
+            totalPages,
+            page: parseInt(page as string),
+            pageSize
+          };
+        })();
 
-        res.json({
-          emails: messages,
-          total: totalMessages,
-          totalPages,
-          page: parseInt(page as string),
-          pageSize
-        });
+        const result = await Promise.race([
+          pop3Operation, 
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout globale operazione POP3 (30s)')), 30000))
+        ]) as any;
+        res.json(result);
       } finally {
         try {
-          await client.QUIT();
+          // Add timeout to QUIT
+          await Promise.race([
+            client.QUIT(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout QUIT')), 2000))
+          ]);
         } catch (e) {
           // Ignore quit errors
         }
@@ -987,8 +1001,14 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       const client = getPop3Client(settings);
 
       console.log(`Testing POP3 connection to ${settings.pop_host}:${parseInt(settings.pop_port) || 995}`);
-      await client.connect();
-      await client.QUIT();
+      await Promise.race([
+        client.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione POP3 (10s)')), 10000))
+      ]);
+      await Promise.race([
+        client.QUIT(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout QUIT POP3 (2s)')), 2000))
+      ]);
       res.json({ success: true, message: 'Connessione POP3 riuscita!' });
     } catch (error: any) {
       console.error('POP3 Test Error:', error);
@@ -1024,7 +1044,10 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       });
 
       console.log(`Testing SMTP connection to ${settings.smtp_host}:${parseInt(settings.smtp_port) || 587}`);
-      await transporter.verify();
+      await Promise.race([
+        transporter.verify(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout verifica SMTP (10s)')), 10000))
+      ]);
       res.json({ success: true, message: 'Connessione SMTP riuscita!' });
     } catch (error: any) {
       console.error('SMTP Test Error:', error);
@@ -1095,16 +1118,24 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     try {
       const nodemailer = await import('nodemailer');
       const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
       const settings = JSON.parse(emailSettingsRow.value);
 
       const transporter = nodemailer.createTransport({
         host: settings.smtp_host || 'smtp.gmail.com',
         port: parseInt(settings.smtp_port) || 587,
         secure: parseInt(settings.smtp_port) === 465,
+        requireTLS: parseInt(settings.smtp_port) === 587,
         auth: {
           user: settings.smtp_user,
           pass: settings.smtp_pass,
         },
+        tls: {
+          rejectUnauthorized: false
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
       });
 
       await transporter.sendMail({

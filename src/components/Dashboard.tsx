@@ -598,18 +598,32 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         page: emailPage.toString(),
         search: emailSearchQuery
       });
-      const res = await fetch(`/api/emails?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setEmails(data.emails || []);
-        setEmailTotalPages(data.totalPages || 1);
-      } else {
-        const errorData = await res.json();
-        setNotification({ message: errorData.error || 'Errore nel recupero delle email', type: 'error' });
+      
+      // Add a timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 seconds timeout
+      
+      try {
+        const res = await fetch(`/api/emails?${params}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (res.ok) {
+          const data = await res.json();
+          setEmails(data.emails || []);
+          setEmailTotalPages(data.totalPages || 1);
+        } else {
+          const errorData = await res.json();
+          setNotification({ message: errorData.error || 'Errore nel recupero delle email', type: 'error' });
+        }
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          setNotification({ message: 'La richiesta è andata in timeout. Il server POP3 potrebbe essere lento o non raggiungibile.', type: 'error' });
+        } else {
+          console.error('Error fetching emails:', err);
+          setNotification({ message: 'Errore di connessione durante il recupero delle email', type: 'error' });
+        }
       }
-    } catch (err) {
-      console.error('Error fetching emails:', err);
-      setNotification({ message: 'Errore di connessione durante il recupero delle email', type: 'error' });
     } finally {
       setIsLoadingEmails(false);
     }
