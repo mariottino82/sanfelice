@@ -900,37 +900,59 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       try {
         console.log(`Connecting to POP3 server: ${settings.pop_host}:${port} (TLS: ${settings.pop_tls !== undefined ? settings.pop_tls : (port === 995)})`);
         await client.connect();
+        console.log('POP3 connected successfully');
         
         // Use STAT to get count quickly
         const stat = await client.STAT();
         console.log('POP3 STAT response:', stat);
-        // STAT returns "+OK <count> <size>"
-        const parts = stat.split(' ');
-        const totalMessages = parseInt(parts[1] || '0');
+        
+        // STAT returns "+OK <count> <size>" or "+OK <count> messages (<size> octets)"
+        // More robust parsing using regex
+        const statMatch = stat.match(/^\+OK\s+(\d+)/i);
+        const totalMessages = statMatch ? parseInt(statMatch[1]) : 0;
         console.log(`Total messages in POP3 inbox: ${totalMessages}`);
         
         const messages = [];
         // POP3 list is 1-indexed. We want newest first.
-        const endIdx = Math.max(1, totalMessages - skip);
+        const endIdx = totalMessages - skip;
         const startIdx = Math.max(1, totalMessages - skip - pageSize + 1);
 
-        if (totalMessages > 0 && endIdx >= startIdx) {
-          for (let i = endIdx; i >= startIdx; i--) {
+        console.log(`Fetching messages from ${endIdx} down to ${startIdx}`);
+
+        if (totalMessages > 0 && endIdx >= 1) {
+          // Limit the number of messages to fetch to avoid long hangs
+          const actualEndIdx = Math.min(totalMessages, endIdx);
+          
+          for (let i = actualEndIdx; i >= startIdx; i--) {
             try {
-              // Fetch only headers to be fast
-              const raw = await client.TOP(i, 0);
-              const parsed = await simpleParser(raw);
-              messages.push({
-                uid: i.toString(),
-                seq: i,
-                from: parsed.from?.value[0] || { name: 'Sconosciuto', address: 'unknown' },
-                subject: parsed.subject || '(Nessun oggetto)',
-                date: parsed.date || new Date(),
-                flags: [],
-                hasAttachments: (parsed.attachments && parsed.attachments.length > 0)
-              });
+              console.log(`Fetching headers and preview for message ${i}...`);
+              // Set a shorter timeout for each message fetch
+              const fetchPromise = client.TOP(i, 10);
+              const timeoutPromise = new Promise<string>((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout fetching message headers')), 1500)
+              );
+              
+              const raw = await Promise.race([fetchPromise, timeoutPromise]);
+              
+              if (raw) {
+                const parsed = await simpleParser(raw);
+                messages.push({
+                  uid: i.toString(),
+                  seq: i,
+                  from: parsed.from?.value[0] || { name: 'Sconosciuto', address: 'unknown' },
+                  subject: parsed.subject || '(Nessun oggetto)',
+                  date: parsed.date || new Date(),
+                  flags: [],
+                  hasAttachments: (parsed.attachments && parsed.attachments.length > 0),
+                  preview: parsed.text?.substring(0, 100) || ''
+                });
+                console.log(`Successfully fetched message ${i}`);
+              } else {
+                console.warn(`Empty raw response for message ${i}`);
+              }
             } catch (err) {
               console.error(`Error fetching message ${i}:`, err);
+              // Continue to next message
             }
           }
         }
