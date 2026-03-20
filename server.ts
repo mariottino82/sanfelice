@@ -946,8 +946,48 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
       const settings = JSON.parse(emailSettingsRow.value);
 
-      if (settings.protocol !== 'imap') {
-        return res.status(400).json({ error: 'Dettaglio email supportato solo tramite IMAP' });
+      if (settings.protocol === 'pop3') {
+        const client = getPop3Client(settings);
+        try {
+          const connectPromise = client.connect();
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione POP3')), 10000));
+          await Promise.race([connectPromise, timeoutPromise]);
+          
+          const fetchPromise = client.RETR(parseInt(uid));
+          const fetchTimeoutPromise = new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Timeout recupero email POP3')), 15000));
+          const raw = await Promise.race([fetchPromise, fetchTimeoutPromise]);
+          
+          if (!raw) return res.status(404).json({ error: 'Email non trovata' });
+
+          const parsed = await simpleParser(raw);
+          
+          const getAddress = (addr: any) => {
+            if (!addr) return { name: 'Sconosciuto', address: 'unknown' };
+            const val = addr.value ? addr.value[0] : (Array.isArray(addr) ? addr[0] : addr);
+            return {
+              name: val.name || '',
+              address: val.address || 'unknown'
+            };
+          };
+
+          return res.json({
+            uid: uid,
+            from: getAddress(parsed.from),
+            to: getAddress(parsed.to),
+            subject: parsed.subject || '(Nessun oggetto)',
+            date: parsed.date || new Date(),
+            html: parsed.html || parsed.textAsHtml || '',
+            text: parsed.text || '',
+            attachments: parsed.attachments.map((a, idx) => ({
+              filename: a.filename,
+              contentType: a.contentType,
+              size: a.size,
+              part: idx.toString()
+            }))
+          });
+        } finally {
+          try { await client.QUIT(); } catch (e) {}
+        }
       }
 
       const client = getImapClient(settings);
@@ -955,7 +995,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         await client.connect();
         const lock = await client.getMailboxLock(folder as string);
         try {
-          const message = await client.fetchOne(uid, { source: true, envelope: true, flags: true, bodyStructure: true });
+          const message = await client.fetchOne(uid, { source: true, envelope: true, flags: true, bodyStructure: true }, { uid: true });
           if (!message) return res.status(404).json({ error: 'Email non trovata' });
 
           const parsed = await simpleParser(message.source);
@@ -1006,12 +1046,39 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
       const settings = JSON.parse(emailSettingsRow.value);
 
+      if (settings.protocol === 'pop3') {
+        const client = getPop3Client(settings);
+        try {
+          const connectPromise = client.connect();
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione POP3')), 10000));
+          await Promise.race([connectPromise, timeoutPromise]);
+          
+          const fetchPromise = client.RETR(parseInt(uid));
+          const fetchTimeoutPromise = new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Timeout recupero email POP3')), 15000));
+          const raw = await Promise.race([fetchPromise, fetchTimeoutPromise]);
+          
+          if (!raw) return res.status(404).json({ error: 'Email non trovata' });
+
+          const parsed = await simpleParser(raw);
+          const attachment = parsed.attachments[parseInt(part)];
+          
+          if (!attachment) return res.status(404).json({ error: 'Allegato non trovato' });
+
+          res.setHeader('Content-Type', attachment.contentType);
+          res.setHeader('Content-Disposition', `attachment; filename="${attachment.filename}"`);
+          res.send(attachment.content);
+        } finally {
+          try { await client.QUIT(); } catch (e) {}
+        }
+        return;
+      }
+
       const client = getImapClient(settings);
       try {
         await client.connect();
         const lock = await client.getMailboxLock(folder as string);
         try {
-          const message = await client.fetchOne(uid, { source: true });
+          const message = await client.fetchOne(uid, { source: true }, { uid: true });
           if (!message) return res.status(404).json({ error: 'Email non trovata' });
 
           const parsed = await simpleParser(message.source);
@@ -1046,66 +1113,70 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
 
       if (settings.protocol === 'imap' || !settings.protocol) {
         console.log('Using IMAP protocol');
-        const client = getImapClient(settings);
-        try {
-          await client.connect();
-          const lock = await client.getMailboxLock(folder as string);
+        const imapOperation = (async () => {
+          const client = getImapClient(settings);
           try {
-            const status = await client.status(folder as string, { messages: true });
-            const totalMessages = status.messages || 0;
-            
-            const messages = [];
-            if (totalMessages > 0) {
-                // Fetch last 20 messages
-                const end = Math.max(1, totalMessages - skip);
-                const start = Math.max(1, totalMessages - skip - pageSize + 1);
-                const range = `${start}:${end}`;
-                
-                for await (const message of client.fetch(range, { envelope: true, flags: true, bodyStructure: true })) {
-                  let preview = '';
-                  if (message.bodyStructure.childNodes) {
-                    const textPart = message.bodyStructure.childNodes.find(part => part.type === 'text/plain');
-                    if (textPart) {
-                        const part = await client.fetchOne(message.uid, { bodyParts: [textPart.part] });
-                        if (part && part.bodyParts) {
-                            const text = part.bodyParts.get(textPart.part);
-                            preview = text ? text.toString().substring(0, 100).replace(/[\r\n\t]+/g, ' ').trim() : '';
-                        }
-                    }
-                  }
+            console.log('Connecting to IMAP...');
+            await client.connect();
+            console.log('IMAP connected. Getting mailbox lock for:', folder);
+            const lock = await client.getMailboxLock(folder as string);
+            try {
+              console.log('Mailbox locked. Getting status...');
+              const status = await client.status(folder as string, { messages: true });
+              const totalMessages = status.messages || 0;
+              console.log('Total messages:', totalMessages);
+              
+              const messages = [];
+              if (totalMessages > 0) {
+                  // Fetch last 20 messages
+                  const end = Math.max(1, totalMessages - skip);
+                  const start = Math.max(1, totalMessages - skip - pageSize + 1);
+                  const range = `${start}:${end}`;
+                  console.log('Fetching range:', range);
                   
-                  messages.push({
-                    uid: message.uid.toString(),
-                    seq: message.seq,
-                    from: { 
-                        name: message.envelope.from[0].name || '', 
-                        address: message.envelope.from[0].address || '' 
-                    },
-                    subject: message.envelope.subject || '(Nessun oggetto)',
-                    date: message.envelope.date || new Date(),
-                    flags: Array.from(message.flags || []),
-                    hasAttachments: message.bodyStructure.childNodes?.some(part => part.disposition === 'attachment') || false,
-                    preview
-                  });
-                }
-                // Reverse to show newest first
-                messages.reverse();
-            }
+                  for await (const message of client.fetch(range, { envelope: true, flags: true, bodyStructure: true })) {
+                    let preview = '';
+                    
+                    messages.push({
+                      uid: message.uid.toString(),
+                      seq: message.seq,
+                      from: { 
+                          name: message.envelope.from?.[0]?.name || '', 
+                          address: message.envelope.from?.[0]?.address || '' 
+                      },
+                      subject: message.envelope.subject || '(Nessun oggetto)',
+                      date: message.envelope.date || new Date(),
+                      flags: Array.from(message.flags || []),
+                      hasAttachments: message.bodyStructure?.childNodes?.some(part => part.disposition === 'attachment') || false,
+                      preview
+                    });
+                  }
+                  // Reverse to show newest first
+                  messages.reverse();
+              }
 
-            const totalPages = Math.ceil(totalMessages / pageSize);
-            return res.json({
-              emails: messages,
-              total: totalMessages,
-              totalPages,
-              page: parseInt(page as string),
-              pageSize
-            });
+              const totalPages = Math.ceil(totalMessages / pageSize);
+              console.log('IMAP fetch complete. Returning messages.');
+              return {
+                emails: messages,
+                total: totalMessages,
+                totalPages,
+                page: parseInt(page as string),
+                pageSize
+              };
+            } finally {
+              lock.release();
+            }
           } finally {
-            lock.release();
+            await client.logout();
           }
-        } finally {
-          await client.logout();
-        }
+        })();
+
+        const result = await Promise.race([
+          imapOperation,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout globale operazione IMAP (40s)')), 40000))
+        ]) as any;
+        return res.json(result);
       } else if (settings.protocol === 'pop3') {
         const pop3Operation = (async () => {
           const port = parseInt(settings.pop_port) || 995;
@@ -1200,7 +1271,8 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     } catch (error: any) {
       console.error('Email Fetch Error details:', error);
       let errorMessage = error.message;
-      if (errorMessage.includes('Username and Password not accepted') || 
+      if (error.authenticationFailed || 
+          errorMessage.includes('Username and Password not accepted') || 
           errorMessage.includes('AUTHENTICATIONFAILED') || 
           errorMessage.includes('invalid user or password') || 
           errorMessage.includes('535')) {
@@ -1230,7 +1302,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     } catch (error: any) {
       console.error('POP3 Test Error:', error);
       let errorMessage = error.message;
-      if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
+      if (error.authenticationFailed || errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
         errorMessage = 'Credenziali POP3 non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). La tua password normale non funzionerà anche se la verifica in due passaggi è disattivata.';
       }
       res.status(500).json({ error: `Errore POP3: ${errorMessage}` });
@@ -1254,7 +1326,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     } catch (error: any) {
       console.error('IMAP Test Error:', error);
       let errorMessage = error.message;
-      if (errorMessage.includes('AUTHENTICATIONFAILED') || errorMessage.includes('invalid user or password') || errorMessage.includes('535')) {
+      if (error.authenticationFailed || errorMessage.includes('AUTHENTICATIONFAILED') || errorMessage.includes('invalid user or password') || errorMessage.includes('535')) {
         errorMessage = 'Credenziali IMAP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App". Assicurati inoltre di aver ABILITATO l\'IMAP nelle impostazioni di Gmail (Ingranaggio -> Visualizza tutte le impostazioni -> Inoltro e POP/IMAP).';
       }
       res.status(500).json({ error: `Errore IMAP: ${errorMessage}` });
@@ -1293,7 +1365,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     } catch (error: any) {
       console.error('SMTP Test Error:', error);
       let errorMessage = error.message;
-      if (errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
+      if (error.authenticationFailed || errorMessage.includes('Username and Password not accepted') || errorMessage.includes('535')) {
         errorMessage = 'Credenziali SMTP non accettate. Se usi Gmail, DEVI attivare la "Verifica in due passaggi" e usare una "Password per le App" (16 caratteri). Assicurati inoltre che l\'indirizzo email sia corretto.';
       }
       res.status(500).json({ error: `Errore SMTP: ${errorMessage}` });
@@ -1301,7 +1373,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   });
 
   app.post('/api/emails/send', emailUpload.array('attachments'), async (req: any, res) => {
-    const { to, subject, body, html, replyToUid, forwardFromUid } = req.body;
+    const { to, subject, body, html, replyTo, inReplyTo, references } = req.body;
     const emailContent = html || body;
     const attachments = (req.files as any[])?.map(f => ({
       filename: f.originalname,
@@ -1331,13 +1403,25 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
         socketTimeout: 10000,
       });
 
-      await transporter.sendMail({
+      const mailOptions: any = {
         from: `"${settings.from_name || 'Associazione'}" <${settings.from_email || settings.smtp_user}>`,
         to,
         subject,
         html: emailContent,
         attachments
-      });
+      };
+
+      if (replyTo) mailOptions.replyTo = replyTo;
+      if (inReplyTo) mailOptions.inReplyTo = inReplyTo;
+      if (references) {
+        try {
+          mailOptions.references = JSON.parse(references);
+        } catch (e) {
+          mailOptions.references = references;
+        }
+      }
+
+      await transporter.sendMail(mailOptions);
 
       // Cleanup uploaded attachments
       attachments.forEach(a => {
@@ -1375,10 +1459,10 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
             const trashFolder = list.find(f => f.specialUse === '\\Trash' || f.path.toLowerCase().includes('trash') || f.path.toLowerCase().includes('cestino'));
             
             if (trashFolder) {
-              await client.messageMove(uid, trashFolder.path);
+              await client.messageMove(uid, trashFolder.path, { uid: true });
             } else {
               // If no trash folder, just delete (add \Deleted flag and expunge)
-              await client.messageFlagsAdd(uid, ['\\Deleted']);
+              await client.messageFlagsAdd(uid, ['\\Deleted'], { uid: true });
             }
             res.json({ success: true });
           } finally {
@@ -1390,12 +1474,22 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       } else {
         const client = getPop3Client(settings);
         try {
-          await client.connect();
+          const connectPromise = client.connect();
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout connessione POP3')), 10000));
+          await Promise.race([connectPromise, timeoutPromise]);
+          
           const index = parseInt(uid);
           await client.DELE(index);
           res.json({ success: true });
         } finally {
-          await client.QUIT();
+          try {
+            await Promise.race([
+              client.QUIT(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout QUIT POP3')), 2000))
+            ]);
+          } catch (e) {
+            console.error('POP3 QUIT Error:', e);
+          }
         }
       }
     } catch (error: any) {

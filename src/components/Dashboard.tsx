@@ -635,9 +635,13 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       if (res.ok) {
         const data = await res.json();
         setSelectedEmail(data);
+      } else {
+        const errData = await res.json();
+        setNotification({ message: errData.error || 'Errore nel recupero del dettaglio', type: 'error' });
       }
     } catch (err) {
       console.error('Error fetching email detail:', err);
+      setNotification({ message: 'Errore di connessione', type: 'error' });
     }
   };
 
@@ -648,9 +652,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       if (res.ok) {
         setSelectedEmail(null);
         fetchEmails();
+        setNotification({ message: 'Email spostata nel cestino', type: 'success' });
+      } else {
+        const errData = await res.json();
+        setNotification({ message: errData.error || 'Errore durante lo spostamento nel cestino', type: 'error' });
       }
     } catch (err) {
       console.error('Error moving to trash:', err);
+      setNotification({ message: 'Errore di connessione', type: 'error' });
     }
   };
 
@@ -4271,7 +4280,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                   to: selectedEmail.from.address,
                                   subject: `Re: ${selectedEmail.subject}`,
                                   body: `\n\n--- In data ${new Date(selectedEmail.date).toLocaleString('it-IT')}, ${selectedEmail.from.name || selectedEmail.from.address} ha scritto:\n\n${selectedEmail.text}`,
-                                  replyToUid: selectedEmail.uid
+                                  attachments: [],
+                                  replyTo: selectedEmail.from.address,
+                                  inReplyTo: selectedEmail.uid
                                 });
                                 setIsReplying(true);
                                 setIsForwarding(false);
@@ -4288,7 +4299,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                   to: '',
                                   subject: `Fwd: ${selectedEmail.subject}`,
                                   body: `\n\n--- Messaggio Inoltrato ---\nDa: ${selectedEmail.from.name || selectedEmail.from.address}\nData: ${new Date(selectedEmail.date).toLocaleString('it-IT')}\nOggetto: ${selectedEmail.subject}\n\n${selectedEmail.text}`,
-                                  forwardFromUid: selectedEmail.uid
+                                  attachments: [],
+                                  references: [selectedEmail.uid]
                                 });
                                 setIsForwarding(true);
                                 setIsReplying(false);
@@ -5475,158 +5487,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             message={`Sei sicuro di voler eliminare l'operazione "${collectionToDelete.event_name}"? ${collectionToDelete.receipt_number ? `Questa azione ricalcolerà anche la numerazione delle ricevute per l'anno ${collectionToDelete.social_year}.` : ''}`}
             isDeleting={isDeleting}
           />
-        )}
-
-        {/* Email Detail Modal */}
-        {selectedEmail && (
-          <motion.div 
-            key="email-detail-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          >
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedEmail(null)} />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white w-full max-w-4xl h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
-            >
-              {/* Modal Header */}
-              <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => setSelectedEmail(null)}
-                    className="p-2 hover:bg-white rounded-full transition-all text-stone-400 hover:text-stone-900 shadow-sm border border-transparent hover:border-stone-100"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  <div>
-                    <h3 className="text-xl font-serif text-stone-900 line-clamp-1">{selectedEmail.subject || '(Nessun oggetto)'}</h3>
-                    <p className="text-xs text-stone-400 font-bold uppercase tracking-widest">Dettaglio Email</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => {
-                      setComposeData({
-                        to: selectedEmail.from.address,
-                        subject: `Re: ${selectedEmail.subject}`,
-                        body: `\n\n--- Messaggio Originale ---\nDa: ${selectedEmail.from.address}\nData: ${new Date(selectedEmail.date).toLocaleString()}\nOggetto: ${selectedEmail.subject}\n\n${selectedEmail.text || ''}`,
-                        attachments: []
-                      });
-                      setIsReplying(true);
-                      setIsComposing(true);
-                    }}
-                    className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-600"
-                    title="Rispondi"
-                  >
-                    <Reply className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setComposeData({
-                        to: '',
-                        subject: `Fwd: ${selectedEmail.subject}`,
-                        body: `\n\n--- Messaggio Inoltrato ---\nDa: ${selectedEmail.from.address}\nData: ${new Date(selectedEmail.date).toLocaleString()}\nOggetto: ${selectedEmail.subject}\n\n${selectedEmail.text || ''}`,
-                        attachments: []
-                      });
-                      setIsForwarding(true);
-                      setIsComposing(true);
-                    }}
-                    className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-600"
-                    title="Inoltra"
-                  >
-                    <Forward className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => moveEmailToTrash(selectedEmail.uid)}
-                    className="p-2 hover:bg-red-50 rounded-xl transition-all text-stone-400 hover:text-red-600"
-                    title="Sposta nel cestino"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => setSelectedEmail(null)}
-                    className="p-2 hover:bg-stone-100 rounded-xl transition-all text-stone-400 hover:text-stone-900"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <div className="flex items-start justify-between mb-8 pb-8 border-b border-stone-100">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-stone-900 rounded-2xl flex items-center justify-center text-white font-bold text-xl">
-                      {(selectedEmail.from.name || selectedEmail.from.address || '?')[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-bold text-stone-900">{selectedEmail.from.name || selectedEmail.from.address}</p>
-                      <p className="text-sm text-stone-400">{selectedEmail.from.address}</p>
-                      <p className="text-xs text-stone-400 mt-1">A: {selectedEmail.to.map((t: any) => t.address).join(', ')}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-stone-900">
-                      {new Date(selectedEmail.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
-                    </p>
-                    <p className="text-xs text-stone-400">
-                      {new Date(selectedEmail.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Email Content */}
-                <div className="prose prose-stone max-w-none mb-8">
-                  {selectedEmail.html ? (
-                    <div dangerouslySetInnerHTML={{ __html: selectedEmail.html }} />
-                  ) : (
-                    <pre className="whitespace-pre-wrap font-sans text-stone-700 leading-relaxed">
-                      {selectedEmail.text}
-                    </pre>
-                  )}
-                </div>
-
-                {/* Attachments Section */}
-                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
-                  <div className="mt-8 pt-8 border-t border-stone-100">
-                    <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <Paperclip className="w-3 h-3" />
-                      Allegati ({selectedEmail.attachments.length})
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {selectedEmail.attachments.map((att: any, idx: number) => (
-                        <div 
-                          key={idx}
-                          className="p-3 bg-stone-50 rounded-2xl border border-stone-100 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 bg-stone-200 rounded-lg flex items-center justify-center text-stone-500">
-                              <FileText className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-stone-900 truncate">{att.filename}</p>
-                              <p className="text-[10px] text-stone-400">{(att.size / 1024).toFixed(1)} KB</p>
-                            </div>
-                          </div>
-                          <a 
-                            href={`/api/emails/attachment/${selectedEmail.uid}/${att.partId}?filename=${encodeURIComponent(att.filename)}`}
-                            download={att.filename}
-                            className="p-2 text-stone-400 hover:text-stone-900 transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <Download className="w-4 h-4" />
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
         )}
 
         {/* Compose Email Modal */}
