@@ -310,6 +310,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [newsToDelete, setNewsToDelete] = React.useState<any>(null);
   const [galleryItemToDelete, setGalleryItemToDelete] = React.useState<any>(null);
   const [memberRegistrationToDelete, setMemberRegistrationToDelete] = React.useState<any>(null);
+  const [emailToDelete, setEmailToDelete] = React.useState<string | null>(null);
   const [sponsors, setSponsors] = React.useState([]);
   const [editingSponsor, setEditingSponsor] = React.useState<any>(null);
   const [sponsorToDelete, setSponsorToDelete] = React.useState<any>(null);
@@ -501,18 +502,21 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   };
 
   const handleDeleteGallery = async (id: number) => {
-    if (!confirm('Sei sicuro di voler eliminare questo elemento?')) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setGallery(prev => prev.filter(item => item.id !== id));
         setNotification({ message: 'Elemento eliminato!', type: 'success' });
+        setGalleryItemToDelete(null);
       } else {
         setNotification({ message: 'Errore durante l\'eliminazione', type: 'error' });
       }
     } catch (err) {
       console.error(err);
       setNotification({ message: 'Errore di rete', type: 'error' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -646,11 +650,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   };
 
   const moveEmailToTrash = async (uid: string) => {
-    if (!confirm('Sei sicuro di voler spostare questa email nel cestino?')) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/emails/${uid}/trash`, { method: 'POST' });
       if (res.ok) {
         setSelectedEmail(null);
+        setEmailToDelete(null);
         fetchEmails();
         setNotification({ message: 'Email spostata nel cestino', type: 'success' });
       } else {
@@ -660,6 +665,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     } catch (err) {
       console.error('Error moving to trash:', err);
       setNotification({ message: 'Errore di connessione', type: 'error' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -964,9 +971,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
+  const [showResetConfirm, setShowResetConfirm] = React.useState(false);
+
   const reset2026Payments = async () => {
-    if (!window.confirm('Sei sicuro di voler azzerare tutte le iscrizioni per l\'anno 2026? Questa operazione non è reversibile.')) return;
-    
+    setIsDeleting(true);
     try {
       const updatedMembers = members.map((m: any) => {
         const currentPayments = typeof m.payments === 'string' ? JSON.parse(m.payments) : (m.payments || {});
@@ -987,9 +995,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
       setMembers(updatedMembers);
       setNotification({ message: 'Iscrizioni 2026 azzerate con successo!', type: 'success' });
+      setShowResetConfirm(false);
     } catch (error) {
       console.error('Error resetting 2026 payments:', error);
       setNotification({ message: 'Errore durante l\'azzeramento delle iscrizioni.', type: 'error' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -2251,7 +2262,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="text-4xl font-serif text-stone-900">{members.filter((m: any) => m.payments?.[2026] || m.payments?.['2026']).length}</div>
                 {isSuperAdmin && members.filter((m: any) => m.payments?.[2026] || m.payments?.['2026']).length > 0 && (
                   <button 
-                    onClick={reset2026Payments}
+                    onClick={() => setShowResetConfirm(true)}
                     className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     Azzera
@@ -3870,7 +3881,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         {item.type === 'video' && <Video className="w-6 h-6 text-white" />}
                         {isStaff && (
                           <button 
-                            onClick={() => handleDeleteGallery(item.id)}
+                            onClick={() => setGalleryItemToDelete(item.id)}
                             className="p-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-lg flex items-center gap-2"
                             title="Elimina Definitivamente"
                           >
@@ -4314,7 +4325,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           </div>
                           <div className="flex items-center gap-2">
                             <button 
-                              onClick={() => moveEmailToTrash(selectedEmail.uid)}
+                              onClick={() => setEmailToDelete(selectedEmail.uid)}
                               className="p-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all text-stone-400"
                               title="Elimina"
                             >
@@ -5948,6 +5959,42 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             message={`Sei sicuro di voler eliminare l'iscrizione di ${memberRegistrationToDelete.name}?`}
             isDeleting={isDeleting}
             icon={<UserPlus className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {galleryItemToDelete && (
+          <ConfirmationModal 
+            isOpen={!!galleryItemToDelete}
+            onClose={() => setGalleryItemToDelete(null)}
+            onConfirm={() => handleDeleteGallery(galleryItemToDelete)}
+            title="Elimina Elemento"
+            message="Sei sicuro di voler eliminare questo elemento dalla galleria?"
+            isDeleting={isDeleting}
+            icon={<Trash2 className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {showResetConfirm && (
+          <ConfirmationModal 
+            isOpen={showResetConfirm}
+            onClose={() => setShowResetConfirm(false)}
+            onConfirm={reset2026Payments}
+            title="Azzera Iscrizioni 2026"
+            message="Sei sicuro di voler azzerare tutte le iscrizioni per l'anno 2026? Questa operazione non è reversibile."
+            isDeleting={isDeleting}
+            icon={<AlertCircle className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {emailToDelete && (
+          <ConfirmationModal 
+            isOpen={!!emailToDelete}
+            onClose={() => setEmailToDelete(null)}
+            onConfirm={() => moveEmailToTrash(emailToDelete)}
+            title="Sposta nel cestino"
+            message="Sei sicuro di voler spostare questa email nel cestino?"
+            isDeleting={isDeleting}
+            icon={<Trash2 className="w-8 h-8 text-red-600" />}
           />
         )}
 
