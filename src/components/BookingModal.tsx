@@ -14,6 +14,7 @@ export function BookingModal({ isOpen, onClose, event, onSuccess }: BookingModal
     name: '',
     email: '',
     phone: '',
+    tickets: 1,
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -22,6 +23,9 @@ export function BookingModal({ isOpen, onClose, event, onSuccess }: BookingModal
 
   React.useEffect(() => {
     if (isOpen) {
+      setFormData({ name: '', email: '', phone: '', tickets: 1 });
+      setStep('details');
+      setError(null);
       fetch('/api/settings/paypal_settings')
         .then(res => res.json())
         .then(data => {
@@ -32,6 +36,9 @@ export function BookingModal({ isOpen, onClose, event, onSuccess }: BookingModal
   }, [isOpen]);
 
   if (!event) return null;
+
+  const availableTickets = event.totalTickets - event.soldTickets;
+  const maxTickets = event.price === 0 ? Math.min(4, availableTickets) : Math.min(10, availableTickets);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +64,9 @@ export function BookingModal({ isOpen, onClose, event, onSuccess }: BookingModal
 
       if (response.ok) {
         const data = await response.json();
-        onSuccess({ ...data, ...formData, eventTitle: event.title, eventDate: event.date, eventTime: event.time });
+        onSuccess({ ...data, ...formData, eventTitle: event.title, eventDate: event.date, eventTime: event.time, price: event.price });
         setStep('details');
-        setFormData({ name: '', email: '', phone: '' });
+        setFormData({ name: '', email: '', phone: '', tickets: 1 });
       } else {
         const errData = await response.json();
         setError(errData.error || 'Errore durante la prenotazione');
@@ -195,6 +202,26 @@ export function BookingModal({ isOpen, onClose, event, onSuccess }: BookingModal
                         </div>
                       </div>
 
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Numero Biglietti</label>
+                        <div className="relative">
+                          <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                          <select 
+                            required
+                            value={formData.tickets}
+                            onChange={(e) => setFormData(prev => ({ ...prev, tickets: parseInt(e.target.value) }))}
+                            className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-100 rounded-xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all appearance-none"
+                          >
+                            {Array.from({ length: maxTickets }, (_, i) => i + 1).map(num => (
+                              <option key={num} value={num}>{num}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {event.price === 0 && (
+                          <p className="text-[10px] text-stone-500 mt-1 ml-1">Max 4 biglietti per persona per eventi gratuiti.</p>
+                        )}
+                      </div>
+
                       {error && (
                         <div className="p-3 bg-red-50 text-red-600 text-xs rounded-xl flex items-center gap-2">
                           <X className="w-4 h-4" />
@@ -231,12 +258,12 @@ export function BookingModal({ isOpen, onClose, event, onSuccess }: BookingModal
 
                     <div className="space-y-4">
                       <a 
-                        href={`${paypalSettings?.paypal_me_link}/${event.price}`}
+                        href={`${paypalSettings?.paypal_me_link}/${(event.price * formData.tickets).toFixed(2)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-3 w-full py-4 bg-[#0070ba] text-white rounded-xl font-bold hover:bg-[#005ea6] transition-all shadow-lg shadow-blue-900/10"
                       >
-                        Paga con PayPal.me
+                        Paga con PayPal.me (€ {(event.price * formData.tickets).toFixed(2)})
                         <ArrowRight className="w-5 h-5" />
                       </a>
 

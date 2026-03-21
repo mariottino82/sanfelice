@@ -2851,6 +2851,13 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </button>
                     </div>
                     <button 
+                      onClick={() => setLotteryToDelete(lottery)}
+                      className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
+                      title="Elimina Lotteria"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    <button 
                       onClick={archiveLottery}
                       className="text-stone-400 hover:text-stone-900 transition-colors"
                       title="Archivia Lotteria Corrente"
@@ -4193,17 +4200,32 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           {p.votes?.length || 0} voti
                         </span>
                         {isStaff && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deletePoll(p);
-                            }}
-                            className={`p-1.5 rounded-lg transition-colors ${
-                              poll?.id === p.id ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-red-50 text-stone-400 hover:text-red-500'
-                            }`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                savePoll({ ...p, active: !p.active });
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                p.active 
+                                  ? (poll?.id === p.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500 text-white')
+                                  : (poll?.id === p.id ? 'bg-white/10 text-stone-400' : 'bg-stone-200 text-stone-500')
+                              }`}
+                            >
+                              {p.active ? 'Attiva' : 'Disattivata'}
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deletePoll(p);
+                              }}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                poll?.id === p.id ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-red-50 text-stone-400 hover:text-red-500'
+                              }`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -4237,6 +4259,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             {poll.active ? 'Attivo' : 'Disattivato'}
                           </button>
                         </div>
+                        {poll?.id && (
+                          <button 
+                            onClick={() => setPollToDelete(poll)}
+                            className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
+                            title="Elimina Sondaggio"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -5080,6 +5111,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             </div>
                             <div className="flex items-center gap-2">
                               <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addContest({ ...contest, showOnHomepage: !contest.showOnHomepage });
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                  contest.showOnHomepage ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
+                                }`}
+                              >
+                                {contest.showOnHomepage ? 'Attiva' : 'Disattivata'}
+                              </button>
+                              <button 
                                 onClick={() => setEditingContest(contest)}
                                 className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all"
                               >
@@ -5303,6 +5345,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   </div>
 
                   <div className="flex justify-end gap-4 pt-6 border-t border-stone-100">
+                    {editingContest.id && (
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setContestToDelete(editingContest);
+                          setEditingContest(null);
+                        }}
+                        className="px-6 py-4 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all flex items-center gap-2 mr-auto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Elimina Definitivamente
+                      </button>
+                    )}
                     <button 
                       type="button" 
                       onClick={() => setEditingContest(null)}
@@ -5992,18 +6047,33 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
                 <h3 className="text-xl font-serif text-stone-900 mb-2">Elimina Lotteria</h3>
                 <p className="text-stone-500 text-sm mb-8">
-                  Vuoi eliminare definitivamente la lotteria <span className="font-bold text-stone-900">"{lotteryToDelete.name}"</span> dall'archivio?
+                  Vuoi eliminare definitivamente la lotteria <span className="font-bold text-stone-900">"{lotteryToDelete.name}"</span>{lotteryToDelete.id ? " dall'archivio" : ""}?
                 </p>
                 <div className="flex gap-3">
                   <button onClick={() => setLotteryToDelete(null)} className="flex-1 py-4 rounded-xl font-bold text-stone-500 hover:bg-stone-50 transition-all">Annulla</button>
                   <button 
                     onClick={async () => {
-                      const updatedLottery = {
-                        ...lottery,
-                        history: lottery.history.filter((h: any) => h.id !== lotteryToDelete.id)
-                      };
+                      let updatedLottery;
+                      if (lotteryToDelete.id) {
+                        updatedLottery = {
+                          ...lottery,
+                          history: lottery.history.filter((h: any) => h.id !== lotteryToDelete.id)
+                        };
+                        setNotification({ message: 'Lotteria eliminata dall\'archivio', type: 'success' });
+                      } else {
+                        updatedLottery = {
+                          active: false,
+                          showOnHomepage: false,
+                          name: '',
+                          drawDate: '',
+                          ticketsCount: 1000,
+                          ticketPrice: 2.50,
+                          prizes: [],
+                          history: lottery.history || []
+                        };
+                        setNotification({ message: 'Lotteria corrente eliminata', type: 'success' });
+                      }
                       await saveLottery(updatedLottery);
-                      setNotification({ message: 'Lotteria eliminata dall\'archivio', type: 'success' });
                       setLotteryToDelete(null);
                     }}
                     className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"

@@ -219,25 +219,44 @@ async function startServer() {
 
   app.post('/api/bookings', async (req, res) => {
     try {
-      const { eventId, name, email, phone, paymentStatus } = req.body;
+      const { eventId, name, email, phone, paymentStatus, tickets = 1 } = req.body;
       
+      const numTickets = parseInt(tickets) || 1;
+      if (numTickets < 1) return res.status(400).json({ error: 'Numero biglietti non valido' });
+
       // Check availability
       const event = await db.get('SELECT * FROM booking_events WHERE id = ?', [eventId]);
       if (!event) return res.status(404).json({ error: 'Evento non trovato' });
-      if (event.soldTickets >= event.totalTickets) {
-        return res.status(400).json({ error: 'Sold out' });
+      if (event.soldTickets + numTickets > event.totalTickets) {
+        return res.status(400).json({ error: 'Sold out o biglietti insufficienti' });
       }
 
-      const ticketNumber = `SF-${eventId}-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+      // Check limit for free events
+      if (event.price === 0) {
+        const existingBookings = await db.get(
+          'SELECT COUNT(*) as count FROM bookings WHERE eventId = ? AND (email = ? OR phone = ? OR name = ?)',
+          [eventId, email, phone, name]
+        );
+        if (existingBookings && existingBookings.count + numTickets > 4) {
+          return res.status(400).json({ error: 'Limite massimo di 4 biglietti per persona raggiunto per questo evento gratuito.' });
+        }
+      }
+
+      const ticketNumbers: string[] = [];
       const purchaseDate = new Date().toISOString();
+      const status = paymentStatus || (event.price > 0 ? 'pending' : 'confirmed');
       
-      const result = await db.run(
-        'INSERT INTO bookings (eventId, name, email, phone, ticketNumber, purchaseDate, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [eventId, name, email, phone, ticketNumber, purchaseDate, paymentStatus || (event.price > 0 ? 'pending' : 'confirmed')]
-      );
+      for (let i = 0; i < numTickets; i++) {
+        const ticketNumber = `SF-${eventId}-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+        ticketNumbers.push(ticketNumber);
+        await db.run(
+          'INSERT INTO bookings (eventId, name, email, phone, ticketNumber, purchaseDate, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [eventId, name, email, phone, ticketNumber, purchaseDate, status]
+        );
+      }
 
       // Update sold tickets count
-      await db.run('UPDATE booking_events SET soldTickets = soldTickets + 1 WHERE id = ?', [eventId]);
+      await db.run('UPDATE booking_events SET soldTickets = soldTickets + ? WHERE id = ?', [numTickets, eventId]);
 
       // Send confirmation email
       try {
@@ -254,6 +273,13 @@ async function startServer() {
                 pass: settings.smtp_pass
               }
             });
+
+            const ticketsHtml = ticketNumbers.map(tn => `
+              <div style="background-color: #1c1917; color: #ffffff; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 16px;">
+                <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 10px; font-weight: 700; margin: 0 0 8px 0; opacity: 0.6;">Il tuo Biglietto Digitale</p>
+                <h3 style="font-size: 28px; margin: 0; font-family: monospace; letter-spacing: 1px;">${tn}</h3>
+              </div>
+            `).join('');
 
             const mailOptions = {
               from: `"${settings.from_name || 'Pro San Felice'}" <${settings.from_email || settings.smtp_user}>`,
@@ -285,16 +311,17 @@ async function startServer() {
                         <td style="padding: 8px 0; color: #78716c; font-size: 14px;">Luogo:</td>
                         <td style="padding: 8px 0; color: #1c1917; font-size: 14px; font-weight: 600;">${event.location}</td>
                       </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #78716c; font-size: 14px;">Biglietti:</td>
+                        <td style="padding: 8px 0; color: #1c1917; font-size: 14px; font-weight: 600;">${numTickets}</td>
+                      </tr>
                     </table>
                   </div>
 
-                  <div style="background-color: #1c1917; color: #ffffff; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 32px;">
-                    <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 10px; font-weight: 700; margin: 0 0 8px 0; opacity: 0.6;">Il tuo Biglietto Digitale</p>
-                    <h3 style="font-size: 28px; margin: 0; font-family: monospace; letter-spacing: 1px;">${ticketNumber}</h3>
-                    <p style="font-size: 12px; margin-top: 12px; opacity: 0.8;">Mostra questo codice all'ingresso dell'evento.</p>
-                  </div>
+                  ${ticketsHtml}
+                  <p style="font-size: 12px; margin-top: 12px; opacity: 0.8; text-align: center;">Mostra questi codici all'ingresso dell'evento.</p>
 
-                  <div style="text-align: center; color: #78716c; font-size: 12px; line-height: 1.6;">
+                  <div style="text-align: center; color: #78716c; font-size: 12px; line-height: 1.6; margin-top: 32px;">
                     <p><strong>Dati Partecipante:</strong><br />${name}<br />${email}<br />${phone}</p>
                     <p style="margin-top: 24px; border-top: 1px solid #e5e5e5; padding-top: 24px;">
                       <strong>Associazione Pro San Felice</strong><br />
@@ -313,9 +340,24 @@ async function startServer() {
         console.error('Error sending confirmation email:', emailError);
       }
 
-      res.json({ id: result.lastID, ticketNumber });
+      res.json({ success: true, ticketNumbers });
     } catch (error) {
       console.error('Booking error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.delete('/api/bookings/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [id]);
+      if (booking) {
+        await db.run('DELETE FROM bookings WHERE id = ?', [id]);
+        await db.run('UPDATE booking_events SET soldTickets = MAX(0, soldTickets - 1) WHERE id = ?', [booking.eventId]);
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete booking error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });

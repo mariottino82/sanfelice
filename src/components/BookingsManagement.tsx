@@ -112,6 +112,17 @@ export function BookingsManagement({
                 </div>
                 <div className="flex gap-2">
                   <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddEvent({ ...event, showOnHomepage: !event.showOnHomepage });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                      event.showOnHomepage ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
+                    }`}
+                  >
+                    {event.showOnHomepage ? 'Attiva' : 'Disattivata'}
+                  </button>
+                  <button 
                     onClick={(e) => { e.stopPropagation(); handleEditEvent(event); }}
                     className={`p-2 rounded-lg transition-colors ${selectedEventId === event.id ? 'hover:bg-white/10 text-white' : 'hover:bg-stone-100 text-stone-400 hover:text-stone-900'}`}
                   >
@@ -319,6 +330,19 @@ export function BookingsManagement({
               </div>
 
               <div className="pt-8 flex gap-4">
+                {editingEvent.id && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      onDeleteEvent(editingEvent);
+                      setShowEventModal(false);
+                    }}
+                    className="px-6 py-4 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-all flex items-center gap-2 mr-auto"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Elimina
+                  </button>
+                )}
                 <button 
                   type="button"
                   onClick={() => setShowEventModal(false)}

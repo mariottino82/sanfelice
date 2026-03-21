@@ -57,8 +57,12 @@ export function TicketView({ isOpen, onClose, booking }: TicketViewProps) {
                     <h2 className="text-4xl font-serif text-stone-900 leading-tight">{booking.eventTitle}</h2>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Codice Biglietto</span>
-                    <span className="text-lg font-mono font-bold text-stone-900">{booking.ticketNumber}</span>
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Codici Biglietto</span>
+                    <div className="flex flex-col gap-1">
+                      {(booking.ticketNumbers || [booking.ticketNumber]).map((tn: string, idx: number) => (
+                        <span key={idx} className="text-lg font-mono font-bold text-stone-900">{tn}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -94,13 +98,21 @@ export function TicketView({ isOpen, onClose, booking }: TicketViewProps) {
                 </div>
 
                 <div className="pt-8 border-t border-stone-100 flex justify-between items-end">
-                  <div className="flex items-center gap-3 text-stone-400">
-                    <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                    <span className="text-xs font-medium">Biglietto Valido e Confermato</span>
+                  <div className="flex flex-col gap-2 text-stone-400">
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                      <span className="text-xs font-medium">Biglietti Validi e Confermati</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Ticket className="w-5 h-5 text-amber-500" />
+                      <span className="text-xs font-medium">{booking.tickets || 1} Biglietti</span>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Prezzo</span>
-                    <span className="text-2xl font-serif text-stone-900 font-bold">€ {booking.price?.toFixed(2) || '10.00'}</span>
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Prezzo Totale</span>
+                    <span className="text-2xl font-serif text-stone-900 font-bold">
+                      {booking.price === 0 ? 'Gratuito' : `€ ${((booking.price ?? 10) * (booking.tickets || 1)).toFixed(2)}`}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -135,7 +147,7 @@ export function TicketView({ isOpen, onClose, booking }: TicketViewProps) {
                 <div className="mt-8 pt-8 border-t border-stone-200 w-full text-center">
                   <div className="flex items-center justify-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-[0.2em]">
                     <Ticket className="w-4 h-4" />
-                    SF-2026
+                    {(booking.ticketNumbers && booking.ticketNumbers[0]) || booking.ticketNumber || 'SF-2026'}
                   </div>
                 </div>
               </div>

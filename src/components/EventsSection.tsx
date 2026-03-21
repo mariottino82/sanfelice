@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Calendar, MapPin, Clock, Ticket, ArrowRight, Trophy, Sparkles, Star } from 'lucide-react';
 import { BookingModal } from './BookingModal';
 import { TicketView } from './TicketView';
+import { EventDetailModal } from './EventDetailModal';
 
 export function EventsSection() {
   const [events, setEvents] = React.useState<any[]>([]);
@@ -10,7 +11,9 @@ export function EventsSection() {
   const [contests, setContests] = React.useState<any[]>([]);
   const [bookingEvents, setBookingEvents] = React.useState<any[]>([]);
   const [selectedBookingEvent, setSelectedBookingEvent] = React.useState<any>(null);
+  const [selectedEventForDetail, setSelectedEventForDetail] = React.useState<any>(null);
   const [showBookingModal, setShowBookingModal] = React.useState(false);
+  const [showEventDetailModal, setShowEventDetailModal] = React.useState(false);
   const [showTicketView, setShowTicketView] = React.useState(false);
   const [lastBooking, setLastBooking] = React.useState<any>(null);
 
@@ -85,7 +88,11 @@ export function EventsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="bg-stone-50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100"
+              onClick={() => {
+                setSelectedEventForDetail(item);
+                setShowEventDetailModal(true);
+              }}
+              className="bg-stone-50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer"
             >
               <div className="h-56 overflow-hidden relative">
                 <img
@@ -132,11 +139,14 @@ export function EventsSection() {
 
                 <div className="flex items-center justify-between pt-6 border-t border-stone-200">
                   {item.type === 'booking' ? (
-                    item.soldTickets >= item.totalTickets ? (
+                    new Date(item.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
+                      <span className="text-stone-500 font-bold text-xs uppercase tracking-widest">Evento non disponibile</span>
+                    ) : item.soldTickets >= item.totalTickets ? (
                       <span className="text-red-500 font-bold text-xs uppercase tracking-widest">Sold Out</span>
                     ) : (
                       <button 
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedBookingEvent(item);
                           setShowBookingModal(true);
                         }}
@@ -146,7 +156,7 @@ export function EventsSection() {
                       </button>
                     )
                   ) : (
-                    <div className="flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all cursor-pointer">
+                    <div className="flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
                       Scopri di più <ArrowRight className="w-4 h-4" />
                     </div>
                   )}
@@ -172,6 +182,16 @@ export function EventsSection() {
         isOpen={showTicketView}
         onClose={() => setShowTicketView(false)}
         booking={lastBooking}
+      />
+
+      <EventDetailModal 
+        isOpen={showEventDetailModal}
+        onClose={() => setShowEventDetailModal(false)}
+        event={selectedEventForDetail}
+        onBook={(event) => {
+          setSelectedBookingEvent(event);
+          setShowBookingModal(true);
+        }}
       />
     </section>
   );
