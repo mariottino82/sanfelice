@@ -26,6 +26,8 @@ const galleryStorage = multer.diskStorage({
 
 const emailUpload = multer({ storage: galleryStorage });
 
+import nodemailer from 'nodemailer';
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -64,9 +66,29 @@ async function startServer() {
     }
   }) });
 
+  const uploadBookingEvent = multer({ storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'bookings');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'booking-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  }) });
+
   app.post('/api/sponsors/upload', uploadSponsor.single('image'), (req: any, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const url = `/uploads/sponsors/${req.file.filename}`;
+    res.json({ path: url });
+  });
+
+  app.post('/api/booking-events/upload', uploadBookingEvent.single('image'), (req: any, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const url = `/uploads/bookings/${req.file.filename}`;
     res.json({ path: url });
   });
 
@@ -123,6 +145,204 @@ async function startServer() {
     try {
       const { id } = req.params;
       await db.run('DELETE FROM sponsors WHERE id = ?', [id]);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Booking Events API
+  app.get('/api/booking-events', async (req, res) => {
+    try {
+      const events = await db.all('SELECT * FROM booking_events ORDER BY date DESC');
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/booking-events', async (req, res) => {
+    try {
+      const { title, description, date, time, location, image, price, totalTickets, active, showOnHomepage } = req.body;
+      const result = await db.run(
+        'INSERT INTO booking_events (title, description, date, time, location, image, price, totalTickets, active, showOnHomepage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, description, date, time, location, image, price, totalTickets, active ? 1 : 0, showOnHomepage ? 1 : 0]
+      );
+      res.json({ id: result.lastID });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/booking-events/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, description, date, time, location, image, price, totalTickets, active, showOnHomepage } = req.body;
+      await db.run(
+        'UPDATE booking_events SET title = ?, description = ?, date = ?, time = ?, location = ?, image = ?, price = ?, totalTickets = ?, active = ?, showOnHomepage = ? WHERE id = ?',
+        [title, description, date, time, location, image, price, totalTickets, active ? 1 : 0, showOnHomepage ? 1 : 0, id]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.delete('/api/booking-events/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db.run('DELETE FROM booking_events WHERE id = ?', [id]);
+      await db.run('DELETE FROM bookings WHERE eventId = ?', [id]);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Bookings API
+  app.get('/api/bookings', async (req, res) => {
+    try {
+      const { eventId } = req.query;
+      let query = 'SELECT * FROM bookings';
+      const params = [];
+      if (eventId) {
+        query += ' WHERE eventId = ?';
+        params.push(eventId);
+      }
+      query += ' ORDER BY id DESC';
+      const bookings = await db.all(query, params);
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/bookings', async (req, res) => {
+    try {
+      const { eventId, name, email, phone, paymentStatus } = req.body;
+      
+      // Check availability
+      const event = await db.get('SELECT * FROM booking_events WHERE id = ?', [eventId]);
+      if (!event) return res.status(404).json({ error: 'Evento non trovato' });
+      if (event.soldTickets >= event.totalTickets) {
+        return res.status(400).json({ error: 'Sold out' });
+      }
+
+      const ticketNumber = `SF-${eventId}-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+      const purchaseDate = new Date().toISOString();
+      
+      const result = await db.run(
+        'INSERT INTO bookings (eventId, name, email, phone, ticketNumber, purchaseDate, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [eventId, name, email, phone, ticketNumber, purchaseDate, paymentStatus || (event.price > 0 ? 'pending' : 'confirmed')]
+      );
+
+      // Update sold tickets count
+      await db.run('UPDATE booking_events SET soldTickets = soldTickets + 1 WHERE id = ?', [eventId]);
+
+      // Send confirmation email
+      try {
+        const emailSettingsRow = await db.get('SELECT value FROM settings WHERE key = ?', ['email_settings']);
+        if (emailSettingsRow) {
+          const settings = JSON.parse(emailSettingsRow.value);
+          if (settings.smtp_host && settings.smtp_user && settings.smtp_pass && email) {
+            const transporter = nodemailer.createTransport({
+              host: settings.smtp_host,
+              port: parseInt(settings.smtp_port),
+              secure: parseInt(settings.smtp_port) === 465,
+              auth: {
+                user: settings.smtp_user,
+                pass: settings.smtp_pass
+              }
+            });
+
+            const mailOptions = {
+              from: `"${settings.from_name || 'Pro San Felice'}" <${settings.from_email || settings.smtp_user}>`,
+              to: email,
+              subject: `Conferma Prenotazione: ${event.title}`,
+              html: `
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 24px;">
+                  <div style="text-align: center; margin-bottom: 32px;">
+                    <h1 style="color: #1c1917; font-size: 24px; margin: 0; font-weight: 700;">Conferma Prenotazione</h1>
+                    <p style="color: #78716c; font-size: 14px; margin-top: 8px;">Grazie per la tua partecipazione!</p>
+                  </div>
+
+                  <div style="background-color: #fafaf9; border-radius: 16px; padding: 24px; margin-bottom: 32px; border: 1px solid #f5f5f4;">
+                    <h2 style="color: #1c1917; font-size: 18px; margin: 0 0 16px 0; border-bottom: 1px solid #e5e5e5; padding-bottom: 12px;">Dettagli Evento</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 8px 0; color: #78716c; font-size: 14px; width: 100px;">Evento:</td>
+                        <td style="padding: 8px 0; color: #1c1917; font-size: 14px; font-weight: 600;">${event.title}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #78716c; font-size: 14px;">Data:</td>
+                        <td style="padding: 8px 0; color: #1c1917; font-size: 14px; font-weight: 600;">${new Date(event.date).toLocaleDateString('it-IT')}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #78716c; font-size: 14px;">Ora:</td>
+                        <td style="padding: 8px 0; color: #1c1917; font-size: 14px; font-weight: 600;">${event.time}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #78716c; font-size: 14px;">Luogo:</td>
+                        <td style="padding: 8px 0; color: #1c1917; font-size: 14px; font-weight: 600;">${event.location}</td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <div style="background-color: #1c1917; color: #ffffff; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 32px;">
+                    <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 10px; font-weight: 700; margin: 0 0 8px 0; opacity: 0.6;">Il tuo Biglietto Digitale</p>
+                    <h3 style="font-size: 28px; margin: 0; font-family: monospace; letter-spacing: 1px;">${ticketNumber}</h3>
+                    <p style="font-size: 12px; margin-top: 12px; opacity: 0.8;">Mostra questo codice all'ingresso dell'evento.</p>
+                  </div>
+
+                  <div style="text-align: center; color: #78716c; font-size: 12px; line-height: 1.6;">
+                    <p><strong>Dati Partecipante:</strong><br />${name}<br />${email}<br />${phone}</p>
+                    <p style="margin-top: 24px; border-top: 1px solid #e5e5e5; padding-top: 24px;">
+                      <strong>Associazione Pro San Felice</strong><br />
+                      Per assistenza contattaci all'indirizzo email della sede.
+                    </p>
+                  </div>
+                </div>
+              `
+            };
+
+            await transporter.sendMail(mailOptions);
+            console.log(`Confirmation email sent to ${email}`);
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+      }
+
+      res.json({ id: result.lastID, ticketNumber });
+    } catch (error) {
+      console.error('Booking error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Settings API
+  app.get('/api/settings/:key', async (req, res) => {
+    try {
+      const { key } = req.params;
+      const row = await db.get('SELECT value FROM settings WHERE key = ?', [key]);
+      if (row) {
+        res.json({ value: JSON.parse(row.value) });
+      } else {
+        res.json({ value: null });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/settings/:key', async (req, res) => {
+    try {
+      const { key } = req.params;
+      const { value } = req.body;
+      await db.run(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        [key, JSON.stringify(value)]
+      );
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Internal server error' });

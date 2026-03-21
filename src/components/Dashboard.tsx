@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw, CreditCard } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
+import { BookingsManagement } from './BookingsManagement';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -174,6 +175,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     votes: []
   });
 
+  const [bookingEvents, setBookingEvents] = React.useState<any[]>([]);
+  const [bookings, setBookings] = React.useState<any[]>([]);
+  const [editingBookingEvent, setEditingBookingEvent] = React.useState<any>(null);
+  const [bookingEventToDelete, setBookingEventToDelete] = React.useState<any>(null);
+  const [bookingToDelete, setBookingToDelete] = React.useState<any>(null);
+  const [selectedBookingEventForDetails, setSelectedBookingEventForDetails] = React.useState<any>(null);
+  const [isDeletingBooking, setIsDeletingBooking] = React.useState(false);
+  const [isSavingBookingEvent, setIsSavingBookingEvent] = React.useState(false);
+
   const createNewPoll = () => {
     setPoll({
       active: false,
@@ -220,6 +230,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     protocol: 'imap',
     from_email: '',
     from_name: ''
+  });
+
+  const [paypalSettings, setPaypalSettings] = React.useState<any>({
+    paypal_me_link: '',
+    instructions: 'Per completare la prenotazione, effettua il pagamento tramite PayPal.me. Una volta completato, clicca sul pulsante di conferma.'
   });
 
   const [emailForm, setEmailForm] = React.useState({
@@ -315,6 +330,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [editingSponsor, setEditingSponsor] = React.useState<any>(null);
   const [sponsorToDelete, setSponsorToDelete] = React.useState<any>(null);
   const [sponsorImageFile, setSponsorImageFile] = React.useState<File | null>(null);
+  const [bookingEventImageFile, setBookingEventImageFile] = React.useState<File | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [editingContest, setEditingContest] = React.useState<any>(null);
   const [showRegistrationDetails, setShowRegistrationDetails] = React.useState<any>(null);
@@ -542,7 +558,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       } },
       { key: 'association_details', url: '/api/settings/association_details', setter: (data: any) => data?.value && setAssociationDetails(data.value) },
       { key: 'membership_fees', url: '/api/settings/membership_fees', setter: (data: any) => data?.value && setMembershipFees(data.value) },
-      { key: 'sponsors', url: '/api/sponsors', setter: setSponsors }
+      { key: 'sponsors', url: '/api/sponsors', setter: setSponsors },
+      { key: 'booking_events', url: '/api/booking-events', setter: setBookingEvents },
+      { key: 'bookings', url: '/api/bookings', setter: setBookings },
+      { key: 'paypal_settings', url: '/api/settings/paypal_settings', setter: (data: any) => data?.value && setPaypalSettings(data.value) }
     ];
 
     for (const endpoint of endpoints) {
@@ -1881,6 +1900,62 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
+  const addBookingEvent = async (event: any) => {
+    setIsSavingBookingEvent(true);
+    try {
+      let imagePath = event.image;
+      
+      if (bookingEventImageFile) {
+        const formData = new FormData();
+        formData.append('image', bookingEventImageFile);
+        const uploadRes = await fetch('/api/booking-events/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imagePath = uploadData.path;
+        } else {
+          throw new Error('Errore durante il caricamento dell\'immagine');
+        }
+      }
+
+      const eventData = { ...event, image: imagePath };
+      const method = event.id ? 'PUT' : 'POST';
+      const url = event.id ? `/api/booking-events/${event.id}` : '/api/booking-events';
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+      });
+      if (response.ok) {
+        setEditingBookingEvent(null);
+        setBookingEventImageFile(null);
+        setNotification({ message: event.id ? 'Evento aggiornato!' : 'Evento creato!', type: 'success' });
+        await fetchData();
+      }
+    } catch (error) {
+      setNotification({ message: error instanceof Error ? error.message : 'Errore durante il salvataggio', type: 'error' });
+    } finally {
+      setIsSavingBookingEvent(false);
+    }
+  };
+
+  const deleteBookingEvent = async (id: number) => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/booking-events/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setBookingEventToDelete(null);
+        setNotification({ message: 'Evento eliminato!', type: 'success' });
+        await fetchData();
+      }
+    } catch (error) {
+      setNotification({ message: 'Errore durante l\'eliminazione', type: 'error' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const cariche = ['Presidente', 'Vicepresidente', 'Segretario', 'Tesoriere', 'Socio'];
 
   return (
@@ -1933,6 +2008,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'appointments', label: 'Agenda', icon: Calendar, minRole: 'Operator' },
                 { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
                 { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
+                { id: 'bookings', label: 'Prenotazioni', icon: Ticket, minRole: 'Operator' },
                 { id: 'sponsors', label: 'Sponsor & Pubblicità', icon: Building, minRole: 'Operator' },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
                 { id: 'email', label: 'Email & Comunicazioni', icon: Mail, minRole: 'Operator' },
@@ -2026,6 +2102,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'association' && 'Dati Associazione'}
               {activeTab === 'accounts' && 'Gestione Account'}
               {activeTab === 'poll' && 'Gestione Sondaggi'}
+              {activeTab === 'bookings' && 'Prenotazioni & Biglietti'}
               {activeTab === 'email' && 'Email & Comunicazioni'}
               {activeTab === 'member-home' && `Benvenuto, ${user?.username}`}
               <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-2 py-1 rounded-full">v1.1.1</span>
@@ -3139,6 +3216,68 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
                       <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-serif text-stone-900 flex items-center gap-2">
+                          <CreditCard className="w-5 h-5" />
+                          Configurazione Pagamenti (PayPal.me)
+                        </h3>
+                      </div>
+                      
+                      <div className="space-y-6">
+                        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                          <p className="text-sm text-blue-800 leading-relaxed">
+                            <strong className="text-blue-900">Integrazione PayPal.me:</strong> 
+                            Inserisci il tuo link PayPal.me per ricevere pagamenti per gli eventi a pagamento. 
+                            Gli utenti verranno reindirizzati a questo link per completare la transazione prima di ricevere il biglietto.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6">
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Link PayPal.me</label>
+                            <input 
+                              value={paypalSettings.paypal_me_link}
+                              onChange={(e) => setPaypalSettings({ ...paypalSettings, paypal_me_link: e.target.value })}
+                              className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                              placeholder="https://paypal.me/tuonome"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Istruzioni di Pagamento</label>
+                            <textarea 
+                              value={paypalSettings.instructions}
+                              onChange={(e) => setPaypalSettings({ ...paypalSettings, instructions: e.target.value })}
+                              rows={3}
+                              className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                              placeholder="Istruzioni che l'utente vedrà durante il checkout..."
+                            />
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/settings/paypal_settings', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ value: paypalSettings })
+                              });
+                              if (response.ok) {
+                                setNotification({ message: 'Impostazioni PayPal salvate!', type: 'success' });
+                              }
+                            } catch (error) {
+                              setNotification({ message: 'Errore durante il salvataggio', type: 'error' });
+                            }
+                          }}
+                          className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl text-sm font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+                        >
+                          <Save className="w-4 h-4" />
+                          Salva Impostazioni PayPal
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-serif text-stone-900 flex items-center gap-2">
                           <Mail className="w-5 h-5" />
                           Configurazione Email (SMTP & POP3 Gmail)
                         </h3>
@@ -3799,6 +3938,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   ))}
                 </div>
               </div>
+            )}
+
+            {activeTab === 'bookings' && (
+              <BookingsManagement 
+                bookingEvents={bookingEvents}
+                bookings={bookings}
+                onAddEvent={addBookingEvent}
+                onDeleteEvent={(event) => setBookingEventToDelete(event)}
+                onDeleteBooking={(booking) => setBookingToDelete(booking)}
+                isSaving={isSavingBookingEvent}
+                isDeleting={isDeleting}
+                imageFile={bookingEventImageFile}
+                onImageChange={setBookingEventImageFile}
+              />
             )}
 
             {activeTab === 'news' && (
@@ -6072,6 +6225,44 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             message={`Sei sicuro di voler eliminare lo sponsor "${sponsorToDelete?.name}"? Questa azione non può essere annullata.`}
             isDeleting={isDeleting}
             icon={<Building className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {bookingEventToDelete && (
+          <ConfirmationModal 
+            isOpen={!!bookingEventToDelete}
+            onClose={() => setBookingEventToDelete(null)}
+            onConfirm={() => deleteBookingEvent(bookingEventToDelete.id)}
+            title="Elimina Evento"
+            message={`Sei sicuro di voler eliminare l'evento "${bookingEventToDelete?.title}"? Verranno eliminate anche tutte le prenotazioni associate.`}
+            isDeleting={isDeleting}
+            icon={<Ticket className="w-8 h-8 text-red-600" />}
+          />
+        )}
+
+        {bookingToDelete && (
+          <ConfirmationModal 
+            isOpen={!!bookingToDelete}
+            onClose={() => setBookingToDelete(null)}
+            onConfirm={async () => {
+              setIsDeleting(true);
+              try {
+                const res = await fetch(`/api/bookings/${bookingToDelete.id}`, { method: 'DELETE' });
+                if (res.ok) {
+                  setBookingToDelete(null);
+                  setNotification({ message: 'Prenotazione eliminata!', type: 'success' });
+                  await fetchData();
+                }
+              } catch (err) {
+                setNotification({ message: 'Errore durante l\'eliminazione', type: 'error' });
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            title="Elimina Prenotazione"
+            message={`Sei sicuro di voler eliminare la prenotazione di "${bookingToDelete?.name}"?`}
+            isDeleting={isDeleting}
+            icon={<Users className="w-8 h-8 text-red-600" />}
           />
         )}
 

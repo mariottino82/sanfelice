@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn } from 'lucide-react';
+import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn, Newspaper } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
 export function Navbar({ onLoginClick, onRegisterClick }: { onLoginClick: () => void, onRegisterClick: () => void }) {
@@ -8,7 +8,8 @@ export function Navbar({ onLoginClick, onRegisterClick }: { onLoginClick: () => 
 
   const navItems = [
     { name: 'Home', href: '#home', icon: Home },
-    { name: 'News & Eventi', href: '#news', icon: Calendar },
+    { name: 'News', href: '#news', icon: Newspaper },
+    { name: 'Eventi', href: '#eventi', icon: Calendar },
     { name: 'Gallery', href: '#gallery', icon: ImageIcon },
   ];
 

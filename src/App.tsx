@@ -6,7 +6,8 @@
 import React from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { NewsEvents } from './components/NewsEvents';
+import { NewsSection } from './components/NewsSection';
+import { EventsSection } from './components/EventsSection';
 import { Gallery } from './components/Gallery';
 import { SponsorsSection } from './components/SponsorsSection';
 import { Dashboard } from './components/Dashboard';
@@ -159,7 +160,8 @@ export default function App() {
           <SponsorsSection />
           <PollSection />
           <LotterySection />
-          <NewsEvents onNewsClick={(item) => setSelectedNews(item)} />
+          <NewsSection onNewsClick={(item) => setSelectedNews(item)} />
+          <EventsSection />
           <Gallery />
         </main>
 
