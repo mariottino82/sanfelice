@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw, CreditCard } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw, CreditCard, BarChart } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { jsPDF } from 'jspdf';
@@ -139,6 +139,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   
   const [activeTab, setActiveTab] = React.useState(isStaff ? (isSuperAdmin ? 'members' : 'appointments') : 'member-home');
   
+  // Visitors State
+  const [visitorsData, setVisitorsData] = React.useState<any>(null);
+
   // Email Client State
   const [emails, setEmails] = React.useState<any[]>([]);
   const [folders, setFolders] = React.useState<any[]>([]);
@@ -725,12 +728,28 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     }
   };
 
+  const fetchVisitorsData = React.useCallback(async () => {
+    if (!isSuperAdmin) return;
+    try {
+      const res = await fetch('/api/admin/visitors');
+      if (res.ok) {
+        const data = await res.json();
+        setVisitorsData(data);
+      }
+    } catch (err) {
+      console.error('Error fetching visitors data:', err);
+    }
+  }, [isSuperAdmin]);
+
   React.useEffect(() => {
     if (activeTab === 'email') {
       fetchEmailFolders();
       fetchEmails();
     }
-  }, [activeTab, fetchEmailFolders, fetchEmails]);
+    if (activeTab === 'visitors') {
+      fetchVisitorsData();
+    }
+  }, [activeTab, fetchEmailFolders, fetchEmails, fetchVisitorsData]);
 
   const exportContestRegistrations = (contestId: number) => {
     const contest = contests.find(c => c.id === contestId);
@@ -2012,6 +2031,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'sponsors', label: 'Sponsor & Pubblicità', icon: Building, minRole: 'Operator' },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
                 { id: 'email', label: 'Email & Comunicazioni', icon: Mail, minRole: 'Operator' },
+                { id: 'visitors', label: 'Visitatori', icon: BarChart, minRole: 'SuperAdmin' },
                 { id: 'association', label: 'Associazione', icon: Building, minRole: 'SuperAdmin' },
                 { id: 'accounts', label: 'Account & Sicurezza', icon: Shield, minRole: 'SuperAdmin' },
               ].filter(tab => {
@@ -4827,6 +4847,79 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {isSuperAdmin && activeTab === 'visitors' && (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-serif text-stone-900">Statistiche Visitatori</h2>
+                    <p className="text-stone-500 mt-1">Monitora gli accessi al sito web.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                      <Users className="w-6 h-6 text-stone-900" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-stone-400 uppercase tracking-widest">Visite Totali</p>
+                      <p className="text-3xl font-serif text-stone-900">{visitorsData?.totalVisits || 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                      <BarChart className="w-6 h-6 text-stone-900" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-stone-400 uppercase tracking-widest">Ultimi 30 Giorni</p>
+                      <p className="text-3xl font-serif text-stone-900">{visitorsData?.recentVisits?.length || 0}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
+                  <div className="p-6 border-b border-stone-100">
+                    <h3 className="text-lg font-serif text-stone-900">Dettaglio Accessi (Ultimi 30 gg)</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-stone-50 text-stone-500 font-medium">
+                        <tr>
+                          <th className="px-6 py-4">Data e Ora</th>
+                          <th className="px-6 py-4">Indirizzo IP</th>
+                          <th className="px-6 py-4">Dispositivo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {visitorsData?.recentVisits?.map((visit: any) => (
+                          <tr key={visit.id} className="hover:bg-stone-50/50 transition-colors">
+                            <td className="px-6 py-4">{new Date(visit.timestamp).toLocaleString('it-IT')}</td>
+                            <td className="px-6 py-4 font-mono text-xs">{visit.ip}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                                visit.deviceType === 'Mobile' ? 'bg-blue-50 text-blue-600' :
+                                visit.deviceType === 'Tablet' ? 'bg-purple-50 text-purple-600' :
+                                'bg-stone-100 text-stone-600'
+                              }`}>
+                                {visit.deviceType}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {(!visitorsData?.recentVisits || visitorsData.recentVisits.length === 0) && (
+                          <tr>
+                            <td colSpan={3} className="px-6 py-8 text-center text-stone-500 italic">
+                              Nessun dato disponibile per gli ultimi 30 giorni.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 

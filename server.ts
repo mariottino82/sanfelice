@@ -362,6 +362,59 @@ async function startServer() {
     }
   });
 
+  // Visitors API
+  app.post('/api/track-visit', async (req, res) => {
+    try {
+      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || '';
+      let deviceType = 'Desktop';
+      if (/mobile/i.test(userAgent)) deviceType = 'Mobile';
+      if (/tablet/i.test(userAgent)) deviceType = 'Tablet';
+
+      const timestamp = new Date().toISOString();
+
+      // Insert visit
+      await db.run(
+        'INSERT INTO visits (ip, deviceType, timestamp) VALUES (?, ?, ?)',
+        [ip, deviceType, timestamp]
+      );
+
+      // Increment total visits in settings
+      const row = await db.get('SELECT value FROM settings WHERE key = ?', ['total_visits']);
+      let totalVisits = 1;
+      if (row) {
+        totalVisits = parseInt(row.value) + 1;
+        await db.run('UPDATE settings SET value = ? WHERE key = ?', [totalVisits.toString(), 'total_visits']);
+      } else {
+        await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['total_visits', '1']);
+      }
+
+      // Cleanup old visits (older than 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      await db.run('DELETE FROM visits WHERE timestamp < ?', [thirtyDaysAgo.toISOString()]);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Track visit error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/admin/visitors', async (req, res) => {
+    try {
+      const row = await db.get('SELECT value FROM settings WHERE key = ?', ['total_visits']);
+      const totalVisits = row ? parseInt(row.value) : 0;
+
+      const recentVisits = await db.all('SELECT * FROM visits ORDER BY timestamp DESC LIMIT 1000');
+
+      res.json({ totalVisits, recentVisits });
+    } catch (error) {
+      console.error('Fetch visitors error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Settings API
   app.get('/api/settings/:key', async (req, res) => {
     try {

@@ -207,6 +207,13 @@ export async function getDb() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS visits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip TEXT,
+      deviceType TEXT,
+      timestamp TEXT
+    );
   `);
 
   // Migrations
@@ -234,7 +241,8 @@ export async function getDb() {
     'ALTER TABLE lottery ADD COLUMN minutes_path TEXT',
     'CREATE TABLE IF NOT EXISTS sponsors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, image TEXT, startDate TEXT, endDate TEXT, active INTEGER DEFAULT 1)',
     'CREATE TABLE IF NOT EXISTS booking_events (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, date TEXT, time TEXT, location TEXT, image TEXT, price REAL, totalTickets INTEGER, soldTickets INTEGER DEFAULT 0, active INTEGER DEFAULT 1, showOnHomepage INTEGER DEFAULT 0)',
-    'CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, eventId INTEGER, name TEXT, email TEXT, phone TEXT, ticketNumber TEXT, purchaseDate TEXT, status TEXT DEFAULT "confirmed", FOREIGN KEY(eventId) REFERENCES booking_events(id))'
+    'CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, eventId INTEGER, name TEXT, email TEXT, phone TEXT, ticketNumber TEXT, purchaseDate TEXT, status TEXT DEFAULT "confirmed", FOREIGN KEY(eventId) REFERENCES booking_events(id))',
+    'CREATE TABLE IF NOT EXISTS visits (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT, deviceType TEXT, timestamp TEXT)'
   ];
 
   for (const migration of migrations) {

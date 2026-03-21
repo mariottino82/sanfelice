@@ -34,6 +34,15 @@ export default function App() {
     const saved = localStorage.getItem('session_user');
     return saved ? JSON.parse(saved) : null;
   });
+
+  React.useEffect(() => {
+    const hasVisited = sessionStorage.getItem('has_visited');
+    if (!hasVisited) {
+      fetch('/api/track-visit', { method: 'POST' }).catch(console.error);
+      sessionStorage.setItem('has_visited', 'true');
+    }
+  }, []);
+
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = React.useState(false);
   const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState(false);
