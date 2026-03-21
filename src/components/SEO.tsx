@@ -25,6 +25,11 @@ export const SEO: React.FC<SEOProps> = ({
   const defaultDescription = 'Associazione Pro San Felice 2023: Scopri tutti gli eventi, le sagre, le rassegne e le feste a Colle d\'Anchise e in tutto il Molise.';
   const fullDescription = description || defaultDescription;
   const fullKeywords = keywords ? `${keywords}, Molise, eventi, sagre` : 'Pro San Felice, Molise, eventi Molise, sagre Molise, feste Molise, Colle d\'Anchise';
+  
+  // Ensure absolute URL for image
+  const absoluteImage = image.startsWith('http') 
+    ? image 
+    : `${window.location.origin}${image}`;
 
   return (
     <Helmet>
@@ -37,14 +42,14 @@ export const SEO: React.FC<SEOProps> = ({
       <meta property="og:type" content={type} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={fullDescription} />
-      <meta property="og:image" content={image} />
+      <meta property="og:image" content={absoluteImage} />
       <meta property="og:url" content={url} />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={fullDescription} />
-      <meta name="twitter:image" content={image} />
+      <meta name="twitter:image" content={absoluteImage} />
 
       {/* Structured Data (JSON-LD) */}
       {schema && (

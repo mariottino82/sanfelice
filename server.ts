@@ -1578,6 +1578,18 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'Nessun file caricato' });
     }
+    
+    // Copy logo.png to favicon.ico so they are always in sync
+    try {
+      const logoPath = path.join(publicDir, 'logo.png');
+      const faviconPath = path.join(publicDir, 'favicon.ico');
+      if (fs.existsSync(logoPath)) {
+        fs.copyFileSync(logoPath, faviconPath);
+      }
+    } catch (err) {
+      console.error('Error copying logo to favicon:', err);
+    }
+    
     res.json({ success: true, path: '/logo.png' });
   });
 
@@ -1594,12 +1606,12 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     logoInDist: fs.existsSync(path.join(distPath, 'logo.png'))
   });
 
-  // 2. Servizio file statici (PRIMA di ogni altra rotta)
-  app.use(express.static(publicPath));
-  app.use(express.static(distPath));
-
-  // 3. Rotta specifica per il logo con log di debug
-  app.get('/logo.png', (req, res) => {
+  // 2. Rotte specifiche per logo e favicon (PRIMA dei file statici per evitare la cache)
+  app.get(['/logo.png', '/favicon.ico'], (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     const fileP = path.join(publicPath, 'logo.png');
     const fileD = path.join(distPath, 'logo.png');
     const fileR = path.join(rootPath, 'logo.png');
@@ -1610,6 +1622,34 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     
     res.status(404).send('Logo non trovato sul disco');
   });
+
+  // SEO: robots.txt
+  app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.send(`User-agent: *
+Allow: /
+
+Sitemap: https://www.prosanfelice.it/sitemap.xml`);
+  });
+
+  // SEO: sitemap.xml
+  app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml');
+    const today = new Date().toISOString().split('T')[0];
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.prosanfelice.it/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`);
+  });
+
+  // 3. Servizio file statici
+  app.use(express.static(publicPath));
+  app.use(express.static(distPath));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {

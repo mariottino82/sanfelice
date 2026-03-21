@@ -5,20 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pro San Felice 2023 - Eventi, Sagre e Feste in Molise</title>
     <meta name="description" content="Associazione Pro San Felice 2023: Scopri tutti gli eventi, le sagre, le rassegne e le feste a Colle d'Anchise e in tutto il Molise. Partecipa alla vita della nostra comunità." />
-    <meta name="keywords" content="Pro San Felice, Molise, eventi Molise, sagre Molise, feste Molise, rassegne Molise, Colle d'Anchise, tradizioni Molise" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="keywords" content="Pro San Felice, Molise, eventi Molise, sagre Molise, feste Molise, rassegne Molise, Colle d'Anchise, tradizioni Molise, associazione culturale" />
+    <meta name="author" content="Associazione Pro San Felice 2023" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Dynamic Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://www.prosanfelice.it/" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.prosanfelice.it/" />
     <meta property="og:title" content="Pro San Felice 2023 - Eventi, Sagre e Feste in Molise" />
     <meta property="og:description" content="Scopri tutti gli eventi, le sagre e le feste a Colle d'Anchise e in tutto il Molise. Partecipa alla vita della nostra comunità." />
-    <meta property="og:image" content="/logo.png" />
+    <meta property="og:image" content="https://www.prosanfelice.it/logo.png" />
+    <meta property="og:site_name" content="Pro San Felice 2023" />
+    <meta property="og:locale" content="it_IT" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://www.prosanfelice.it/" />
     <meta property="twitter:title" content="Pro San Felice 2023 - Eventi, Sagre e Feste in Molise" />
     <meta property="twitter:description" content="Scopri tutti gli eventi, le sagre e le feste a San Felice e in tutto il Molise." />
-    <meta property="twitter:image" content="/logo.png" />
+    <meta property="twitter:image" content="https://www.prosanfelice.it/logo.png" />
+    
+    <!-- Theme Color for Mobile Browsers -->
+    <meta name="theme-color" content="#1c1917" />
+    
+    <script>
+      // Automatically update favicon and apple-touch-icon with a timestamp to bypass cache on reload
+      document.addEventListener('DOMContentLoaded', function() {
+        var timestamp = new Date().getTime();
+        var favicon = document.querySelector('link[rel="icon"]');
+        var appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+        
+        if (favicon) {
+          favicon.href = '/favicon.ico?v=' + timestamp;
+        }
+        if (appleIcon) {
+          appleIcon.href = '/logo.png?v=' + timestamp;
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
