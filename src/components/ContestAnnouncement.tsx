@@ -15,7 +15,7 @@ export const ContestAnnouncement: React.FC<ContestAnnouncementProps> = ({ onRegi
     fetch('/api/contests')
       .then(res => res.json())
       .then(data => {
-        const activeContests = data.filter((c: any) => c.showOnHomepage);
+        const activeContests = data.filter((c: any) => Number(c.showOnHomepage) === 1 || c.showOnHomepage === true);
         setContests(activeContests);
       })
       .catch(err => console.error('Error fetching contests:', err));

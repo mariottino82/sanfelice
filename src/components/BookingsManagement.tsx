@@ -321,7 +321,7 @@ export function BookingsManagement({
                   <input 
                     type="checkbox"
                     id="showOnHomepage"
-                    checked={editingEvent.showOnHomepage}
+                    checked={!!editingEvent.showOnHomepage}
                     onChange={(e) => setEditingEvent({ ...editingEvent, showOnHomepage: e.target.checked })}
                     className="w-5 h-5 rounded-lg border-stone-200 text-stone-900 focus:ring-stone-900"
                   />

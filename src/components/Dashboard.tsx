@@ -2025,7 +2025,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'minutes', label: 'Verbali', icon: FileText, minRole: 'Operator' },
                 { id: 'contests', label: 'Concorsi', icon: Trophy, minRole: 'Operator' },
                 { id: 'appointments', label: 'Agenda', icon: Calendar, minRole: 'Operator' },
-                { id: 'news', label: 'News & Eventi', icon: Newspaper, minRole: 'Operator' },
+                { id: 'news', label: 'News', icon: Newspaper, minRole: 'Operator' },
                 { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
                 { id: 'bookings', label: 'Prenotazioni', icon: Ticket, minRole: 'Operator' },
                 { id: 'sponsors', label: 'Sponsor & Pubblicità', icon: Building, minRole: 'Operator' },
@@ -2069,7 +2069,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {[
                 { id: 'member-home', label: 'Home Socio', icon: UserCheck },
                 { id: 'minutes', label: 'Verbali', icon: FileText },
-                { id: 'news', label: 'News & Eventi', icon: Newspaper },
+                { id: 'news', label: 'News', icon: Newspaper },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon },
               ].map((tab) => (
                 <button
@@ -2118,7 +2118,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'minutes' && 'Archivio Verbali'}
               {activeTab === 'contests' && 'Concorsi & Rassegne'}
               {activeTab === 'appointments' && 'Agenda Appuntamenti'}
-              {activeTab === 'news' && 'News & Eventi'}
+              {activeTab === 'news' && 'News'}
               {activeTab === 'association' && 'Dati Associazione'}
               {activeTab === 'accounts' && 'Gestione Account'}
               {activeTab === 'poll' && 'Gestione Sondaggi'}
@@ -2395,6 +2395,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
 
                 <form 
+                  key={editingMember ? editingMember.id : 'new'}
                   onSubmit={(e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
@@ -3654,6 +3655,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       Usa il wizard per generare un verbale professionale, oppure carica un file PDF esistente.
                     </p>
                     <form 
+                      key={editingMinute ? editingMinute.id : 'new'}
                       onSubmit={(e) => {
                         e.preventDefault();
                         const formData = new FormData(e.currentTarget);
@@ -3918,6 +3920,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
                 {isStaff && (
                   <form 
+                    key={editingAppointment ? editingAppointment.id : 'new'}
                     onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
@@ -3984,10 +3987,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             {activeTab === 'news' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-serif text-stone-900">News & Eventi</h2>
+                  <h2 className="text-xl font-serif text-stone-900">News</h2>
                 </div>
                 {isStaff && (
                   <form 
+                    key={editingNews ? editingNews.id : 'new'}
                     onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
@@ -4030,7 +4034,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         type="checkbox" 
                         name="showOnHomepage" 
                         id="news_showOnHomepage"
-                        defaultChecked={editingNews?.showOnHomepage === 1}
+                        defaultChecked={editingNews ? (editingNews.showOnHomepage === 1 || editingNews.showOnHomepage === true || editingNews.showOnHomepage === '1') : false}
                         className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                       />
                       <label htmlFor="news_showOnHomepage" className="text-sm text-stone-600">Mostra in homepage</label>
@@ -4070,7 +4074,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             }`}>
                               {n.category}
                             </span>
-                            {n.showOnHomepage === 1 && (
+                            {(n.showOnHomepage === 1 || n.showOnHomepage === true || n.showOnHomepage === '1') && (
                               <span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700">
                                 Homepage
                               </span>

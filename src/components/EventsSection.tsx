@@ -23,12 +23,12 @@ export function EventsSection() {
         // Fetch News (Events)
         const newsRes = await fetch('/api/news');
         const newsData = await newsRes.json();
-        setEvents(newsData.filter((item: any) => item.category === 'evento' && item.showOnHomepage === 1));
+        setEvents(newsData.filter((item: any) => item.category === 'evento' && (item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1')));
 
         // Fetch Lotteries
         const lotteryRes = await fetch('/api/lottery');
         const lotteryData = await lotteryRes.json();
-        if (lotteryData && lotteryData.showOnHomepage) {
+        if (lotteryData && (Number(lotteryData.showOnHomepage) === 1 || lotteryData.showOnHomepage === true)) {
           setLotteries([lotteryData]);
         } else {
           setLotteries([]);
@@ -37,12 +37,12 @@ export function EventsSection() {
         // Fetch Contests
         const contestRes = await fetch('/api/contests');
         const contestData = await contestRes.json();
-        setContests(contestData.filter((c: any) => c.showOnHomepage));
+        setContests(contestData.filter((c: any) => Number(c.showOnHomepage) === 1 || c.showOnHomepage === true));
 
         // Fetch Booking Events
         const bookingRes = await fetch('/api/booking-events');
         const bookingData = await bookingRes.json();
-        setBookingEvents(bookingData.filter((b: any) => b.showOnHomepage));
+        setBookingEvents(bookingData.filter((b: any) => Number(b.showOnHomepage) === 1 || b.showOnHomepage === true));
 
       } catch (error) {
         console.error('Error fetching events data:', error);

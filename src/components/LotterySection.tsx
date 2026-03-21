@@ -12,7 +12,7 @@ export function LotterySection() {
         if (response.ok) {
           const data = await response.json();
           
-          if (data.showOnHomepage) {
+          if (Number(data.showOnHomepage) === 1 || data.showOnHomepage === true) {
             setLottery(data);
           } else {
             setLottery(null);
