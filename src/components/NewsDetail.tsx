@@ -210,7 +210,7 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
                     <div>
                       <h4 className="font-serif text-2xl mb-3 leading-tight">Diventa parte della nostra storia</h4>
                       <p className="text-stone-400 text-sm leading-relaxed">
-                        Sostieni il territorio e accedi a eventi esclusivi riservati ai nostri soci.
+                        Sostieni il territorio e partecipa ai nostri eventi e alle iniziative aperte a tutti.
                       </p>
                     </div>
 

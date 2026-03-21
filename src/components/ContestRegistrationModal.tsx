@@ -214,7 +214,7 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
                             {contest.cost > 0 ? `€ ${contest.cost}` : 'Gratuito'}
                           </p>
                           <p className="text-[8px] md:text-[10px] text-stone-400 leading-relaxed">
-                            {contest.cost > 0 ? 'Il pagamento verrà richiesto dopo l\'approvazione dell\'iscrizione.' : 'Partecipazione gratuita aperta a tutti i soci.'}
+                            {contest.cost > 0 ? 'Il pagamento verrà richiesto dopo l\'approvazione dell\'iscrizione.' : 'Partecipazione gratuita aperta a tutti.'}
                           </p>
                         </div>
                       </div>
