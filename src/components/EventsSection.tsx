@@ -20,12 +20,16 @@ export function EventsSection() {
         // Fetch News (Events)
         const newsRes = await fetch('/api/news');
         const newsData = await newsRes.json();
-        setEvents(newsData.filter((item: any) => item.category === 'evento'));
+        setEvents(newsData.filter((item: any) => item.category === 'evento' && item.showOnHomepage === 1));
 
         // Fetch Lotteries
         const lotteryRes = await fetch('/api/lottery');
         const lotteryData = await lotteryRes.json();
-        setLotteries(lotteryData.filter((l: any) => l.showOnHomepage));
+        if (lotteryData && lotteryData.showOnHomepage) {
+          setLotteries([lotteryData]);
+        } else {
+          setLotteries([]);
+        }
 
         // Fetch Contests
         const contestRes = await fetch('/api/contests');
@@ -55,7 +59,11 @@ export function EventsSection() {
     ...lotteries.map(l => ({ ...l, type: 'lottery' })),
     ...contests.map(c => ({ ...c, type: 'contest' })),
     ...bookingEvents.map(b => ({ ...b, type: 'booking' }))
-  ].sort((a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime());
+  ].sort((a, b) => {
+    const dateA = new Date(a.date || a.startDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.date || b.startDate || b.createdAt || 0).getTime();
+    return dateB - dateA;
+  });
 
   if (allEvents.length === 0) return null;
 
@@ -64,8 +72,8 @@ export function EventsSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <h2 className="text-sm uppercase tracking-widest text-stone-500 font-semibold mb-2">Cosa succede in associazione</h2>
-            <h3 className="text-4xl font-serif text-stone-900">Eventi</h3>
+            <h2 className="text-sm uppercase tracking-widest text-stone-500 font-semibold mb-2">Le nostre iniziative</h2>
+            <h3 className="text-4xl font-serif text-stone-900">Eventi & Attività</h3>
           </div>
         </div>
 

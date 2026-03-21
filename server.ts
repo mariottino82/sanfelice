@@ -481,19 +481,19 @@ async function startServer() {
   });
 
   app.post('/api/news', async (req, res) => {
-    const { title, date, excerpt, content, image, video, category } = req.body;
+    const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
     const result = await db.run(
-      'INSERT INTO news (title, date, excerpt, content, image, video, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [title, date || new Date().toISOString(), excerpt, content, image, video, category]
+      'INSERT INTO news (title, date, excerpt, content, image, video, category, showOnHomepage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, date || new Date().toISOString(), excerpt, content, image, video, category, showOnHomepage ? 1 : 0]
     );
     res.json({ id: result.lastID });
   });
 
   app.put('/api/news/:id', async (req, res) => {
-    const { title, date, excerpt, content, image, video, category } = req.body;
+    const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
     await db.run(
-      'UPDATE news SET title = ?, date = ?, excerpt = ?, content = ?, image = ?, video = ?, category = ? WHERE id = ?',
-      [title, date || new Date().toISOString(), excerpt, content, image, video, category, req.params.id]
+      'UPDATE news SET title = ?, date = ?, excerpt = ?, content = ?, image = ?, video = ?, category = ?, showOnHomepage = ? WHERE id = ?',
+      [title, date || new Date().toISOString(), excerpt, content, image, video, category, showOnHomepage ? 1 : 0, req.params.id]
     );
     res.json({ success: true });
   });
@@ -1867,36 +1867,52 @@ Sitemap: https://www.prosanfelice.it/sitemap.xml`);
 </urlset>`);
   });
 
-  // 3. Servizio file statici
+  // 3. Servizio file statici (sempre public)
   app.use(express.static(publicPath));
-  app.use(express.static(distPath));
 
+  let vite: any;
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'staging') {
     console.log('Starting Vite in middleware mode...');
     try {
-      const vite = await createViteServer({
+      vite = await createViteServer({
         server: { middlewareMode: true },
-        appType: 'spa',
+        appType: 'custom', // Use custom to handle index.html manually
       });
       app.use(vite.middlewares);
     } catch (e) {
       console.error('Vite failed to start:', e);
     }
+  } else {
+    // In production, serve built files
+    app.use(express.static(distPath));
   }
 
   // SPA fallback - must be last
-  app.get('*', (req, res, next) => {
+  app.get('*', async (req, res, next) => {
     // Skip API routes
     if (req.path.startsWith('/api/')) return next();
     
-    const indexPath = path.join(distPath, 'index.html');
-    res.sendFile(indexPath, (err) => {
-      if (err) {
-        // If dist/index.html doesn't exist, we are probably in dev mode
-        res.status(404).send('Not found');
+    try {
+      if (vite) {
+        // In dev mode, serve and transform index.html from root
+        const url = req.originalUrl;
+        let template = fs.readFileSync(path.resolve(rootPath, 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        return res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       }
-    });
+
+      // In production, serve dist/index.html
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+      }
+      
+      res.status(404).send('Not found');
+    } catch (e: any) {
+      console.error('SPA fallback error:', e);
+      res.status(500).send(e.message);
+    }
   });
 
   app.listen(PORT, '0.0.0.0', () => {

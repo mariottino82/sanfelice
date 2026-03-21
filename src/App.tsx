@@ -81,7 +81,7 @@ export default function App() {
         setShowLoginModal(false);
         localStorage.setItem('session_user', JSON.stringify(data.user));
       } else {
-        alert(data.message || 'Credenziali errate. Per i soci: usa la tua email come username e "socio" come password.');
+        alert(data.message || 'Credenziali errate. Per gli utenti registrati: usa la tua email come username e la password scelta in fase di iscrizione.');
       }
     } catch (error) {
       console.error('Login error:', error);

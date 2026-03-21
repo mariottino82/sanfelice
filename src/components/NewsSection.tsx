@@ -10,8 +10,8 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
       try {
         const response = await fetch('/api/news');
         const data = await response.json();
-        // Filter only news category
-        setNews(data.filter((item: any) => item.category === 'news'));
+        // Filter only news category and show on homepage
+        setNews(data.filter((item: any) => item.category === 'news' && item.showOnHomepage === 1));
       } catch (error) {
         console.error('Error fetching news:', error);
       }

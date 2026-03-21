@@ -3964,7 +3964,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
-                      const data = Object.fromEntries(formData);
+                      const data: any = Object.fromEntries(formData);
+                      // Handle checkbox
+                      data.showOnHomepage = formData.get('showOnHomepage') ? 1 : 0;
+                      
                       if (editingNews) {
                         updateNews({ ...editingNews, ...data });
                       } else {
@@ -3995,6 +3998,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <input name="video" defaultValue={editingNews?.video} placeholder="URL Video (YouTube/Vimeo)" className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        name="showOnHomepage" 
+                        id="news_showOnHomepage"
+                        defaultChecked={editingNews?.showOnHomepage === 1}
+                        className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                      />
+                      <label htmlFor="news_showOnHomepage" className="text-sm text-stone-600">Mostra in homepage</label>
+                    </div>
                     <div className="flex gap-4">
                       <button type="submit" className="bg-stone-900 text-white px-8 py-2 rounded-xl text-sm font-bold">
                         {editingNews ? 'Salva Modifiche' : 'Pubblica News'}
@@ -4024,11 +4037,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       )}
                       <div className="p-6">
                         <div className="flex justify-between items-start mb-2">
-                          <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
-                            n.category === 'evento' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-700'
-                          }`}>
-                            {n.category}
-                          </span>
+                          <div className="flex gap-2">
+                            <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
+                              n.category === 'evento' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-700'
+                            }`}>
+                              {n.category}
+                            </span>
+                            {n.showOnHomepage === 1 && (
+                              <span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700">
+                                Homepage
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-stone-400 font-bold uppercase">{new Date(n.date).toLocaleDateString('it-IT')}</span>
                         </div>
                         <h3 className="font-serif text-lg text-stone-900 mb-2">{n.title}</h3>

@@ -62,7 +62,8 @@ export async function getDb() {
       content TEXT,
       image TEXT,
       video TEXT,
-      category TEXT
+      category TEXT,
+      showOnHomepage INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS gallery (
