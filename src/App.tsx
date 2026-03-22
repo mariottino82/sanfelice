@@ -17,11 +17,13 @@ import { NewsDetail } from './components/NewsDetail';
 import { RegistrationModal } from './components/RegistrationModal';
 import { ContestRegistrationModal } from './components/ContestRegistrationModal';
 import { ContestAnnouncement } from './components/ContestAnnouncement';
+import { DonationModal } from './components/DonationModal';
+import { DonationPopup } from './components/DonationPopup';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { CookiePolicy } from './components/CookiePolicy';
 import { CookieBanner } from './components/CookieBanner';
 import { SEO } from './components/SEO';
-import { X, LogIn, Facebook, Instagram, Youtube, Twitter, Shield, Cookie } from 'lucide-react';
+import { X, LogIn, Facebook, Instagram, Youtube, Twitter, Shield, Cookie, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelmetProvider } from 'react-helmet-async';
 
@@ -41,10 +43,31 @@ export default function App() {
       fetch('/api/track-visit', { method: 'POST' }).catch(console.error);
       sessionStorage.setItem('has_visited', 'true');
     }
+
+    // Check for donation success
+    if (window.location.pathname === '/donation-success') {
+      const pendingId = localStorage.getItem('pending_donation_id');
+      if (pendingId) {
+        setShowDonationSuccess(true);
+        fetch('/api/donations/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: pendingId })
+        })
+        .then(() => {
+          localStorage.removeItem('pending_donation_id');
+        })
+        .catch(console.error);
+      }
+      // Clean up URL without refreshing
+      window.history.replaceState({}, '', '/');
+    }
   }, []);
 
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = React.useState(false);
+  const [showDonationModal, setShowDonationModal] = React.useState(false);
+  const [showDonationSuccess, setShowDonationSuccess] = React.useState(false);
   const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState(false);
   const [selectedContest, setSelectedContest] = React.useState<any>(null);
   const [selectedNews, setSelectedNews] = React.useState<any>(null);
@@ -163,7 +186,11 @@ export default function App() {
     <HelmetProvider>
       <div className="min-h-screen bg-stone-50 font-sans text-stone-900 selection:bg-stone-200">
         <SEO schema={mainSchema} />
-        <Navbar onLoginClick={() => setShowLoginModal(true)} onRegisterClick={() => setShowRegistrationModal(true)} />
+        <Navbar 
+          onLoginClick={() => setShowLoginModal(true)} 
+          onRegisterClick={() => setShowRegistrationModal(true)} 
+          onDonationClick={() => setShowDonationModal(true)}
+        />
         <main>
           <Hero />
           <SponsorsSection />
@@ -189,6 +216,55 @@ export default function App() {
           isOpen={showRegistrationModal} 
           onClose={() => setShowRegistrationModal(false)} 
         />
+
+        <DonationModal
+          isOpen={showDonationModal}
+          onClose={() => setShowDonationModal(false)}
+        />
+
+        <DonationPopup
+          onOpenDonation={() => setShowDonationModal(true)}
+        />
+
+        <AnimatePresence>
+          {showDonationSuccess && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowDonationSuccess(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center"
+              >
+                <button 
+                  onClick={() => setShowDonationSuccess(false)}
+                  className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <Heart className="w-10 h-10 text-green-600 fill-green-600" />
+                </div>
+                <h3 className="text-2xl font-serif text-stone-900 mb-4">Grazie di cuore!</h3>
+                <p className="text-stone-500 text-sm leading-relaxed mb-8">
+                  La tua donazione è stata ricevuta con successo. Abbiamo inviato un'email di ringraziamento con il tuo attestato all'indirizzo fornito.
+                </p>
+                <button
+                  onClick={() => setShowDonationSuccess(false)}
+                  className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-stone-800 transition-all"
+                >
+                  Chiudi
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
         
         <footer className="bg-stone-900 text-stone-400 py-12 border-t border-stone-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

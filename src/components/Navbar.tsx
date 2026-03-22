@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn, Newspaper } from 'lucide-react';
+import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn, Newspaper, Heart } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-export function Navbar({ onLoginClick, onRegisterClick }: { onLoginClick: () => void, onRegisterClick: () => void }) {
+export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onLoginClick: () => void, onRegisterClick: () => void, onDonationClick: () => void }) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const navItems = [
@@ -42,6 +42,13 @@ export function Navbar({ onLoginClick, onRegisterClick }: { onLoginClick: () => 
             ))}
             <div className="flex items-center gap-3">
               <button 
+                onClick={onDonationClick}
+                className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-red-600 transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Heart className="w-4 h-4 fill-white" />
+                Dona Ora
+              </button>
+              <button 
                 onClick={onRegisterClick}
                 className="text-stone-900 border border-stone-900 px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-50 transition-colors"
               >
@@ -58,7 +65,13 @@ export function Navbar({ onLoginClick, onRegisterClick }: { onLoginClick: () => 
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-3">
+            <button 
+              onClick={onDonationClick}
+              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-sm"
+            >
+              <Heart className="w-5 h-5 fill-white" />
+            </button>
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-stone-600 hover:text-stone-900"
@@ -87,6 +100,16 @@ export function Navbar({ onLoginClick, onRegisterClick }: { onLoginClick: () => 
                 {item.name}
               </a>
             ))}
+            <button 
+              onClick={() => {
+                setIsOpen(false);
+                onDonationClick();
+              }}
+              className="w-full text-left px-3 py-2 text-red-600 font-bold flex items-center gap-2"
+            >
+              <Heart className="w-4 h-4 fill-red-600" />
+              Dona Ora
+            </button>
             <button 
               onClick={() => {
                 setIsOpen(false);

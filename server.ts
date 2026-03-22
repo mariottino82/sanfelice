@@ -27,6 +27,7 @@ const galleryStorage = multer.diskStorage({
 const emailUpload = multer({ storage: galleryStorage });
 
 import nodemailer from 'nodemailer';
+import { jsPDF } from 'jspdf';
 
 async function startServer() {
   const app = express();
@@ -358,6 +359,160 @@ async function startServer() {
       res.json({ success: true });
     } catch (error) {
       console.error('Delete booking error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Donations API
+  app.post('/api/donations', async (req, res) => {
+    try {
+      const { firstName, lastName, email, amount } = req.body;
+      const date = new Date().toISOString();
+      
+      const result = await db.run(
+        'INSERT INTO donations (firstName, lastName, email, amount, date, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [firstName, lastName, email, amount || 0, date, 'pending']
+      );
+
+      res.json({ success: true, id: result.lastID });
+    } catch (error) {
+      console.error('Donation error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/donations/confirm', async (req, res) => {
+    try {
+      const { id } = req.body;
+      const donation = await db.get('SELECT * FROM donations WHERE id = ?', [id]);
+      
+      if (!donation) return res.status(404).json({ error: 'Donazione non trovata' });
+      if (donation.status === 'confirmed') return res.json({ success: true, alreadyConfirmed: true });
+
+      // Update status
+      await db.run('UPDATE donations SET status = ? WHERE id = ?', ['confirmed', id]);
+
+      // Generate PDF Attestato
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Background decoration
+      doc.setDrawColor(28, 25, 23); // stone-900
+      doc.setLineWidth(1);
+      doc.rect(10, 10, 277, 190);
+      doc.setLineWidth(0.5);
+      doc.rect(12, 12, 273, 186);
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(40);
+      doc.setTextColor(28, 25, 23);
+      doc.text('ATTESTATO DI RINGRAZIAMENTO', 148.5, 50, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(18);
+      doc.text('Si ringrazia sentitamente', 148.5, 75, { align: 'center' });
+
+      // Name
+      doc.setFont('helvetica', 'bolditalic');
+      doc.setFontSize(32);
+      doc.text(`${donation.firstName} ${donation.lastName}`, 148.5, 95, { align: 'center' });
+
+      // Body
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(16);
+      const bodyText = "Per il prezioso contributo e il generoso sostegno offerto all'Associazione Pro San Felice 2023. Grazie alla tua donazione possiamo continuare a valorizzare il nostro territorio e le nostre tradizioni.";
+      const splitText = doc.splitTextToSize(bodyText, 220);
+      doc.text(splitText, 148.5, 120, { align: 'center' });
+
+      // Footer
+      doc.setFontSize(12);
+      doc.text(`Data: ${new Date(donation.date).toLocaleDateString('it-IT')}`, 40, 170);
+      
+      doc.setFont('helvetica', 'bold');
+      doc.text('Il Presidente', 220, 170, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.text('Associazione Pro San Felice 2023', 220, 178, { align: 'center' });
+
+      const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+
+      // Send thank you email with PDF
+      try {
+        const emailSettingsRow = await db.get('SELECT value FROM settings WHERE key = ?', ['email_settings']);
+        if (emailSettingsRow) {
+          const settings = JSON.parse(emailSettingsRow.value);
+          if (settings.smtp_host && settings.smtp_user && settings.smtp_pass && donation.email) {
+            const transporter = nodemailer.createTransport({
+              host: settings.smtp_host,
+              port: parseInt(settings.smtp_port),
+              secure: parseInt(settings.smtp_port) === 465,
+              auth: {
+                user: settings.smtp_user,
+                pass: settings.smtp_pass
+              }
+            });
+
+            const mailOptions = {
+              from: `"${settings.from_name || 'Pro San Felice'}" <${settings.from_email || settings.smtp_user}>`,
+              to: donation.email,
+              subject: 'Grazie per la tua donazione - Pro San Felice',
+              html: `
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 24px;">
+                  <div style="text-align: center; margin-bottom: 32px;">
+                    <h1 style="color: #1c1917; font-size: 24px; margin: 0; font-weight: 700;">Grazie, ${donation.firstName}!</h1>
+                    <p style="color: #78716c; font-size: 14px; margin-top: 8px;">Il tuo supporto è fondamentale per la nostra associazione.</p>
+                  </div>
+
+                  <div style="background-color: #fafaf9; border-radius: 16px; padding: 24px; margin-bottom: 32px; border: 1px solid #f5f5f4;">
+                    <p style="color: #1c1917; font-size: 16px; line-height: 1.6; margin: 0;">
+                      Gentile <strong>${donation.firstName} ${donation.lastName}</strong>,<br><br>
+                      Ti ringraziamo di cuore per aver scelto di sostenere la <strong>Pro San Felice</strong>. 
+                      Le donazioni come la tua ci permettono di continuare a valorizzare il nostro territorio e le nostre tradizioni.
+                      <br><br>
+                      In allegato trovi un attestato di ringraziamento come segno della nostra gratitudine.
+                    </p>
+                  </div>
+
+                  <div style="text-align: center; color: #78716c; font-size: 12px; line-height: 1.6; margin-top: 32px;">
+                    <p style="margin-top: 24px; border-top: 1px solid #e5e5e5; padding-top: 24px;">
+                      <strong>Associazione Pro San Felice</strong><br />
+                      Via Salita la chiesa, 19 - Colle d'Anchise (CB)<br />
+                      sanfeliceassociazione@gmail.com
+                    </p>
+                  </div>
+                </div>
+              `,
+              attachments: [
+                {
+                  filename: 'Attestato_Ringraziamento_ProSanFelice.pdf',
+                  content: pdfBuffer
+                }
+              ]
+            };
+
+            await transporter.sendMail(mailOptions);
+            console.log(`Thank you email with PDF sent to ${donation.email}`);
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending thank you email:', emailError);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Donation confirm error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/admin/donations', async (req, res) => {
+    try {
+      const donations = await db.all('SELECT * FROM donations ORDER BY date DESC');
+      res.json(donations);
+    } catch (error) {
       res.status(500).json({ error: 'Internal server error' });
     }
   });

@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw, CreditCard, BarChart } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw, CreditCard, BarChart, Heart } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
+import { DonationsManagement } from './DonationsManagement';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -2019,6 +2020,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             <>
               {[
                 { id: 'members', label: 'Soci & Cariche', icon: Users, minRole: 'Operator' },
+                { id: 'donations', label: 'Donazioni', icon: Heart, minRole: 'Operator' },
                 { id: 'registrations', label: 'Iscrizioni', icon: UserPlus, minRole: 'SuperAdmin', badge: registrations.length > 0 ? registrations.length : null },
                 { id: 'finances', label: 'Contabilità', icon: Euro, minRole: 'Operator' },
                 { id: 'lottery', label: 'Lotteria', icon: Ticket, minRole: 'Operator' },
@@ -2112,6 +2114,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           <div>
             <h1 className="text-3xl font-serif text-stone-900 flex items-center gap-3">
               {activeTab === 'members' && 'Gestione Soci'}
+              {activeTab === 'donations' && 'Gestione Donazioni'}
               {activeTab === 'registrations' && 'Nuove Iscrizioni'}
               {activeTab === 'finances' && 'Contabilità & Raccolte'}
               {activeTab === 'lottery' && 'Gestione Lotteria'}
@@ -2373,6 +2376,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         {/* Tab Content */}
         <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
           <div className="p-8">
+            {activeTab === 'donations' && <DonationsManagement />}
             {isStaff && activeTab === 'members' && (
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
