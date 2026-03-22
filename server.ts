@@ -401,41 +401,66 @@ async function startServer() {
 
       // Background decoration
       doc.setDrawColor(28, 25, 23); // stone-900
-      doc.setLineWidth(1);
+      doc.setLineWidth(1.5);
       doc.rect(10, 10, 277, 190);
       doc.setLineWidth(0.5);
       doc.rect(12, 12, 273, 186);
 
+      // Add Logo if exists
+      try {
+        const logoPath = path.join(process.cwd(), 'logo.png');
+        if (fs.existsSync(logoPath)) {
+          const logoData = fs.readFileSync(logoPath).toString('base64');
+          doc.addImage(logoData, 'PNG', 133.5, 18, 30, 30); // Centered logo
+        }
+      } catch (e) {
+        console.error('Error adding logo to PDF:', e);
+      }
+
       // Header
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(40);
+      doc.setFontSize(36);
       doc.setTextColor(28, 25, 23);
-      doc.text('ATTESTATO DI RINGRAZIAMENTO', 148.5, 50, { align: 'center' });
+      doc.text('ATTESTATO DI RINGRAZIAMENTO', 148.5, 65, { align: 'center' });
+
+      // Separator line
+      doc.setDrawColor(28, 25, 23);
+      doc.setLineWidth(0.5);
+      doc.line(80, 72, 217, 72);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(18);
-      doc.text('Si ringrazia sentitamente', 148.5, 75, { align: 'center' });
+      doc.text('Si ringrazia sentitamente', 148.5, 85, { align: 'center' });
 
       // Name
       doc.setFont('helvetica', 'bolditalic');
-      doc.setFontSize(32);
-      doc.text(`${donation.firstName} ${donation.lastName}`, 148.5, 95, { align: 'center' });
+      doc.setFontSize(34);
+      doc.setTextColor(28, 25, 23);
+      doc.text(`${donation.firstName} ${donation.lastName}`, 148.5, 105, { align: 'center' });
 
       // Body
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(16);
+      doc.setTextColor(68, 64, 60); // stone-600
       const bodyText = "Per il prezioso contributo e il generoso sostegno offerto all'Associazione Pro San Felice 2023. Grazie alla tua donazione possiamo continuare a valorizzare il nostro territorio e le nostre tradizioni.";
-      const splitText = doc.splitTextToSize(bodyText, 220);
-      doc.text(splitText, 148.5, 120, { align: 'center' });
+      const splitText = doc.splitTextToSize(bodyText, 200);
+      doc.text(splitText, 148.5, 125, { align: 'center' });
+
+      // Decorative element
+      doc.setDrawColor(231, 229, 228); // stone-200
+      doc.setLineWidth(0.2);
+      doc.line(40, 155, 257, 155);
 
       // Footer
+      doc.setTextColor(28, 25, 23);
       doc.setFontSize(12);
-      doc.text(`Data: ${new Date(donation.date).toLocaleDateString('it-IT')}`, 40, 170);
+      doc.text(`Data: ${new Date(donation.date).toLocaleDateString('it-IT')}`, 40, 175);
       
       doc.setFont('helvetica', 'bold');
-      doc.text('Il Presidente', 220, 170, { align: 'center' });
+      doc.text('Il Presidente', 220, 175, { align: 'center' });
       doc.setFont('helvetica', 'normal');
-      doc.text('Associazione Pro San Felice 2023', 220, 178, { align: 'center' });
+      doc.setFontSize(11);
+      doc.text('Associazione Pro San Felice 2023', 220, 182, { align: 'center' });
 
       const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
 
