@@ -14,7 +14,6 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
     email: ''
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isSuccess, setIsSuccess] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +29,8 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('pending_donation_id', data.id);
-        setIsSuccess(true);
-        // Redirect to PayPal after a short delay
-        setTimeout(() => {
-          window.location.href = 'https://www.paypal.com/ncp/payment/9UVU9QTPS3YQU';
-        }, 2000);
+        // Redirect to PayPal immediately
+        window.location.href = 'https://www.paypal.com/ncp/payment/9UVU9QTPS3YQU';
       }
     } catch (error) {
       console.error('Error submitting donation:', error);
@@ -78,22 +74,7 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
                 Il tuo contributo ci aiuta a mantenere vive le tradizioni e a valorizzare il nostro territorio.
               </p>
 
-              {isSuccess ? (
-                <div className="text-center py-8">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
-                  >
-                    <Heart className="w-8 h-8 text-green-600 fill-green-600" />
-                  </motion.div>
-                  <h4 className="text-lg font-bold text-stone-900 mb-2">Grazie di cuore!</h4>
-                  <p className="text-stone-500 text-sm">
-                    Ti stiamo reindirizzando a PayPal per completare l'offerta...
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Nome</label>
@@ -144,10 +125,9 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
                   </button>
                   
                   <p className="text-[10px] text-stone-400 text-center mt-4">
-                    Riceverai un'email di ringraziamento dopo aver fornito i tuoi dati.
+                    Riceverai un'email con allegato un attestato di ringraziamento dopo aver effettuato la tua donazione.
                   </p>
                 </form>
-              )}
             </div>
           </motion.div>
         </div>

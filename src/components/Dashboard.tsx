@@ -336,6 +336,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [sponsorImageFile, setSponsorImageFile] = React.useState<File | null>(null);
   const [bookingEventImageFile, setBookingEventImageFile] = React.useState<File | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = React.useState(false);
   const [editingContest, setEditingContest] = React.useState<any>(null);
   const [showRegistrationDetails, setShowRegistrationDetails] = React.useState<any>(null);
 
@@ -490,6 +491,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const handleGalleryUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsUploadingGallery(true);
     const formData = new FormData(e.currentTarget);
     const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
     const files = fileInput?.files;
@@ -519,6 +521,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     } catch (err) {
       console.error(err);
       setNotification({ message: 'Errore di rete', type: 'error' });
+    } finally {
+      setIsUploadingGallery(false);
     }
   };
 
@@ -4150,9 +4154,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         required 
                       />
                     </div>
-                    <button type="submit" className="bg-stone-900 text-white px-8 py-2 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center justify-center gap-2 self-end md:mb-0.5">
-                      <Plus className="w-4 h-4" />
-                      Carica nella Gallery
+                    <button 
+                      type="submit" 
+                      disabled={isUploadingGallery}
+                      className="bg-stone-900 text-white px-8 py-2 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center justify-center gap-2 self-end md:mb-0.5 disabled:opacity-50"
+                    >
+                      {isUploadingGallery ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4" />
+                      )}
+                      {isUploadingGallery ? 'Caricamento...' : 'Carica nella Gallery'}
                     </button>
                   </form>
                 )}
@@ -4165,7 +4177,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           <Video className="w-12 h-12 text-stone-300" />
                         </div>
                       ) : (
-                        <img src={item.url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img 
+                          src={item.url} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer" 
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            const container = target.closest('.group');
+                            if (container) (container as HTMLElement).style.display = 'none';
+                          }}
+                        />
                       )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         {item.type === 'video' && <Video className="w-6 h-6 text-white" />}
@@ -6172,13 +6193,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   <button 
                     onClick={async () => {
                       let updatedLottery;
-                      if (lotteryToDelete.id) {
+                      // If it has an ID and it's not the current one (ID 1), it's a history item
+                      if (lotteryToDelete.id && lotteryToDelete.id !== 1) {
                         updatedLottery = {
                           ...lottery,
                           history: lottery.history.filter((h: any) => h.id !== lotteryToDelete.id)
                         };
                         setNotification({ message: 'Lotteria eliminata dall\'archivio', type: 'success' });
                       } else {
+                        // Otherwise it's the current lottery, so we reset it
                         updatedLottery = {
                           active: false,
                           showOnHomepage: false,

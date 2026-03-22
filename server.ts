@@ -25,7 +25,13 @@ const galleryStorage = multer.diskStorage({
   }
 });
 
-const galleryUpload = multer({ storage: galleryStorage });
+const galleryUpload = multer({ 
+  storage: galleryStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB per file
+    files: 20 // Max 20 files at once
+  }
+});
 const emailUpload = multer({ storage: galleryStorage });
 
 import nodemailer from 'nodemailer';
@@ -544,6 +550,16 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/admin/donations/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db.run('DELETE FROM donations WHERE id = ?', [id]);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Visitors API
   app.post('/api/track-visit', async (req, res) => {
     try {
@@ -804,7 +820,11 @@ async function startServer() {
   });
 
   app.post('/api/upload-gallery', galleryUpload.array('files'), async (req: any, res) => {
-    if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
+    console.log('Gallery upload request received:', { filesCount: req.files?.length });
+    if (!req.files || req.files.length === 0) {
+      console.warn('No files uploaded in gallery request');
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
     
     const results = [];
     const date = new Date().toISOString();
@@ -813,14 +833,17 @@ async function startServer() {
       for (const file of req.files) {
         const type = file.mimetype.startsWith('video/') ? 'video' : 'image';
         const url = `/uploads/gallery/${file.filename}`;
+        console.log('Saving gallery item:', { url, type });
         const result = await db.run(
           'INSERT INTO gallery (url, type, date) VALUES (?, ?, ?)',
           [url, type, date]
         );
         results.push({ id: result.lastID, url, type, date });
       }
+      console.log('Gallery upload successful, items:', results.length);
       res.json(results);
     } catch (err: any) {
+      console.error('Gallery upload database error:', err);
       res.status(500).json({ error: err.message });
     }
   });

@@ -6,6 +6,7 @@ export function DonationsManagement() {
   const [donations, setDonations] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [isDeleting, setIsDeleting] = React.useState<number | null>(null);
 
   const fetchDonations = async () => {
     try {
@@ -22,6 +23,21 @@ export function DonationsManagement() {
   React.useEffect(() => {
     fetchDonations();
   }, []);
+
+  const deleteDonation = async (id: number) => {
+    if (!window.confirm('Sei sicuro di voler eliminare questa donazione?')) return;
+    setIsDeleting(id);
+    try {
+      const response = await fetch(`/api/admin/donations/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setDonations(prev => prev.filter(d => d.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting donation:', error);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const filteredDonations = donations.filter(d => 
     `${d.firstName} ${d.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -107,6 +123,7 @@ export function DonationsManagement() {
                 <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Contatti</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Data & Ora</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Stato</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest text-right">Azioni</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -150,6 +167,20 @@ export function DonationsManagement() {
                         <Clock className="w-3 h-3" />
                         {donation.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => deleteDonation(donation.id)}
+                        disabled={isDeleting === donation.id}
+                        className="p-2 text-stone-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        title="Elimina donazione"
+                      >
+                        {isDeleting === donation.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                      </button>
                     </td>
                   </tr>
                 ))

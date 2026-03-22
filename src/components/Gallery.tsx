@@ -150,6 +150,12 @@ export function Gallery() {
                   alt={`Gallery item ${item.id}`}
                   className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    // Hide the entire card if the image fails to load (likely a broken external link)
+                    const target = e.target as HTMLImageElement;
+                    const card = target.closest('.break-inside-avoid');
+                    if (card) (card as HTMLElement).style.display = 'none';
+                  }}
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
