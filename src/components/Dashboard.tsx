@@ -492,15 +492,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = fileInput?.files?.[0];
-    if (!file) {
-      setNotification({ message: 'Seleziona un file', type: 'error' });
+    const files = fileInput?.files;
+    if (!files || files.length === 0) {
+      setNotification({ message: 'Seleziona almeno un file', type: 'error' });
       return;
     }
 
     const uploadData = new FormData();
-    uploadData.append('file', file);
-    uploadData.append('type', formData.get('type') as string);
+    for (let i = 0; i < files.length; i++) {
+      uploadData.append('files', files[i]);
+    }
 
     try {
       const res = await fetch('/api/upload-gallery', {
@@ -508,9 +509,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         body: uploadData
       });
       if (res.ok) {
-        const newItem = await res.json();
-        setGallery(prev => [newItem, ...prev]);
-        setNotification({ message: 'Elemento aggiunto alla gallery!', type: 'success' });
+        const newItems = await res.json();
+        setGallery(prev => [...newItems, ...prev]);
+        setNotification({ message: `${newItems.length} elementi aggiunti alla gallery!`, type: 'success' });
         (e.target as HTMLFormElement).reset();
       } else {
         setNotification({ message: 'Errore durante il caricamento', type: 'error' });
@@ -4109,33 +4110,49 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               <div className="space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-serif text-stone-900">Foto & Video Gallery</h2>
+                  {isStaff && gallery.some((item: any) => !item.url.startsWith('/uploads/') && !item.url.includes('youtube') && !item.url.includes('youtu.be')) && (
+                    <button 
+                      onClick={async () => {
+                        if (confirm('Sei sicuro di voler rimuovere tutti i link esterni (Facebook, ecc.) che potrebbero essere rotti? Questa azione non può essere annullata.')) {
+                          try {
+                            const res = await fetch('/api/gallery-clean-external', { method: 'DELETE' });
+                            if (res.ok) {
+                              const data = await res.json();
+                              setGallery(prev => prev.filter((item: any) => item.url.startsWith('/uploads/') || item.url.includes('youtube') || item.url.includes('youtu.be')));
+                              setNotification({ message: `Rimosse ${data.deletedCount} voci esterne rotte.`, type: 'success' });
+                            }
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }
+                      }}
+                      className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1.5 px-3 py-1.5 bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Rimuovi Link Esterni Rotti
+                    </button>
+                  )}
                 </div>
 
                 {isStaff && (
                   <form 
                     onSubmit={handleGalleryUpload}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
+                    className="flex flex-col md:flex-row gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                   >
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Carica Immagine o Video</label>
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Carica Foto o Video (Multiplo)</label>
                       <input 
                         type="file" 
-                        name="file" 
+                        name="files" 
                         accept="image/*,video/*"
+                        multiple
                         className="w-full px-4 py-2 bg-white rounded-xl border border-stone-200 text-sm outline-none" 
                         required 
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Tipo</label>
-                      <select name="type" className="w-full px-4 py-2 bg-white rounded-xl border border-stone-200 text-sm outline-none">
-                        <option value="image">Immagine</option>
-                        <option value="video">Video</option>
-                      </select>
-                    </div>
-                    <button type="submit" className="md:col-span-3 bg-stone-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center justify-center gap-2">
+                    <button type="submit" className="bg-stone-900 text-white px-8 py-2 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors flex items-center justify-center gap-2 self-end md:mb-0.5">
                       <Plus className="w-4 h-4" />
-                      Aggiungi alla Gallery
+                      Carica nella Gallery
                     </button>
                   </form>
                 )}

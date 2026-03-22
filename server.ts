@@ -15,15 +15,17 @@ const __dirname = path.dirname(__filename);
 // Multer configuration for gallery uploads
 const galleryStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(process.cwd(), 'public', 'gallery');
+    const dir = path.join(process.cwd(), 'public', 'uploads', 'gallery');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
 
+const galleryUpload = multer({ storage: galleryStorage });
 const emailUpload = multer({ storage: galleryStorage });
 
 import nodemailer from 'nodemailer';
@@ -780,22 +782,80 @@ async function startServer() {
 
   // Gallery API
   app.get('/api/gallery', async (req, res) => {
-    const gallery = await db.all('SELECT * FROM gallery ORDER BY date DESC');
-    res.json(gallery);
+    try {
+      const gallery = await db.all('SELECT * FROM gallery ORDER BY date DESC');
+      res.json(gallery);
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   app.post('/api/gallery', async (req, res) => {
-    const { url, title, type, category, date } = req.body;
-    const result = await db.run(
-      'INSERT INTO gallery (url, title, type, category, date) VALUES (?, ?, ?, ?, ?)',
-      [url, title, type || 'image', category, date || new Date().toISOString()]
-    );
-    res.json({ id: result.lastID });
+    try {
+      const { url, title, type, category, date } = req.body;
+      const result = await db.run(
+        'INSERT INTO gallery (url, title, type, category, date) VALUES (?, ?, ?, ?, ?)',
+        [url, title, type || 'image', category, date || new Date().toISOString()]
+      );
+      res.json({ id: result.lastID });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/upload-gallery', galleryUpload.array('files'), async (req: any, res) => {
+    if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
+    
+    const results = [];
+    const date = new Date().toISOString();
+    
+    try {
+      for (const file of req.files) {
+        const type = file.mimetype.startsWith('video/') ? 'video' : 'image';
+        const url = `/uploads/gallery/${file.filename}`;
+        const result = await db.run(
+          'INSERT INTO gallery (url, type, date) VALUES (?, ?, ?)',
+          [url, type, date]
+        );
+        results.push({ id: result.lastID, url, type, date });
+      }
+      res.json(results);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/gallery-clean-external', async (req, res) => {
+    try {
+      // Delete all items that don't start with /uploads/ or are not local
+      const result = await db.run(
+        "DELETE FROM gallery WHERE url NOT LIKE '/uploads/%' AND url NOT LIKE 'http%://img.youtube.com/%' AND url NOT LIKE 'http%://www.youtube.com/%' AND url NOT LIKE 'http%://youtu.be/%'"
+      );
+      res.json({ success: true, deletedCount: result.changes });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.delete('/api/gallery/:id', async (req, res) => {
-    await db.run('DELETE FROM gallery WHERE id = ?', [req.params.id]);
-    res.json({ success: true });
+    const { id } = req.params;
+    try {
+      const row = await db.get('SELECT url FROM gallery WHERE id = ?', [id]);
+      if (!row) return res.status(404).json({ error: 'Item not found' });
+      
+      // Only delete if it's a local file
+      if (row.url.startsWith('/uploads/')) {
+        const filePath = path.join(process.cwd(), 'public', row.url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+      
+      await db.run('DELETE FROM gallery WHERE id = ?', [id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Polls API
@@ -1310,54 +1370,6 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
     }
     const filePath = `/lottery-docs/${req.file.filename}`;
     res.json({ success: true, path: filePath });
-  });
-
-  const galleryStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-  });
-  const galleryUpload = multer({ storage: galleryStorage });
-
-  // Gallery Upload
-  app.post('/api/upload-gallery', galleryUpload.single('file'), async (req: any, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const type = req.body.type || 'image';
-    const url = `/uploads/${req.file.filename}`;
-    
-    try {
-      const result = await db.run('INSERT INTO gallery (url, type) VALUES (?, ?)', [url, type]);
-      res.json({ id: result.lastID, url, type });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // Gallery Delete
-  app.delete('/api/gallery/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-      const row = await db.get('SELECT url FROM gallery WHERE id = ?', [id]);
-      if (!row) return res.status(404).json({ error: 'Item not found' });
-      
-      const filePath = path.join(process.cwd(), 'public', row.url);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-      
-      await db.run('DELETE FROM gallery WHERE id = ?', [id]);
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
   });
 
   // Email Client API

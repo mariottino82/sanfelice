@@ -127,18 +127,22 @@ export function Gallery() {
               className="relative rounded-2xl overflow-hidden group cursor-pointer break-inside-avoid shadow-sm hover:shadow-xl transition-all duration-500"
             >
               {item.type === 'video' ? (
-                <div className="w-full aspect-video bg-stone-100 flex items-center justify-center">
-                  <img
-                    src={item.url.includes('youtube.com') || item.url.includes('youtu.be') 
-                      ? `https://img.youtube.com/vi/${item.url.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg` 
-                      : item.url}
-                    alt={`Video thumbnail ${item.id}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={(e) => {
-                      // Fallback if youtube thumbnail fails
-                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800';
-                    }}
-                  />
+                <div className="w-full aspect-video bg-stone-100 flex items-center justify-center relative group">
+                  {item.url.includes('youtube.com') || item.url.includes('youtu.be') ? (
+                    <img
+                      src={`https://img.youtube.com/vi/${item.url.includes('youtu.be') ? item.url.split('/').pop()?.split('?')[0] : item.url.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`}
+                      alt={`Video thumbnail ${item.id}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-white/50 group-hover:bg-stone-800 transition-colors">
+                      <Play className="w-12 h-12 mb-2 opacity-50" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Video Locale</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <img
@@ -240,8 +244,8 @@ export function Gallery() {
                     {selectedItem.url.includes('youtube.com') || selectedItem.url.includes('youtu.be') ? (
                       <iframe
                         src={selectedItem.url.includes('youtu.be') 
-                          ? selectedItem.url.replace('youtu.be/', 'youtube.com/embed/') 
-                          : selectedItem.url.replace('watch?v=', 'embed/')}
+                          ? `https://www.youtube.com/embed/${selectedItem.url.split('/').pop()?.split('?')[0]}` 
+                          : `https://www.youtube.com/embed/${selectedItem.url.split('v=')[1]?.split('&')[0]}`}
                         className="w-full h-full"
                         allowFullScreen
                       />
