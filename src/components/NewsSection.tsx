@@ -31,7 +31,7 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 md:gap-8 pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
           {news.map((item, index) => (
             <motion.div
               key={item.id}
@@ -40,7 +40,7 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
               onClick={() => onNewsClick(item)}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer"
+              className="min-w-[85vw] md:min-w-0 snap-center flex-shrink-0 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer"
             >
               <div className="h-48 overflow-hidden relative">
                 <img

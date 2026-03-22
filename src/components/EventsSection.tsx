@@ -80,7 +80,7 @@ export function EventsSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 md:gap-8 pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
           {allEvents.map((item, index) => (
             <motion.div
               key={`${item.type}-${item.id}`}
@@ -92,7 +92,7 @@ export function EventsSection() {
                 setSelectedEventForDetail(item);
                 setShowEventDetailModal(true);
               }}
-              className="bg-stone-50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer"
+              className="min-w-[85vw] md:min-w-0 snap-center flex-shrink-0 bg-stone-50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer"
             >
               <div className="h-56 overflow-hidden relative">
                 <img
