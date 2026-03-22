@@ -128,7 +128,7 @@ export function Gallery() {
             >
               {item.type === 'video' ? (
                 <div className="w-full aspect-video bg-stone-100 flex items-center justify-center relative group">
-                  {item.url.includes('youtube.com') || item.url.includes('youtu.be') ? (
+                  {(item.url.includes('youtube.com') || item.url.includes('youtu.be')) && (
                     <img
                       src={`https://img.youtube.com/vi/${item.url.includes('youtu.be') ? item.url.split('/').pop()?.split('?')[0] : item.url.split('v=')[1]?.split('&')[0]}/maxresdefault.jpg`}
                       alt={`Video thumbnail ${item.id}`}
@@ -137,7 +137,8 @@ export function Gallery() {
                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800';
                       }}
                     />
-                  ) : (
+                  )}
+                  {!(item.url.includes('youtube.com') || item.url.includes('youtu.be')) && (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-white/50 group-hover:bg-stone-800 transition-colors">
                       <Play className="w-12 h-12 mb-2 opacity-50" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">Video Locale</span>
@@ -145,18 +146,20 @@ export function Gallery() {
                   )}
                 </div>
               ) : (
-                <img
-                  src={item.url}
-                  alt={`Gallery item ${item.id}`}
-                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    // Hide the entire card if the image fails to load (likely a broken external link)
-                    const target = e.target as HTMLImageElement;
-                    const card = target.closest('.break-inside-avoid');
-                    if (card) (card as HTMLElement).style.display = 'none';
-                  }}
-                />
+                item.url && (
+                  <img
+                    src={item.url}
+                    alt={`Gallery item ${item.id}`}
+                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      // Hide the entire card if the image fails to load (likely a broken external link)
+                      const target = e.target as HTMLImageElement;
+                      const card = target.closest('.break-inside-avoid');
+                      if (card) (card as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                 {item.type === 'video' ? (
@@ -247,7 +250,7 @@ export function Gallery() {
               >
                 {selectedItem.type === 'video' ? (
                   <div className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
-                    {selectedItem.url.includes('youtube.com') || selectedItem.url.includes('youtu.be') ? (
+                    {selectedItem.url && (selectedItem.url.includes('youtube.com') || selectedItem.url.includes('youtu.be')) ? (
                       <iframe
                         src={selectedItem.url.includes('youtu.be') 
                           ? `https://www.youtube.com/embed/${selectedItem.url.split('/').pop()?.split('?')[0]}` 
@@ -256,21 +259,25 @@ export function Gallery() {
                         allowFullScreen
                       />
                     ) : (
-                      <video
-                        src={selectedItem.url}
-                        controls
-                        autoPlay
-                        className="w-full h-full object-contain"
-                      />
+                      selectedItem.url && (
+                        <video
+                          src={selectedItem.url}
+                          controls
+                          autoPlay
+                          className="w-full h-full object-contain"
+                        />
+                      )
                     )}
                   </div>
                 ) : (
-                  <img
-                    src={selectedItem.url}
-                    alt={`Gallery item ${selectedIndex + 1}`}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                    referrerPolicy="no-referrer"
-                  />
+                  selectedItem.url && (
+                    <img
+                      src={selectedItem.url}
+                      alt={`Gallery item ${selectedIndex + 1}`}
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                      referrerPolicy="no-referrer"
+                    />
+                  )
                 )}
               </motion.div>
             </div>

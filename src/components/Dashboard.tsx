@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, Search, Zap, RefreshCw, CreditCard, BarChart, Heart } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
@@ -308,6 +308,38 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [editingMinute, setEditingMinute] = React.useState<any>(null);
   const [editingAppointment, setEditingAppointment] = React.useState<any>(null);
   const [editingNews, setEditingNews] = React.useState<any>(null);
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setNotification({ message: 'Testo copiato negli appunti!', type: 'success' });
+    });
+  };
+
+  const shareOnFacebook = (url: string) => {
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    window.open(fbUrl, '_blank', 'width=600,height=400');
+  };
+
+  const generateSocialPost = (item: any, type: 'news' | 'contest') => {
+    const baseUrl = window.location.origin;
+    const link = type === 'news' ? `${baseUrl}/news/${item.id}` : `${baseUrl}/contests/${item.id}`;
+    
+    let text = `📢 ${item.title.toUpperCase()} 📢\n\n`;
+    text += `${item.content || item.description}\n\n`;
+    
+    if (type === 'contest') {
+      text += `📅 Inizio: ${new Date(item.startDate).toLocaleDateString('it-IT')}\n`;
+      text += `📅 Fine: ${new Date(item.endDate).toLocaleDateString('it-IT')}\n`;
+      text += `💰 Costo: ${item.cost > 0 ? `€ ${item.cost}` : 'Gratuito'}\n\n`;
+    } else {
+      text += `📅 Data: ${new Date(item.date).toLocaleDateString('it-IT')}\n\n`;
+    }
+    
+    text += `Scopri di più sul nostro sito:\n🔗 ${link}\n\n`;
+    text += `#ProSanFelice #ColleDAnchise #Molise #EventiMolise #SagreMolise`;
+    
+    return text;
+  };
+
   const [notification, setNotification] = React.useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   React.useEffect(() => {
@@ -470,6 +502,45 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       setNotification({ message: 'Errore di connessione', type: 'error' });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const reorderSponsors = async (direction: 'up' | 'down', sponsor: any) => {
+    const currentIndex = sponsors.findIndex((s: any) => s.id === sponsor.id);
+    if (currentIndex === -1) return;
+
+    const newSponsors = [...sponsors];
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= newSponsors.length) return;
+
+    // Swap positions
+    const temp = newSponsors[currentIndex];
+    newSponsors[currentIndex] = newSponsors[targetIndex];
+    newSponsors[targetIndex] = temp;
+
+    // Update position values
+    const updatedSponsors = newSponsors.map((s: any, index: number) => ({
+      ...s,
+      position: index
+    }));
+
+    setSponsors(updatedSponsors);
+
+    try {
+      const response = await fetch('/api/sponsors/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sponsors: updatedSponsors })
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore durante il riordinamento');
+      }
+    } catch (error) {
+      console.error('Error reordering sponsors:', error);
+      setNotification({ message: 'Errore durante il riordinamento', type: 'error' });
+      await fetchData(); // Revert to server state
     }
   };
 
@@ -4093,16 +4164,34 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         </div>
                         <h3 className="font-serif text-lg text-stone-900 mb-2">{n.title}</h3>
                         <p className="text-sm text-stone-500 line-clamp-2 mb-4">{n.content}</p>
-                        {isStaff && (
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => setEditingNews(n)} className="p-2 text-stone-400 hover:text-stone-900 bg-stone-100 rounded-lg transition-colors" title="Modifica">
-                              <Edit2 className="w-4 h-4" />
+                        <div className="flex justify-between items-center">
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => shareOnFacebook(`${window.location.origin}/news/${n.id}`)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Condividi su Facebook"
+                            >
+                              <Facebook className="w-4 h-4" />
                             </button>
-                            <button onClick={() => deleteNews(n)} className="p-2 text-red-400 hover:text-white hover:bg-red-500 bg-red-50 border border-red-100 rounded-lg transition-all" title="Elimina Definitivamente">
-                              <Trash2 className="w-4 h-4" />
+                            <button 
+                              onClick={() => copyToClipboard(generateSocialPost(n, 'news'))}
+                              className="p-2 text-stone-500 hover:bg-stone-50 rounded-lg transition-colors"
+                              title="Copia testo per Social"
+                            >
+                              <Copy className="w-4 h-4" />
                             </button>
                           </div>
-                        )}
+                          {isStaff && (
+                            <div className="flex gap-2">
+                              <button onClick={() => setEditingNews(n)} className="p-2 text-stone-400 hover:text-stone-900 bg-stone-100 rounded-lg transition-colors" title="Modifica">
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => deleteNews(n)} className="p-2 text-red-400 hover:text-white hover:bg-red-500 bg-red-50 border border-red-100 rounded-lg transition-all" title="Elimina Definitivamente">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -4177,16 +4266,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           <Video className="w-12 h-12 text-stone-300" />
                         </div>
                       ) : (
-                        <img 
-                          src={item.url} 
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer" 
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            const container = target.closest('.group');
-                            if (container) (container as HTMLElement).style.display = 'none';
-                          }}
-                        />
+                        item.url && (
+                          <img 
+                            src={item.url} 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer" 
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              const container = target.closest('.group');
+                              if (container) (container as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        )
                       )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         {item.type === 'video' && <Video className="w-6 h-6 text-white" />}
@@ -4819,7 +4910,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   </div>
                   <button 
                     onClick={() => {
-                      setEditingSponsor({ name: '', image: '', startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], active: 1 });
+                      setEditingSponsor({ 
+                        name: '', 
+                        image: '', 
+                        startDate: new Date().toISOString().split('T')[0], 
+                        endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], 
+                        active: 1,
+                        position: sponsors.length
+                      });
                       setSponsorImageFile(null);
                     }}
                     className="flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
@@ -4830,8 +4928,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sponsors.map((sponsor: any) => (
-                    <div key={sponsor.id} className="bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group">
+                  {sponsors.map((sponsor: any, index: number) => (
+                    <div 
+                      key={sponsor.id} 
+                      className="bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group relative cursor-pointer"
+                      onClick={() => {
+                        setEditingSponsor(sponsor);
+                        setSponsorImageFile(null);
+                      }}
+                    >
                       <div className="aspect-video bg-stone-100 relative overflow-hidden">
                         {sponsor.image ? (
                           <img src={sponsor.image} alt={sponsor.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -4840,9 +4945,37 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <ImageIcon className="w-12 h-12 opacity-20" />
                           </div>
                         )}
+                        
+                        {/* Reorder Controls */}
+                        {sponsors.length > 1 && (
+                          <div className="absolute left-4 top-4 flex flex-col gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                reorderSponsors('up', sponsor);
+                              }}
+                              disabled={index === 0}
+                              className="p-2 bg-white/90 backdrop-blur-sm text-stone-900 rounded-lg hover:bg-white disabled:opacity-30 shadow-sm transition-all"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                reorderSponsors('down', sponsor);
+                              }}
+                              disabled={index === sponsors.length - 1}
+                              className="p-2 bg-white/90 backdrop-blur-sm text-stone-900 rounded-lg hover:bg-white disabled:opacity-30 shadow-sm transition-all"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                           <button 
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingSponsor(sponsor);
                               setSponsorImageFile(null);
                             }}
@@ -4851,7 +4984,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button 
-                            onClick={() => setSponsorToDelete(sponsor)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSponsorToDelete(sponsor);
+                            }}
                             className="p-3 bg-red-600 text-white rounded-xl hover:scale-110 transition-transform"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -5295,6 +5431,22 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           </div>
 
                           <div className="pt-4 border-t border-stone-100 flex flex-wrap gap-3">
+                            <button 
+                              onClick={() => shareOnFacebook(`${window.location.origin}/contests/${contest.id}`)}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-blue-100 transition-all"
+                              title="Condividi su Facebook"
+                            >
+                              <Facebook className="w-4 h-4" />
+                              Facebook
+                            </button>
+                            <button 
+                              onClick={() => copyToClipboard(generateSocialPost(contest, 'contest'))}
+                              className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-200 transition-all"
+                              title="Copia testo per Social"
+                            >
+                              <Copy className="w-4 h-4" />
+                              Copia Testo
+                            </button>
                             <button 
                               onClick={() => setShowRegistrationDetails(contest)}
                               className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-900 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-200 transition-all"

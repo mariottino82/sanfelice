@@ -103,7 +103,7 @@ async function startServer() {
 
   app.get('/api/sponsors', async (req, res) => {
     try {
-      const sponsors = await db.all('SELECT * FROM sponsors ORDER BY id DESC');
+      const sponsors = await db.all('SELECT * FROM sponsors ORDER BY position ASC, id DESC');
       res.json(sponsors);
     } catch (error) {
       res.status(500).json({ error: 'Internal server error' });
@@ -114,7 +114,7 @@ async function startServer() {
     try {
       const now = new Date().toISOString();
       const sponsors = await db.all(
-        'SELECT * FROM sponsors WHERE active = 1 AND (startDate IS NULL OR startDate <= ?) AND (endDate IS NULL OR endDate >= ?)',
+        'SELECT * FROM sponsors WHERE active = 1 AND (startDate IS NULL OR startDate <= ?) AND (endDate IS NULL OR endDate >= ?) ORDER BY position ASC, id DESC',
         [now, now]
       );
       res.json(sponsors);
@@ -123,12 +123,24 @@ async function startServer() {
     }
   });
 
+  app.put('/api/sponsors/reorder', async (req, res) => {
+    try {
+      const { sponsors } = req.body;
+      for (const sponsor of sponsors) {
+        await db.run('UPDATE sponsors SET position = ? WHERE id = ?', [sponsor.position, sponsor.id]);
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   app.post('/api/sponsors', async (req, res) => {
     try {
-      const { name, image, startDate, endDate, active } = req.body;
+      const { name, image, startDate, endDate, active, position } = req.body;
       const result = await db.run(
-        'INSERT INTO sponsors (name, image, startDate, endDate, active) VALUES (?, ?, ?, ?, ?)',
-        [name, image, startDate, endDate, active ? 1 : 0]
+        'INSERT INTO sponsors (name, image, startDate, endDate, active, position) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, image, startDate, endDate, active ? 1 : 0, position || 0]
       );
       res.json({ id: result.lastID });
     } catch (error) {
@@ -139,10 +151,10 @@ async function startServer() {
   app.put('/api/sponsors/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, image, startDate, endDate, active } = req.body;
+      const { name, image, startDate, endDate, active, position } = req.body;
       await db.run(
-        'UPDATE sponsors SET name = ?, image = ?, startDate = ?, endDate = ?, active = ? WHERE id = ?',
-        [name, image, startDate, endDate, active ? 1 : 0, id]
+        'UPDATE sponsors SET name = ?, image = ?, startDate = ?, endDate = ?, active = ?, position = ? WHERE id = ?',
+        [name, image, startDate, endDate, active ? 1 : 0, position || 0, id]
       );
       res.json({ success: true });
     } catch (error) {
