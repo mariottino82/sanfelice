@@ -152,7 +152,7 @@ export function EventDetailModal({ isOpen, onClose, event, onBook }: EventDetail
                 
                 {event.type === 'booking' && (
                   new Date(event.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
-                    <span className="text-stone-500 font-bold text-xs uppercase tracking-widest">Evento non disponibile</span>
+                    <span className="text-stone-500 font-bold text-xs uppercase tracking-widest">Iniziativa terminata</span>
                   ) : event.soldTickets >= event.totalTickets ? (
                     <span className="text-red-500 font-bold text-xs uppercase tracking-widest">Sold Out</span>
                   ) : (

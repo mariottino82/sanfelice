@@ -105,10 +105,12 @@ export function EventsSection() {
                 <img
                   src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
                   alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                    (new Date(item.date || item.endDate || item.startDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
+                  }`}
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute top-4 left-4">
+                <div className="absolute top-4 left-4 flex flex-col gap-2">
                   <span className={`
                     px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white
                     ${item.type === 'booking' ? 'bg-amber-500' : ''}
@@ -121,6 +123,11 @@ export function EventsSection() {
                     {item.type === 'contest' && 'Concorso'}
                     {item.type === 'news_event' && 'Evento'}
                   </span>
+                  {new Date(item.date || item.endDate || item.startDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
+                    <span className="px-3 py-1 bg-stone-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
+                      Terminato
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -147,7 +154,7 @@ export function EventsSection() {
                 <div className="flex items-center justify-between pt-6 border-t border-stone-200">
                   {item.type === 'booking' ? (
                     new Date(item.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
-                      <span className="text-stone-500 font-bold text-xs uppercase tracking-widest">Evento non disponibile</span>
+                      <span className="text-stone-500 font-bold text-xs uppercase tracking-widest">Iniziativa terminata</span>
                     ) : item.soldTickets >= item.totalTickets ? (
                       <span className="text-red-500 font-bold text-xs uppercase tracking-widest">Sold Out</span>
                     ) : (

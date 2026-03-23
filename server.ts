@@ -1377,10 +1377,10 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   });
 
   app.put('/api/lottery', async (req, res) => {
-    const { active, showOnHomepage, name, drawDate, prizes, history, regulations_path, municipality_request_path, minutes_path } = req.body;
+    const { active, showOnHomepage, name, drawDate, ticketsCount, ticketPrice, prizes, history, regulations_path, municipality_request_path, minutes_path } = req.body;
     await db.run(
-      'UPDATE lottery SET active = ?, showOnHomepage = ?, name = ?, drawDate = ?, prizes = ?, history = ?, regulations_path = ?, municipality_request_path = ?, minutes_path = ? WHERE id = 1',
-      [active ? 1 : 0, showOnHomepage ? 1 : 0, name, drawDate, JSON.stringify(prizes), JSON.stringify(history), regulations_path || null, municipality_request_path || null, minutes_path || null]
+      'UPDATE lottery SET active = ?, showOnHomepage = ?, name = ?, drawDate = ?, ticketsCount = ?, ticketPrice = ?, prizes = ?, history = ?, regulations_path = ?, municipality_request_path = ?, minutes_path = ? WHERE id = 1',
+      [active ? 1 : 0, showOnHomepage ? 1 : 0, name, drawDate, ticketsCount || 1000, ticketPrice || 2.50, JSON.stringify(prizes), JSON.stringify(history), regulations_path || null, municipality_request_path || null, minutes_path || null]
     );
     res.json({ success: true });
   });
