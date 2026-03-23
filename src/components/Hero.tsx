@@ -36,7 +36,7 @@ export function Hero() {
             
             <div className="flex flex-wrap gap-6 items-center">
               <motion.a
-                href="#news"
+                href="#eventi"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="bg-white text-stone-900 px-10 py-4 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-stone-100 transition-all flex items-center gap-2 group"
