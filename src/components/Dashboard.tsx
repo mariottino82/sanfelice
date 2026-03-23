@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
@@ -5427,6 +5427,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         >
                           <option value="youtube">YouTube Live</option>
                           <option value="facebook">Facebook Live</option>
+                          <option value="streamyard">StreamYard On-Air</option>
                           <option value="other">Altro (IPCam / HLS)</option>
                         </select>
                       </div>
@@ -5442,18 +5443,30 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </div>
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-4 flex gap-4">
                       <button
                         onClick={() => saveLiveStream(liveStream)}
                         className="bg-stone-900 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors"
                       >
                         Salva Impostazioni Live
                       </button>
+                      {liveStream.type === 'streamyard' && (
+                        <a 
+                          href="https://streamyard.com" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-8 py-3 border border-stone-200 text-stone-600 rounded-xl text-sm font-bold hover:bg-stone-50 transition-colors flex items-center gap-2"
+                        >
+                          Apri StreamYard <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
 
                     <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
                       <p className="text-xs text-amber-800 leading-relaxed">
-                        <strong>Nota:</strong> Per le dirette da smartphone, puoi usare YouTube Live o Facebook Live e incollare qui l'URL della trasmissione. Per le IPCam, assicurati che l'URL sia accessibile pubblicamente (es. stream HLS .m3u8 o pagina web dedicata).
+                        <strong>Nota:</strong> Per le dirette da smartphone, puoi usare YouTube Live o Facebook Live e incollare qui l'URL della trasmissione. 
+                        Se usi <strong>StreamYard On-Air</strong>, incolla l'URL della tua trasmissione On-Air (es. streamyard.com/on-air/...). 
+                        Per le IPCam, assicurati che l'URL sia accessibile pubblicamente (es. stream HLS .m3u8).
                       </p>
                     </div>
                   </div>

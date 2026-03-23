@@ -24,6 +24,14 @@ export function LiveStreamSection() {
 
   const isYouTube = liveStream.url.includes('youtube.com') || liveStream.url.includes('youtu.be');
   const isFacebook = liveStream.url.includes('facebook.com');
+  const isStreamYard = liveStream.url.includes('streamyard.com/on-air');
+
+  const getStreamYardEmbed = (url: string) => {
+    // Convert https://streamyard.com/on-air/ABC123XYZ to https://streamyard.com/on-air/ABC123XYZ/embed
+    const cleanUrl = url.split('?')[0].replace(/\/$/, '');
+    if (cleanUrl.endsWith('/embed')) return cleanUrl;
+    return `${cleanUrl}/embed`;
+  };
 
   return (
     <section className="py-24 bg-stone-900 overflow-hidden relative">
@@ -81,6 +89,13 @@ export function LiveStreamSection() {
                   style={{ border: 'none', overflow: 'hidden' }} 
                   allowFullScreen={true} 
                   allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                />
+              ) : isStreamYard ? (
+                <iframe
+                  src={getStreamYardEmbed(liveStream.url)}
+                  className="w-full h-full"
+                  allow="camera; microphone; autoplay; encrypted-media; fullscreen; display-capture"
+                  allowFullScreen
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center p-8">
