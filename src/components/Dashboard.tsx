@@ -3174,7 +3174,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <button 
                               onClick={() => {
                                 const updated = lottery.prizes.filter((p: any) => p.id !== prize.id);
-                                setLottery({ ...lottery, prizes: updated });
+                                const updatedLottery = { ...lottery, prizes: updated };
+                                setLottery(updatedLottery);
+                                saveLottery(updatedLottery);
                               }}
                               className="text-stone-300 hover:text-red-500"
                             >
@@ -6355,6 +6357,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       } else {
                         // Otherwise it's the current lottery, so we reset it
                         updatedLottery = {
+                          ...lottery,
                           active: false,
                           showOnHomepage: false,
                           name: '',
@@ -6362,6 +6365,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           ticketsCount: 1000,
                           ticketPrice: 2.50,
                           prizes: [],
+                          regulations_path: null,
+                          municipality_request_path: null,
+                          minutes_path: null,
                           history: lottery.history || []
                         };
                         setNotification({ message: 'Lotteria corrente eliminata', type: 'success' });
