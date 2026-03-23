@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn, Newspaper, Heart } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
@@ -7,10 +8,10 @@ export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onL
   const [isOpen, setIsOpen] = React.useState(false);
 
   const navItems = [
-    { name: 'Home', href: '#home', icon: Home },
-    { name: 'News', href: '#news', icon: Newspaper },
-    { name: 'Eventi', href: '#eventi', icon: Calendar },
-    { name: 'Gallery', href: '#gallery', icon: ImageIcon },
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'News', href: '/news', icon: Newspaper },
+    { name: 'Eventi', href: '/eventi', icon: Calendar },
+    { name: 'Gallery', href: '/#gallery', icon: ImageIcon },
   ];
 
   return (
@@ -32,13 +33,13 @@ export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onL
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
+                to={item.href}
                 className="text-stone-600 hover:text-stone-900 font-medium transition-colors"
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
             <div className="flex items-center gap-3">
               <button 
@@ -91,14 +92,14 @@ export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onL
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navItems.map((item) => (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
+                to={item.href}
                 className="block px-3 py-2 text-stone-600 hover:text-stone-900 font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
             <button 
               onClick={() => {

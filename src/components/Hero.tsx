@@ -1,3 +1,5 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowRight, Facebook } from 'lucide-react';
 
@@ -35,15 +37,13 @@ export function Hero() {
             </p>
             
             <div className="flex flex-wrap gap-6 items-center">
-              <motion.a
-                href="#eventi"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Link
+                to="/eventi"
                 className="bg-white text-stone-900 px-10 py-4 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-stone-100 transition-all flex items-center gap-2 group"
               >
                 Scopri gli Eventi
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </motion.a>
+              </Link>
               <a
                 href="https://www.facebook.com/p/Associazione-Pro-San-Felice-61550793063179/"
                 target="_blank"

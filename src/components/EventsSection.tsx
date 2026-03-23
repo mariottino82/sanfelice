@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Calendar, MapPin, Clock, Ticket, ArrowRight, Trophy, Sparkles, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { BookingModal } from './BookingModal';
 import { TicketView } from './TicketView';
 import { EventDetailModal } from './EventDetailModal';
@@ -78,6 +79,12 @@ export function EventsSection() {
             <h2 className="text-sm uppercase tracking-widest text-stone-500 font-semibold mb-2">Le nostre iniziative</h2>
             <h3 className="text-4xl font-serif text-stone-900">Eventi & Attività</h3>
           </div>
+          <Link 
+            to="/eventi"
+            className="hidden md:flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest hover:gap-4 transition-all group"
+          >
+            Vedi tutti gli eventi <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
 
         <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 md:gap-8 pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">

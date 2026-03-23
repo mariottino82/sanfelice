@@ -2,6 +2,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Newspaper, ArrowRight } from 'lucide-react';
 
+import { Link } from 'react-router-dom';
+
 export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void }) {
   const [news, setNews] = React.useState<any[]>([]);
 
@@ -29,6 +31,12 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
             <h2 className="text-sm uppercase tracking-widest text-stone-500 font-semibold mb-2">Ultime Notizie</h2>
             <h3 className="text-4xl font-serif text-stone-900">News</h3>
           </div>
+          <Link 
+            to="/news"
+            className="hidden md:flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest hover:gap-4 transition-all group"
+          >
+            Vedi tutte le news <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
 
         <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 md:gap-8 pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
