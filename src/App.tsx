@@ -26,6 +26,7 @@ import { SEO } from './components/SEO';
 import { X, LogIn, Facebook, Instagram, Youtube, Twitter, Shield, Cookie, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { NewsPage } from './pages/NewsPage';
 import { EventsPage } from './pages/EventsPage';
 
@@ -444,6 +445,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 font-sans text-stone-900 selection:bg-stone-200">
+      <Toaster position="top-right" richColors />
       <Routes>
         <Route path="/" element={
           <>

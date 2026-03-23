@@ -45,10 +45,26 @@ export function LotterySection() {
           <h2 className="text-4xl md:text-5xl font-serif text-stone-900 mb-4">
             {isDrawPassed ? 'Risultati Estrazione' : 'Premi in Palio'}
           </h2>
-          <p className="text-stone-600 max-w-2xl mx-auto flex items-center justify-center gap-2">
-            <Calendar className="w-4 h-4" />
-            Data Estrazione: <span className="font-bold">{lottery.drawDate ? new Date(lottery.drawDate).toLocaleDateString('it-IT') : 'Da definire'}</span>
-          </p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-stone-600 max-w-2xl mx-auto">
+            <p className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Data Estrazione: <span className="font-bold">{lottery.drawDate ? new Date(lottery.drawDate).toLocaleDateString('it-IT') : 'Da definire'}</span>
+            </p>
+            {!isDrawPassed && (
+              <div className="flex items-center gap-4">
+                <span className="w-1 h-1 bg-stone-300 rounded-full hidden md:block" />
+                <p className="flex items-center gap-2">
+                  <Ticket className="w-4 h-4" />
+                  Costo Biglietto: <span className="font-bold text-emerald-600">€ {lottery.ticketPrice?.toFixed(2) || '2,50'}</span>
+                </p>
+                <span className="w-1 h-1 bg-stone-300 rounded-full" />
+                <p className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">Totale Biglietti:</span>
+                  <span className="font-bold">{lottery.ticketsCount || '1000'}</span>
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

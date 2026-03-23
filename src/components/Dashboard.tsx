@@ -6,6 +6,7 @@ import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { toast } from 'sonner';
 
 const loadImage = (url: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -901,26 +902,35 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   };
 
   const archiveLottery = async () => {
-    if (!lottery.active) return;
+    if (!lottery.active) {
+      toast.error('Nessuna lotteria attiva da archiviare');
+      return;
+    }
     
-    const newHistoryItem = {
-      id: `history-${Date.now()}-${Math.random()}`,
-      name: lottery.name,
-      drawDate: lottery.drawDate,
-      prizes: lottery.prizes,
-      archivedAt: new Date().toISOString()
-    };
+    const toastId = toast.loading('Archiviazione lotteria in corso...');
+    try {
+      const newHistoryItem = {
+        id: `history-${Date.now()}-${Math.random()}`,
+        name: lottery.name,
+        drawDate: lottery.drawDate,
+        prizes: lottery.prizes,
+        archivedAt: new Date().toISOString()
+      };
 
-    const updatedLottery = {
-      ...lottery,
-      active: false,
-      showOnHomepage: false,
-      history: [newHistoryItem, ...(lottery.history || [])],
-      prizes: lottery.prizes.map((p: any) => ({ ...p, winningNumber: '', collectedBy: '' }))
-    };
+      const updatedLottery = {
+        ...lottery,
+        active: false,
+        showOnHomepage: false,
+        history: [newHistoryItem, ...(lottery.history || [])],
+        prizes: lottery.prizes.map((p: any) => ({ ...p, winningNumber: '', collectedBy: '' }))
+      };
 
-    await saveLottery(updatedLottery);
-    alert('Lotteria archiviata con successo!');
+      await saveLottery(updatedLottery);
+      toast.success('Lotteria archiviata con successo!', { id: toastId });
+    } catch (error) {
+      console.error('Error archiving lottery:', error);
+      toast.error('Errore durante l\'archiviazione della lotteria', { id: toastId });
+    }
   };
 
   const deleteHistoryItem = (item: any) => {
@@ -1904,6 +1914,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   };
 
   const saveLottery = async (updated: any) => {
+    const toastId = toast.loading('Salvataggio lotteria in corso...');
     try {
       // Auto-generate regulations if missing and name/drawDate are present
       let finalLottery = { ...updated };
@@ -1921,20 +1932,29 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           if (uploadResponse.ok) {
             const uploadData = await uploadResponse.json();
             finalLottery.regulations_path = uploadData.path;
+            toast.success('Regolamento auto-generato e caricato con successo', { id: toastId });
           }
         } catch (err) {
           console.error('Error auto-generating regulations:', err);
+          toast.error('Errore nell\'auto-generazione del regolamento', { id: toastId });
         }
       }
 
-      await fetch('/api/lottery', {
+      const response = await fetch('/api/lottery', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalLottery)
       });
-      setLottery(finalLottery);
+      
+      if (response.ok) {
+        setLottery(finalLottery);
+        toast.success('Lotteria salvata con successo', { id: toastId });
+      } else {
+        throw new Error('Errore nel salvataggio');
+      }
     } catch (error) {
       console.error('Error saving lottery:', error);
+      toast.error('Errore durante il salvataggio della lotteria', { id: toastId });
     }
   };
 
@@ -3036,7 +3056,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         <button 
                           onClick={() => {
                             saveLottery(lottery);
-                            alert('Lotteria salvata con successo!');
                           }}
                           className="bg-stone-900 text-white px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:shadow-lg transition-all active:scale-95"
                         >
@@ -3083,7 +3102,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             onClick={async () => {
                               const doc = await generateLotteryRegulationsPDF(lottery);
                               await saveLotteryDoc(doc, 'regolamento_lotteria.pdf', 'regulations');
-                              setNotification({ message: 'Regolamento generato e salvato!', type: 'success' });
                             }}
                             className="px-3 py-1 bg-stone-900 text-white rounded-lg text-[10px] font-bold uppercase"
                           >
@@ -3115,7 +3133,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             onClick={async () => {
                               const doc = await generateLotteryRequestPDF(lottery);
                               await saveLotteryDoc(doc, 'comunicazione_comune.pdf', 'request');
-                              setNotification({ message: 'Comunicazione generata e salvata!', type: 'success' });
                             }}
                             className="px-3 py-1 bg-stone-900 text-white rounded-lg text-[10px] font-bold uppercase"
                           >
@@ -3148,7 +3165,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             onClick={async () => {
                               const doc = await generateLotteryMinutesPDF(lottery);
                               await saveLotteryDoc(doc, 'verbale_estrazione.pdf', 'minutes');
-                              setNotification({ message: 'Verbale generato e salvato!', type: 'success' });
                             }}
                             className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase ${
                               lottery.prizes.every((p: any) => p.winningNumber) 
@@ -6353,7 +6369,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           ...lottery,
                           history: lottery.history.filter((h: any) => h.id !== lotteryToDelete.id)
                         };
-                        setNotification({ message: 'Lotteria eliminata dall\'archivio', type: 'success' });
                       } else {
                         // Otherwise it's the current lottery, so we reset it
                         updatedLottery = {
@@ -6370,7 +6385,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           minutes_path: null,
                           history: lottery.history || []
                         };
-                        setNotification({ message: 'Lotteria corrente eliminata', type: 'success' });
                       }
                       await saveLottery(updatedLottery);
                       setLotteryToDelete(null);

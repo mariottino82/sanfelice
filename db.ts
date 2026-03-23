@@ -274,8 +274,8 @@ export async function getDb() {
   // Seed lottery if not exists
   const lottery = await db.get('SELECT * FROM lottery LIMIT 1');
   if (!lottery) {
-    await db.run('INSERT INTO lottery (active, showOnHomepage, name, drawDate, prizes, history) VALUES (?, ?, ?, ?, ?, ?)', 
-      [0, 1, '', '', JSON.stringify([]), JSON.stringify([])]);
+    await db.run('INSERT INTO lottery (active, showOnHomepage, name, drawDate, ticketsCount, ticketPrice, prizes, history) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+      [0, 1, '', '', 1000, 2.50, JSON.stringify([]), JSON.stringify([])]);
   }
 
   // Seed default admin if no users exist
