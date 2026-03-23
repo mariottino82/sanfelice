@@ -323,6 +323,17 @@ export async function getDb() {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['email_settings', JSON.stringify(defaultEmailSettings)]);
   }
 
+  // Seed live_stream if not exists
+  const liveStream = await db.get('SELECT * FROM settings WHERE key = ?', ['live_stream']);
+  if (!liveStream) {
+    const defaultLiveStream = {
+      active: false,
+      url: '',
+      type: 'youtube'
+    };
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['live_stream', JSON.stringify(defaultLiveStream)]);
+  }
+
   console.log('Database initialized successfully');
   return db;
 }

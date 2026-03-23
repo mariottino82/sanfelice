@@ -8,7 +8,8 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { NewsSection } from './components/NewsSection';
 import { EventsSection } from './components/EventsSection';
-import { Gallery } from './components/Gallery';
+import { GallerySection } from './components/GallerySection';
+import { LiveStreamSection } from './components/LiveStreamSection';
 import { SponsorsSection } from './components/SponsorsSection';
 import { Dashboard } from './components/Dashboard';
 import { LotterySection } from './components/LotterySection';
@@ -29,6 +30,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { NewsPage } from './pages/NewsPage';
 import { EventsPage } from './pages/EventsPage';
+import { GalleryPage } from './pages/GalleryPage';
 
 interface CommonElementsProps {
   showLoginModal: boolean;
@@ -457,12 +459,13 @@ export default function App() {
             />
             <main>
               <Hero />
+              <LiveStreamSection />
               <SponsorsSection />
               <PollSection />
               <LotterySection />
               <NewsSection onNewsClick={(item) => setSelectedNews(item)} />
               <EventsSection />
-              <Gallery />
+              <GallerySection />
             </main>
             <Footer socialLinks={socialLinks} setView={setView} />
           </>
@@ -481,6 +484,16 @@ export default function App() {
         <Route path="/eventi" element={
           <>
             <EventsPage 
+              onLoginClick={() => setShowLoginModal(true)}
+              onRegisterClick={() => setShowRegistrationModal(true)}
+              onDonationClick={() => setShowDonationModal(true)}
+            />
+            <Footer socialLinks={socialLinks} setView={setView} />
+          </>
+        } />
+        <Route path="/gallery" element={
+          <>
+            <GalleryPage 
               onLoginClick={() => setShowLoginModal(true)}
               onRegisterClick={() => setShowRegistrationModal(true)}
               onDonationClick={() => setShowDonationModal(true)}

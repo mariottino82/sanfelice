@@ -11,7 +11,7 @@ export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onL
     { name: 'Home', href: '/', icon: Home },
     { name: 'News', href: '/news', icon: Newspaper },
     { name: 'Eventi', href: '/eventi', icon: Calendar },
-    { name: 'Gallery', href: '/#gallery', icon: ImageIcon },
+    { name: 'Gallery', href: '/gallery', icon: ImageIcon },
   ];
 
   return (

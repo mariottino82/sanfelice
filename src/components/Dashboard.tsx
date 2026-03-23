@@ -248,6 +248,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     message: ''
   });
   const [isSendingEmail, setIsSendingEmail] = React.useState(false);
+
+  const [liveStream, setLiveStream] = React.useState({
+    active: false,
+    url: '',
+    type: 'youtube'
+  });
   const [isTestingConnection, setIsTestingConnection] = React.useState(false);
 
   const handleSendEmail = async () => {
@@ -642,7 +648,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       { key: 'sponsors', url: '/api/sponsors', setter: setSponsors },
       { key: 'booking_events', url: '/api/booking-events', setter: setBookingEvents },
       { key: 'bookings', url: '/api/bookings', setter: setBookings },
-      { key: 'paypal_settings', url: '/api/settings/paypal_settings', setter: (data: any) => data?.value && setPaypalSettings(data.value) }
+      { key: 'paypal_settings', url: '/api/settings/paypal_settings', setter: (data: any) => data?.value && setPaypalSettings(data.value) },
+      { key: 'live_stream', url: '/api/settings/live_stream', setter: (data: any) => data?.value && setLiveStream(data.value) }
     ];
 
     for (const endpoint of endpoints) {
@@ -951,6 +958,23 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     } catch (err) {
       console.error(err);
       alert('Errore durante il salvataggio dei link social.');
+    }
+  };
+
+  const saveLiveStream = async (stream: any) => {
+    try {
+      const res = await fetch('/api/settings/live_stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: stream })
+      });
+      if (res.ok) {
+        setLiveStream(stream);
+        toast.success('Impostazioni Live Stream aggiornate!');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Errore durante il salvataggio del Live Stream.');
     }
   };
 
@@ -5363,6 +5387,77 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </div>
                   </form>
                 </div>
+
+                <div className="mt-12 p-8 bg-white border border-stone-200 rounded-[2rem] shadow-sm">
+                  <h3 className="text-lg font-serif text-stone-900 mb-6 flex items-center gap-2">
+                    <Video className="w-5 h-5 text-red-500" />
+                    Gestione Diretta Live Streaming
+                  </h3>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                      <div>
+                        <p className="font-bold text-stone-900">Stato Diretta</p>
+                        <p className="text-xs text-stone-500">Attiva o disattiva la visualizzazione della diretta in homepage</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const updated = { ...liveStream, active: !liveStream.active };
+                          setLiveStream(updated);
+                          saveLiveStream(updated);
+                        }}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          liveStream.active ? 'bg-red-500' : 'bg-stone-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            liveStream.active ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">Tipo Streaming</label>
+                        <select
+                          value={liveStream.type}
+                          onChange={(e) => setLiveStream({ ...liveStream, type: e.target.value })}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all bg-white"
+                        >
+                          <option value="youtube">YouTube Live</option>
+                          <option value="facebook">Facebook Live</option>
+                          <option value="other">Altro (IPCam / HLS)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest ml-1">URL Diretta</label>
+                        <input
+                          type="text"
+                          value={liveStream.url}
+                          onChange={(e) => setLiveStream({ ...liveStream, url: e.target.value })}
+                          placeholder="Inserisci l'URL della diretta..."
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-stone-900 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <button
+                        onClick={() => saveLiveStream(liveStream)}
+                        className="bg-stone-900 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors"
+                      >
+                        Salva Impostazioni Live
+                      </button>
+                    </div>
+
+                    <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        <strong>Nota:</strong> Per le dirette da smartphone, puoi usare YouTube Live o Facebook Live e incollare qui l'URL della trasmissione. Per le IPCam, assicurati che l'URL sia accessibile pubblicamente (es. stream HLS .m3u8 o pagina web dedicata).
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -6364,10 +6459,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     onClick={async () => {
                       let updatedLottery;
                       // If it has an ID and it's not the current one (ID 1), it's a history item
-                      if (lotteryToDelete.id && lotteryToDelete.id !== 1) {
+                      if (lotteryToDelete.id && lotteryToDelete.id != 1) {
                         updatedLottery = {
                           ...lottery,
-                          history: lottery.history.filter((h: any) => h.id !== lotteryToDelete.id)
+                          history: (lottery.history || []).filter((h: any) => h.id != lotteryToDelete.id)
                         };
                       } else {
                         // Otherwise it's the current lottery, so we reset it
