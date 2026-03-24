@@ -227,6 +227,17 @@ export async function getDb() {
       date TEXT,
       status TEXT DEFAULT 'pending'
     );
+
+    CREATE TABLE IF NOT EXISTS contest_communications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contestId INTEGER,
+      title TEXT,
+      message TEXT,
+      attachmentPath TEXT,
+      recipients TEXT, -- JSON string of email addresses
+      sentAt TEXT,
+      FOREIGN KEY(contestId) REFERENCES contests(id)
+    );
   `);
 
   // Migrations
@@ -259,7 +270,8 @@ export async function getDb() {
     'CREATE TABLE IF NOT EXISTS booking_events (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, date TEXT, time TEXT, location TEXT, image TEXT, price REAL, totalTickets INTEGER, soldTickets INTEGER DEFAULT 0, active INTEGER DEFAULT 1, showOnHomepage INTEGER DEFAULT 0)',
     'CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, eventId INTEGER, name TEXT, email TEXT, phone TEXT, ticketNumber TEXT, purchaseDate TEXT, status TEXT DEFAULT "confirmed", FOREIGN KEY(eventId) REFERENCES booking_events(id))',
     'CREATE TABLE IF NOT EXISTS visits (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT, deviceType TEXT, timestamp TEXT)',
-    'CREATE TABLE IF NOT EXISTS donations (id INTEGER PRIMARY KEY AUTOINCREMENT, firstName TEXT, lastName TEXT, email TEXT, amount REAL, date TEXT, status TEXT DEFAULT "pending")'
+    'CREATE TABLE IF NOT EXISTS donations (id INTEGER PRIMARY KEY AUTOINCREMENT, firstName TEXT, lastName TEXT, email TEXT, amount REAL, date TEXT, status TEXT DEFAULT "pending")',
+    'CREATE TABLE IF NOT EXISTS contest_communications (id INTEGER PRIMARY KEY AUTOINCREMENT, contestId INTEGER, title TEXT, message TEXT, attachmentPath TEXT, recipients TEXT, sentAt TEXT, FOREIGN KEY(contestId) REFERENCES contests(id))'
   ];
 
   for (const migration of migrations) {

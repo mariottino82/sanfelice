@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
@@ -298,6 +298,67 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [editingMember, setEditingMember] = React.useState<any>(null);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
   const [showSponsorshipModal, setShowSponsorshipModal] = React.useState(false);
+
+  const [isSendingContestComm, setIsSendingContestComm] = React.useState(false);
+  const [selectedContestForComm, setSelectedContestForComm] = React.useState<any>(null);
+  const [contestCommForm, setContestCommForm] = React.useState({
+    title: '',
+    message: '',
+    attachment: null as File | null
+  });
+  const [contestCommHistory, setContestCommHistory] = React.useState<any[]>([]);
+  const [isLoadingCommHistory, setIsLoadingCommHistory] = React.useState(false);
+
+  const fetchContestCommHistory = async (contestId: number) => {
+    setIsLoadingCommHistory(true);
+    try {
+      const response = await fetch(`/api/contests/${contestId}/communications`);
+      if (response.ok) {
+        const data = await response.json();
+        setContestCommHistory(data);
+      }
+    } catch (error) {
+      console.error('Error fetching history:', error);
+    } finally {
+      setIsLoadingCommHistory(false);
+    }
+  };
+
+  const handleSendContestComm = async () => {
+    if (!contestCommForm.title || !contestCommForm.message) {
+      toast.error('Inserisci titolo e messaggio');
+      return;
+    }
+
+    setIsSendingContestComm(true);
+    const formData = new FormData();
+    formData.append('title', contestCommForm.title);
+    formData.append('message', contestCommForm.message);
+    if (contestCommForm.attachment) {
+      formData.append('attachment', contestCommForm.attachment);
+    }
+
+    try {
+      const response = await fetch(`/api/contests/${selectedContestForComm.id}/send-communication`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Comunicazione inviata a ${data.recipientsCount} iscritti!`);
+        setContestCommForm({ title: '', message: '', attachment: null });
+        fetchContestCommHistory(selectedContestForComm.id);
+      } else {
+        const error = await response.json();
+        toast.error(`Errore: ${error.error}`);
+      }
+    } catch (error) {
+      toast.error('Errore durante l\'invio');
+    } finally {
+      setIsSendingContestComm(false);
+    }
+  };
   const [showStatementModal, setShowStatementModal] = React.useState(false);
   const [statementDates, setStatementDates] = React.useState({
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
@@ -5589,8 +5650,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             </button>
                             <button 
                               onClick={() => {
-                                // In a real app, this would open a communication modal
-                                alert('Funzionalità di comunicazione in fase di sviluppo.');
+                                setSelectedContestForComm(contest);
+                                fetchContestCommHistory(contest.id);
                               }}
                               className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-900 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-200 transition-all"
                             >
@@ -6913,6 +6974,158 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             setShowWizard(false);
           }}
         />
+
+      <AnimatePresence>
+        {selectedContestForComm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
+                <div>
+                  <h2 className="text-2xl font-black text-stone-900 tracking-tight">Invia Comunicazione</h2>
+                  <p className="text-stone-500 text-sm font-medium mt-1">Concorso: {selectedContestForComm.title}</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedContestForComm(null)}
+                  className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm border border-transparent hover:border-stone-200 group"
+                >
+                  <X className="w-6 h-6 text-stone-400 group-hover:text-stone-900" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">Titolo Comunicazione</label>
+                    <input
+                      type="text"
+                      value={contestCommForm.title}
+                      onChange={(e) => setContestCommForm({ ...contestCommForm, title: e.target.value })}
+                      className="w-full px-6 py-4 bg-stone-50 border-2 border-transparent focus:border-stone-900 rounded-2xl transition-all outline-none font-medium"
+                      placeholder="Es: Aggiornamento date concorso"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">Messaggio</label>
+                    <textarea
+                      value={contestCommForm.message}
+                      onChange={(e) => setContestCommForm({ ...contestCommForm, message: e.target.value })}
+                      className="w-full px-6 py-4 bg-stone-50 border-2 border-transparent focus:border-stone-900 rounded-2xl transition-all outline-none font-medium min-h-[200px] resize-none"
+                      placeholder="Scrivi qui il contenuto della comunicazione..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">Allegato (Documento o Immagine)</label>
+                    <div className="relative group">
+                      <input
+                        type="file"
+                        onChange={(e) => setContestCommForm({ ...contestCommForm, attachment: e.target.files?.[0] || null })}
+                        className="hidden"
+                        id="contest-comm-attachment"
+                      />
+                      <label
+                        htmlFor="contest-comm-attachment"
+                        className="flex items-center justify-center gap-3 w-full px-6 py-8 bg-stone-50 border-2 border-dashed border-stone-200 rounded-2xl cursor-pointer group-hover:border-stone-900 group-hover:bg-stone-100/50 transition-all"
+                      >
+                        {contestCommForm.attachment ? (
+                          <div className="flex items-center gap-3">
+                            <FileCheck className="w-6 h-6 text-emerald-600" />
+                            <span className="font-bold text-stone-900">{contestCommForm.attachment.name}</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-2">
+                            <Paperclip className="w-8 h-8 text-stone-400 group-hover:text-stone-900 transition-colors" />
+                            <span className="text-sm font-bold text-stone-500 group-hover:text-stone-900">Clicca per allegare un file</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-8 border-t border-stone-100">
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-stone-400 mb-4">Storico Comunicazioni</h3>
+                  {isLoadingCommHistory ? (
+                    <div className="flex justify-center py-8">
+                      <div className="w-6 h-6 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : contestCommHistory.length > 0 ? (
+                    <div className="space-y-4">
+                      {contestCommHistory.map((comm) => (
+                        <div key={comm.id} className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-bold text-stone-900">{comm.title}</h4>
+                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                              {new Date(comm.sentAt).toLocaleString('it-IT')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-stone-600 line-clamp-2 mb-2">{comm.message}</p>
+                          <div className="flex items-center gap-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {JSON.parse(comm.recipients).length} Destinatari
+                            </span>
+                            {comm.attachmentPath && (
+                              <a 
+                                href={comm.attachmentPath} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-stone-900 hover:underline"
+                              >
+                                <Paperclip className="w-3 h-3" />
+                                Allegato
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center py-8 text-stone-400 text-sm font-medium italic">Nessuna comunicazione inviata in precedenza.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-8 bg-stone-50 border-t border-stone-100 flex gap-4">
+                <button
+                  onClick={() => setSelectedContestForComm(null)}
+                  className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-white transition-all border border-transparent hover:border-stone-200"
+                >
+                  Chiudi
+                </button>
+                <button
+                  onClick={handleSendContestComm}
+                  disabled={isSendingContestComm}
+                  className="flex-1 py-4 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSendingContestComm ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Invio in corso...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      Invia a tutti gli iscritti
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {notification && (

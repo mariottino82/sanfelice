@@ -1264,6 +1264,102 @@ app.post('/api/contests/:id/upload', uploadContest.single('image'), async (req: 
   res.json({ success: true, path: filePath });
 });
 
+const contestCommunicationStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = 'public/uploads/contest_communications/';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `comm_${Date.now()}_${file.originalname}`);
+  }
+});
+const uploadContestCommunication = multer({ storage: contestCommunicationStorage });
+
+app.post('/api/contests/:id/send-communication', uploadContestCommunication.single('attachment'), async (req: any, res) => {
+  const { id } = req.params;
+  const { title, message } = req.body;
+  const attachment = req.file;
+
+  try {
+    const db = await getDb();
+    // 1. Get contest info
+    const contest = await db.get('SELECT * FROM contests WHERE id = ?', [id]);
+    if (!contest) return res.status(404).json({ error: 'Concorso non trovato' });
+
+    // 2. Get registered users for this contest
+    const registrations = await db.all('SELECT email FROM contest_registrations WHERE contestId = ? AND status = "confirmed"', [id]);
+    if (registrations.length === 0) {
+      return res.status(400).json({ error: 'Nessun iscritto confermato per questo concorso' });
+    }
+
+    const recipients = registrations.map(r => r.email);
+
+    // 3. Send emails
+    const nodemailer = await import('nodemailer');
+    const emailSettingsRow = await db.get('SELECT * FROM settings WHERE key = ?', ['email_settings']);
+    if (!emailSettingsRow) return res.status(400).json({ error: 'Impostazioni email non configurate' });
+    const settings = JSON.parse(emailSettingsRow.value);
+
+    const transporter = nodemailer.createTransport({
+      host: settings.smtp_host || 'smtp.gmail.com',
+      port: parseInt(settings.smtp_port) || 587,
+      secure: parseInt(settings.smtp_port) === 465,
+      requireTLS: parseInt(settings.smtp_port) === 587,
+      auth: {
+        user: settings.smtp_user,
+        pass: settings.smtp_pass,
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const mailOptions: any = {
+      from: `"${settings.from_name || 'Associazione'}" <${settings.from_email || settings.smtp_user}>`,
+      to: recipients.join(','),
+      subject: title,
+      html: message.replace(/\n/g, '<br>'),
+    };
+
+    if (attachment) {
+      mailOptions.attachments = [{
+        filename: attachment.originalname,
+        path: attachment.path
+      }];
+    }
+
+    await transporter.sendMail(mailOptions);
+
+    // 4. Save to history
+    const sentAt = new Date().toISOString();
+    const attachmentPath = attachment ? `/uploads/contest_communications/${attachment.filename}` : null;
+    
+    await db.run(
+      'INSERT INTO contest_communications (contestId, title, message, attachmentPath, recipients, sentAt) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, title, message, attachmentPath, JSON.stringify(recipients), sentAt]
+    );
+
+    res.json({ success: true, recipientsCount: recipients.length });
+  } catch (error: any) {
+    console.error('Error sending contest communication:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/contests/:id/communications', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const db = await getDb();
+    const communications = await db.all('SELECT * FROM contest_communications WHERE contestId = ? ORDER BY sentAt DESC', [id]);
+    res.json(communications);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Contest Registrations API
 app.get('/api/contest-registrations', async (req, res) => {
   const { contestId } = req.query;

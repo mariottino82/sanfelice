@@ -31,13 +31,14 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
           item.category === 'evento' && 
           item.title && 
           item.date &&
+          item.showOnHomepage === 1 &&
           !isNaN(new Date(item.date).getTime())
         ));
 
         // Fetch Lotteries
         const lotteryRes = await fetch('/api/lottery');
         const lotteryData = await lotteryRes.json();
-        if (lotteryData && lotteryData.name && lotteryData.drawDate && !isNaN(new Date(lotteryData.drawDate).getTime())) {
+        if (lotteryData && lotteryData.showOnHomepage === 1 && lotteryData.name && lotteryData.drawDate && !isNaN(new Date(lotteryData.drawDate).getTime())) {
           setLotteries([lotteryData]);
         } else {
           setLotteries([]);
@@ -49,6 +50,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
         setContests(contestData.filter((c: any) => 
           c.title && 
           c.startDate && 
+          c.showOnHomepage === 1 &&
           !isNaN(new Date(c.startDate).getTime())
         ));
 
@@ -58,6 +60,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
         setBookingEvents(bookingData.filter((b: any) => 
           b.title && 
           b.date && 
+          b.showOnHomepage === 1 &&
           !isNaN(new Date(b.date).getTime())
         ));
 
