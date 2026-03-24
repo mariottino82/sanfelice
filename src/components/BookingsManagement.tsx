@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Calendar, MapPin, Clock, Ticket, Users, Download, Search, ChevronRight, CheckCircle2, XCircle, AlertCircle, Loader2, Image as ImageIcon, Star, Upload } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, MapPin, Clock, Ticket, Users, Download, Search, ChevronRight, CheckCircle2, XCircle, AlertCircle, Loader2, Image as ImageIcon, Star, Upload, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface BookingsManagementProps {
   bookingEvents: any[];
@@ -35,6 +36,8 @@ export function BookingsManagement({
     e.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const selectedEvent = bookingEvents.find(e => e.id === selectedEventId);
+
   const eventBookings = selectedEventId 
     ? bookings.filter(b => b.eventId === selectedEventId)
     : [];
@@ -56,6 +59,26 @@ export function BookingsManagement({
       showOnHomepage: true
     });
     setShowEventModal(true);
+  };
+
+  const handleExportExcel = () => {
+    if (!selectedEvent || eventBookings.length === 0) return;
+
+    const data = eventBookings.map(b => ({
+      'Nome': b.name,
+      'Email': b.email,
+      'Codice Biglietto': b.ticketNumber,
+      'Data Prenotazione': new Date(b.createdAt).toLocaleString('it-IT')
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Prenotazioni');
+    
+    // Generate filename
+    const filename = `Prenotazioni_${selectedEvent.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    XLSX.writeFile(workbook, filename);
   };
 
   return (
@@ -138,53 +161,69 @@ export function BookingsManagement({
               </div>
             </div>
           )) : (
-            <div className="text-center py-12 bg-stone-50 rounded-3xl border border-dashed border-stone-200">
-              <Ticket className="w-12 h-12 text-stone-200 mx-auto mb-4" />
-              <p className="text-stone-400 italic">Nessun evento creato.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Bookings for Selected Event */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest ml-1">Prenotazioni Ricevute</h3>
-          {selectedEventId ? (
-            <div className="bg-stone-50 rounded-3xl p-6 border border-stone-100 min-h-[400px]">
-              {eventBookings.length > 0 ? (
-                <div className="space-y-3">
-                  {eventBookings.map((booking) => (
-                    <div key={booking.id} className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm group">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-bold text-stone-900 text-sm">{booking.name}</p>
-                          <p className="text-[10px] text-stone-500 uppercase tracking-widest">{booking.ticketNumber}</p>
-                          <p className="text-[10px] text-stone-400 mt-1">{booking.email}</p>
-                        </div>
-                        <button 
-                          onClick={() => onDeleteBooking(booking)}
-                          className="p-1.5 text-stone-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <Users className="w-10 h-10 text-stone-200 mb-4" />
-                  <p className="text-stone-400 text-xs italic">Nessuna prenotazione per questo evento.</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-stone-50 rounded-3xl p-6 border border-dashed border-stone-200 flex flex-col items-center justify-center text-center h-[400px]">
-              <ChevronRight className="w-8 h-8 text-stone-200 mb-2" />
-              <p className="text-stone-400 text-xs italic">Seleziona un evento per vedere le prenotazioni.</p>
-            </div>
-          )}
-        </div>
+          <div className="text-center py-12 bg-stone-50 rounded-3xl border border-dashed border-stone-200">
+            <Ticket className="w-12 h-12 text-stone-200 mx-auto mb-4" />
+            <p className="text-stone-400 italic">Nessun evento creato.</p>
+          </div>
+        )}
       </div>
+
+      {/* Bookings for Selected Event */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between ml-1">
+          <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest">Prenotazioni Ricevute</h3>
+          {selectedEventId && eventBookings.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="bg-stone-100 text-stone-600 px-2 py-1 rounded-lg text-[10px] font-bold">
+                TOTALE: {eventBookings.length}
+              </span>
+              <button 
+                onClick={handleExportExcel}
+                className="p-1.5 text-stone-400 hover:text-emerald-600 transition-colors"
+                title="Esporta in Excel"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+        {selectedEventId ? (
+          <div className="bg-stone-50 rounded-3xl p-6 border border-stone-100 min-h-[400px]">
+            {eventBookings.length > 0 ? (
+              <div className="space-y-3">
+                {eventBookings.map((booking) => (
+                  <div key={booking.id} className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm group">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-stone-900 text-sm">{booking.name}</p>
+                        <p className="text-[10px] text-stone-500 uppercase tracking-widest">{booking.ticketNumber}</p>
+                        <p className="text-[10px] text-stone-400 mt-1">{booking.email}</p>
+                      </div>
+                      <button 
+                        onClick={() => onDeleteBooking(booking)}
+                        className="p-1.5 text-stone-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                <Users className="w-10 h-10 text-stone-200 mb-4" />
+                <p className="text-stone-400 text-xs italic">Nessuna prenotazione per questo evento.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-stone-50 rounded-3xl p-6 border border-dashed border-stone-200 flex flex-col items-center justify-center text-center h-[400px]">
+            <ChevronRight className="w-8 h-8 text-stone-200 mb-2" />
+            <p className="text-stone-400 text-xs italic">Seleziona un evento per vedere le prenotazioni.</p>
+          </div>
+        )}
+      </div>
+    </div>
 
       {/* Event Edit Modal */}
       {showEventModal && (
