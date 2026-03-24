@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Allow: /logo.png
+Allow: /favicon.ico
+
+Sitemap: https://www.prosanfelice.it/sitemap.xml

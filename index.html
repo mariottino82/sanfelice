@@ -15,9 +15,31 @@
     <meta name="geo.position" content="41.5100;14.5100" />
     <meta name="ICBM" content="41.5100, 14.5100" />
     
-    <!-- Dynamic Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="shortcut icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Structured Data for Site Name and Logo -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "url": "https://www.prosanfelice.it/",
+        "logo": "https://www.prosanfelice.it/logo.png",
+        "name": "Associazione Pro San Felice",
+        "description": "Associazione Pro San Felice: Il portale n.1 per sagre, feste ed eventi in Molise."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Pro San Felice",
+        "url": "https://www.prosanfelice.it/"
+      }
+    </script>
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://www.prosanfelice.it/" />
@@ -40,22 +62,6 @@
     
     <!-- Theme Color for Mobile Browsers -->
     <meta name="theme-color" content="#1c1917" />
-    
-    <script>
-      // Automatically update favicon and apple-touch-icon with a timestamp to bypass cache on reload
-      document.addEventListener('DOMContentLoaded', function() {
-        var timestamp = new Date().getTime();
-        var favicon = document.querySelector('link[rel="icon"]');
-        var appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-        
-        if (favicon) {
-          favicon.href = '/favicon.ico?v=' + timestamp;
-        }
-        if (appleIcon) {
-          appleIcon.href = '/logo.png?v=' + timestamp;
-        }
-      });
-    </script>
   </head>
   <body>
     <div id="root"></div>

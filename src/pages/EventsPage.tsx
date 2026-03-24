@@ -27,12 +27,17 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
         // Fetch News (Events)
         const newsRes = await fetch('/api/news');
         const newsData = await newsRes.json();
-        setEvents(newsData.filter((item: any) => item.category === 'evento'));
+        setEvents(newsData.filter((item: any) => 
+          item.category === 'evento' && 
+          item.title && 
+          item.date &&
+          !isNaN(new Date(item.date).getTime())
+        ));
 
         // Fetch Lotteries
         const lotteryRes = await fetch('/api/lottery');
         const lotteryData = await lotteryRes.json();
-        if (lotteryData) {
+        if (lotteryData && lotteryData.name && lotteryData.drawDate && !isNaN(new Date(lotteryData.drawDate).getTime())) {
           setLotteries([lotteryData]);
         } else {
           setLotteries([]);
@@ -41,12 +46,20 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
         // Fetch Contests
         const contestRes = await fetch('/api/contests');
         const contestData = await contestRes.json();
-        setContests(contestData);
+        setContests(contestData.filter((c: any) => 
+          c.title && 
+          c.startDate && 
+          !isNaN(new Date(c.startDate).getTime())
+        ));
 
         // Fetch Booking Events
         const bookingRes = await fetch('/api/booking-events');
         const bookingData = await bookingRes.json();
-        setBookingEvents(bookingData);
+        setBookingEvents(bookingData.filter((b: any) => 
+          b.title && 
+          b.date && 
+          !isNaN(new Date(b.date).getTime())
+        ));
 
       } catch (error) {
         console.error('Error fetching events data:', error);
@@ -70,8 +83,8 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
     ...contests.map(c => ({ ...c, type: 'contest' })),
     ...bookingEvents.map(b => ({ ...b, type: 'booking' }))
   ].sort((a, b) => {
-    const dateA = new Date(a.date || a.startDate || a.createdAt || 0).getTime();
-    const dateB = new Date(b.date || b.startDate || b.createdAt || 0).getTime();
+    const dateA = new Date(a.date || a.startDate || a.drawDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.date || b.startDate || b.drawDate || b.createdAt || 0).getTime();
     return dateB - dateA;
   });
 
@@ -124,7 +137,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
                       src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
                       alt={item.title}
                       className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ${
-                        (new Date(item.date || item.endDate || item.startDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
+                        (new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
                       }`}
                       referrerPolicy="no-referrer"
                     />
@@ -141,7 +154,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
                         {item.type === 'contest' && 'Concorso'}
                         {item.type === 'news_event' && 'Evento'}
                       </span>
-                      {new Date(item.date || item.endDate || item.startDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
+                      {new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
                         <span className="px-3 py-1 bg-stone-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
                           Evento terminato
                         </span>
@@ -153,7 +166,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
                     <div className="flex items-center gap-4 text-xs text-stone-400 font-bold uppercase tracking-widest mb-4">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
-                        {new Date(item.date || item.createdAt).toLocaleDateString('it-IT')}
+                        {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
                       </span>
                       {item.location && (
                         <span className="flex items-center gap-1.5">

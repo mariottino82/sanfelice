@@ -12,7 +12,7 @@ export function LotterySection() {
         if (response.ok) {
           const data = await response.json();
           
-          if (Number(data.showOnHomepage) === 1 || data.showOnHomepage === true) {
+          if ((Number(data.showOnHomepage) === 1 || data.showOnHomepage === true) && data.name && data.drawDate && !isNaN(new Date(data.drawDate).getTime())) {
             setLottery(data);
           } else {
             setLottery(null);
