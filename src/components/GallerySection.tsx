@@ -46,7 +46,7 @@ export function GallerySection() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               viewport={{ once: true }}
-              className="relative rounded-2xl overflow-hidden group cursor-pointer aspect-square shadow-sm hover:shadow-xl transition-all duration-500 border border-stone-100"
+              className="relative rounded-2xl overflow-hidden group aspect-square shadow-sm hover:shadow-xl transition-all duration-500 border border-stone-100"
             >
               {item.type === 'video' ? (
                 <div className="w-full h-full bg-stone-100 flex items-center justify-center relative group">
@@ -77,11 +77,6 @@ export function GallerySection() {
                   />
                 )
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                <Link to="/gallery" className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 self-center mb-auto mt-auto transform scale-50 group-hover:scale-100 transition-transform duration-300">
-                  <Maximize2 className="w-5 h-5 text-white" />
-                </Link>
-              </div>
             </motion.div>
           ))}
         </div>
