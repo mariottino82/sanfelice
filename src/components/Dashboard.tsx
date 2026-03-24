@@ -5160,7 +5160,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         const response = await fetch('/api/settings/association_details', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(associationDetails)
+                          body: JSON.stringify({ value: associationDetails })
                         });
                         if (response.ok) {
                           setNotification({ message: 'Dati salvati con successo!', type: 'success' });

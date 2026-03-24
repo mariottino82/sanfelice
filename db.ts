@@ -334,6 +334,22 @@ export async function getDb() {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['live_stream', JSON.stringify(defaultLiveStream)]);
   }
 
+  // Seed association_details if not exists
+  const associationDetails = await db.get('SELECT * FROM settings WHERE key = ?', ['association_details']);
+  if (!associationDetails) {
+    const defaultDetails = {
+      name: 'Associazione Pro San Felice',
+      address: 'Via San Felice, 1',
+      municipality: 'San Felice sul Panaro',
+      province: 'MO',
+      cf: '',
+      legalRepresentative: '',
+      email: '',
+      phone: ''
+    };
+    await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['association_details', JSON.stringify(defaultDetails)]);
+  }
+
   console.log('Database initialized successfully');
   return db;
 }
