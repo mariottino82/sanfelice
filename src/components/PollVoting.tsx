@@ -48,7 +48,8 @@ export function PollVoting() {
         setPoll(data);
         
         // Check if user already voted
-        if (user && data.votes.includes(user.email)) {
+        const userIdentifier = user?.email || user?.username;
+        if (userIdentifier && data.votes && Array.isArray(data.votes) && data.votes.includes(userIdentifier)) {
           setHasVoted(true);
         }
       } else {
@@ -100,7 +101,7 @@ export function PollVoting() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           optionIndex: selectedOptionIndex,
-          email: user.email 
+          email: user.email || user.username 
         })
       });
 

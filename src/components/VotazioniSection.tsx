@@ -21,7 +21,7 @@ interface Poll {
   type: 'poll' | 'election';
 }
 
-export function VotazioniSection({ user }: { user: any }) {
+export function VotazioniSection({ user, onOpenVoteModal }: { user: any, onOpenVoteModal?: (poll: Poll) => void }) {
   const [elections, setElections] = React.useState<Poll[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -77,7 +77,8 @@ export function VotazioniSection({ user }: { user: any }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {elections.map((election) => {
-            const hasVoted = user && election.votes.includes(user.email);
+            const userIdentifier = user?.email || user?.username;
+            const hasVoted = userIdentifier && election.votes && Array.isArray(election.votes) && election.votes.includes(userIdentifier);
             const isExpired = election.endDate && new Date(election.endDate) < new Date();
             const showResults = !election.active || isExpired;
             
@@ -145,13 +146,13 @@ export function VotazioniSection({ user }: { user: any }) {
                   </div>
                   
                   {election.active && !hasVoted ? (
-                    <a
-                      href={`/vota/${election.id}`}
+                    <button
+                      onClick={() => onOpenVoteModal ? onOpenVoteModal(election) : window.location.href = `/vota/${election.id}`}
                       className="inline-flex items-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10"
                     >
                       Vota Ora
                       <ArrowRight className="w-4 h-4" />
-                    </a>
+                    </button>
                   ) : (
                     <button
                       disabled

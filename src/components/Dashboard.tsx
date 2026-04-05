@@ -161,6 +161,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [isForwarding, setIsForwarding] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [showVoteModal, setShowVoteModal] = React.useState(false);
+  const [hasDismissedVoteModal, setHasDismissedVoteModal] = React.useState(false);
   const [pendingVotePoll, setPendingVotePoll] = React.useState<any>(null);
   const [members, setMembers] = React.useState([]);
   const [collections, setCollections] = React.useState([]);
@@ -196,14 +197,25 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   React.useEffect(() => {
     // Check for active internal elections that the user hasn't voted in
     const checkPendingVotes = () => {
-      if (!user?.email || polls.length === 0) return;
+      const userIdentifier = user?.email || user?.username;
+      if (!userIdentifier || polls.length === 0 || showVoteModal || hasDismissedVoteModal) return;
       
-      const pending = polls.find((p: any) => 
-        p.type === 'election' && 
-        p.active && 
-        (!p.endDate || new Date(p.endDate) > new Date()) &&
-        !p.votes.includes(user.email)
-      );
+      const pending = polls.find((p: any) => {
+        const isElection = p.type === 'election';
+        const isActive = p.active;
+        const hasNotVoted = !p.votes || !Array.isArray(p.votes) || !p.votes.includes(userIdentifier);
+        
+        let isNotExpired = true;
+        if (p.endDate) {
+          const end = new Date(p.endDate);
+          if (p.endDate.includes('T') === false) {
+            end.setHours(23, 59, 59, 999);
+          }
+          isNotExpired = end > new Date();
+        }
+
+        return isElection && isActive && isNotExpired && hasNotVoted;
+      });
       
       if (pending) {
         setPendingVotePoll(pending);
@@ -212,7 +224,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     };
     
     checkPendingVotes();
-  }, [polls, user?.email]);
+  }, [polls, user?.email, user?.username, showVoteModal, hasDismissedVoteModal]);
 
   const createNewPoll = () => {
     setPoll({
@@ -2223,14 +2235,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="flex flex-col gap-3">
                   <a
                     href={`/vota/${pendingVotePoll.id}`}
-                    onClick={() => setShowVoteModal(false)}
+                    onClick={() => {
+                      setShowVoteModal(false);
+                      setHasDismissedVoteModal(true);
+                    }}
                     className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-stone-900/20"
                   >
                     Vota Ora
                     <ArrowRight className="w-5 h-5" />
                   </a>
                   <button
-                    onClick={() => setShowVoteModal(false)}
+                    onClick={() => {
+                      setShowVoteModal(false);
+                      setHasDismissedVoteModal(true);
+                    }}
                     className="w-full py-4 text-stone-400 text-sm font-bold uppercase tracking-widest hover:text-stone-900 transition-colors"
                   >
                     Decidi più tardi
@@ -2541,7 +2559,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="space-y-12">
                   {polls.length > 0 ? polls.map((p: any) => {
                     const isExpired = p.endDate ? new Date() > new Date(p.endDate) : false;
-                    const hasVoted = p.votes?.some((v: any) => v.email === user?.email);
+                    const userIdentifier = user?.email || user?.username;
+                    const hasVoted = userIdentifier && p.votes?.includes(userIdentifier);
                     const showResults = isExpired || hasVoted;
 
                     return (
@@ -4529,7 +4548,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             )}
 
             {(isStaff || isMember) && activeTab === 'votazioni' && (
-              <VotazioniSection user={user} />
+              <VotazioniSection 
+                user={user} 
+                onOpenVoteModal={(poll) => {
+                  setPendingVotePoll(poll);
+                  setShowVoteModal(true);
+                  setHasDismissedVoteModal(false);
+                }}
+              />
             )}
 
             {(isStaff || isMember) && activeTab === 'poll' && (
@@ -4560,7 +4586,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </div>
                     ) : (
                       polls.filter((p: any) => p.active && p.type === 'poll').map((p: any) => {
-                        const hasVoted = p.votes?.includes(user.email);
+                        const userIdentifier = user?.email || user?.username;
+                        const hasVoted = userIdentifier && p.votes?.includes(userIdentifier);
                         return (
                           <motion.div
                             key={p.id}
