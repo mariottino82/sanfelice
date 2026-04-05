@@ -958,12 +958,12 @@ async function startServer() {
   });
 
   app.post('/api/polls', async (req, res) => {
-    const { question, options, active, showOnHomepage, endDate } = req.body;
-    console.log('Creating new poll:', { question, active, showOnHomepage, endDate });
+    const { question, options, active, showOnHomepage, endDate, type } = req.body;
+    console.log('Creating new poll:', { question, active, showOnHomepage, endDate, type });
     try {
       const result = await db.run(
-        'INSERT INTO polls (question, options, votes, active, showOnHomepage, endDate) VALUES (?, ?, ?, ?, ?, ?)',
-        [question || '', JSON.stringify(options || []), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0, endDate || null]
+        'INSERT INTO polls (question, options, votes, active, showOnHomepage, endDate, type) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [question || '', JSON.stringify(options || []), JSON.stringify([]), active ? 1 : 0, showOnHomepage ? 1 : 0, endDate || null, type || 'poll']
       );
       console.log('Poll created successfully, ID:', result.lastID);
       res.json({ success: true, id: result.lastID });
@@ -977,12 +977,12 @@ async function startServer() {
   });
 
   app.put('/api/polls/:id', async (req, res) => {
-    const { question, options, active, showOnHomepage, endDate } = req.body;
-    console.log(`Updating poll ${req.params.id}:`, { question, active, showOnHomepage, endDate });
+    const { question, options, active, showOnHomepage, endDate, type } = req.body;
+    console.log(`Updating poll ${req.params.id}:`, { question, active, showOnHomepage, endDate, type });
     try {
       const result = await db.run(
-        'UPDATE polls SET question = ?, options = ?, active = ?, showOnHomepage = ?, endDate = ? WHERE id = ?',
-        [question || '', JSON.stringify(options || []), active ? 1 : 0, showOnHomepage ? 1 : 0, endDate || null, req.params.id]
+        'UPDATE polls SET question = ?, options = ?, active = ?, showOnHomepage = ?, endDate = ?, type = ? WHERE id = ?',
+        [question || '', JSON.stringify(options || []), active ? 1 : 0, showOnHomepage ? 1 : 0, endDate || null, type || 'poll', req.params.id]
       );
       console.log(`Poll ${req.params.id} updated successfully. Changes:`, result.changes);
       res.json({ success: true });

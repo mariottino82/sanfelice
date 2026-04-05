@@ -16,6 +16,7 @@ interface Poll {
   active: boolean;
   showOnHomepage: boolean;
   endDate?: string;
+  type: 'poll' | 'election';
 }
 
 export function PollSection() {
@@ -28,8 +29,8 @@ export function PollSection() {
         const response = await fetch('/api/polls');
         if (response.ok) {
           const data = await response.json();
-          // Only show active polls marked for homepage
-          setPolls(data.filter((p: Poll) => p.active && p.showOnHomepage));
+          // Only show active polls marked for homepage and of type 'poll'
+          setPolls(data.filter((p: Poll) => p.active && p.showOnHomepage && p.type === 'poll'));
         }
       } catch (error) {
         console.error('Error fetching polls:', error);

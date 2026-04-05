@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
 import { PollsManagement } from './PollsManagement';
+import { VotazioniSection } from './VotazioniSection';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
@@ -159,6 +160,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [isReplying, setIsReplying] = React.useState(false);
   const [isForwarding, setIsForwarding] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [showVoteModal, setShowVoteModal] = React.useState(false);
+  const [pendingVotePoll, setPendingVotePoll] = React.useState<any>(null);
   const [members, setMembers] = React.useState([]);
   const [collections, setCollections] = React.useState([]);
   const [news, setNews] = React.useState([]);
@@ -189,6 +192,27 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const [selectedBookingEventForDetails, setSelectedBookingEventForDetails] = React.useState<any>(null);
   const [isDeletingBooking, setIsDeletingBooking] = React.useState(false);
   const [isSavingBookingEvent, setIsSavingBookingEvent] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check for active internal elections that the user hasn't voted in
+    const checkPendingVotes = () => {
+      if (!user?.email || polls.length === 0) return;
+      
+      const pending = polls.find((p: any) => 
+        p.type === 'election' && 
+        p.active && 
+        (!p.endDate || new Date(p.endDate) > new Date()) &&
+        !p.votes.includes(user.email)
+      );
+      
+      if (pending) {
+        setPendingVotePoll(pending);
+        setShowVoteModal(true);
+      }
+    };
+    
+    checkPendingVotes();
+  }, [polls, user?.email]);
 
   const createNewPoll = () => {
     setPoll({
@@ -2161,7 +2185,68 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const cariche = ['Presidente', 'Vicepresidente', 'Segretario', 'Tesoriere', 'Socio'];
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col lg:flex-row">
+    <>
+      {/* Voting Modal Popup */}
+      <AnimatePresence>
+        {showVoteModal && pendingVotePoll && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[3rem] p-8 md:p-12 max-w-lg w-full shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-stone-50 rounded-bl-[5rem] -mr-16 -mt-16" />
+              
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-14 h-14 bg-stone-900 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-stone-900/20">
+                    <Vote className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Votazione Interna Soci</span>
+                    <h2 className="text-2xl font-serif text-stone-900">Nuova Votazione Attiva</h2>
+                  </div>
+                </div>
+
+                <div className="mb-10">
+                  <h3 className="text-xl md:text-2xl font-serif text-stone-800 leading-tight mb-4">
+                    {pendingVotePoll.question}
+                  </h3>
+                  {pendingVotePoll.endDate && (
+                    <p className="text-stone-400 text-xs font-medium uppercase tracking-wider">
+                      Scade il: {new Date(pendingVotePoll.endDate).toLocaleDateString('it-IT')}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <a
+                    href={`/vota/${pendingVotePoll.id}`}
+                    onClick={() => setShowVoteModal(false)}
+                    className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-stone-900/20"
+                  >
+                    Vota Ora
+                    <ArrowRight className="w-5 h-5" />
+                  </a>
+                  <button
+                    onClick={() => setShowVoteModal(false)}
+                    className="w-full py-4 text-stone-400 text-sm font-bold uppercase tracking-widest hover:text-stone-900 transition-colors"
+                  >
+                    Decidi più tardi
+                  </button>
+                </div>
+                
+                <p className="text-[10px] text-stone-400 text-center mt-8 leading-relaxed">
+                  Il tuo voto è segreto e fondamentale per la vita dell'associazione.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <div className="min-h-screen bg-stone-50 flex flex-col lg:flex-row">
       {/* Mobile Header */}
       <div className="lg:hidden bg-stone-900 text-white p-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
@@ -2210,7 +2295,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 { id: 'contests', label: 'Concorsi', icon: Trophy, minRole: 'Operator' },
                 { id: 'appointments', label: 'Agenda', icon: Calendar, minRole: 'Operator' },
                 { id: 'news', label: 'News', icon: Newspaper, minRole: 'Operator' },
-                { id: 'poll', label: 'Sondaggi', icon: Vote, minRole: 'Operator' },
+                { id: 'poll-admin', label: 'Gestione Sondaggi', icon: Settings, minRole: 'Operator' },
+                { id: 'votazioni', label: 'Votazioni Soci', icon: Vote, minRole: 'Operator' },
+                { id: 'poll', label: 'Sondaggi Pubblici', icon: BarChart, minRole: 'Operator' },
                 { id: 'bookings', label: 'Prenotazioni', icon: Ticket, minRole: 'Operator' },
                 { id: 'sponsors', label: 'Sponsor & Pubblicità', icon: Building, minRole: 'Operator' },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon, minRole: 'Operator' },
@@ -2252,7 +2339,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             <>
               {[
                 { id: 'member-home', label: 'Home Socio', icon: UserCheck },
-                { id: 'poll', label: 'Sondaggi', icon: Vote },
+                { id: 'votazioni', label: 'Votazioni Interne', icon: Vote },
+                { id: 'poll', label: 'Sondaggi Pubblici', icon: BarChart },
                 { id: 'minutes', label: 'Verbali', icon: FileText },
                 { id: 'news', label: 'News', icon: Newspaper },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon },
@@ -2305,10 +2393,12 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'contests' && 'Concorsi & Rassegne'}
               {activeTab === 'appointments' && 'Agenda Appuntamenti'}
               {activeTab === 'news' && 'News'}
+              {activeTab === 'poll-admin' && 'Gestione Sondaggi'}
+              {activeTab === 'votazioni' && 'Votazioni Soci'}
+              {activeTab === 'poll' && 'Sondaggi Pubblici'}
+              {activeTab === 'bookings' && 'Gestione Prenotazioni'}
               {activeTab === 'association' && 'Dati Associazione'}
               {activeTab === 'accounts' && 'Gestione Account'}
-            {activeTab === 'poll' && 'Sondaggi & Votazioni'}
-            {activeTab === 'bookings' && 'Prenotazioni & Biglietti'}
               {activeTab === 'email' && 'Email & Comunicazioni'}
               {activeTab === 'member-home' && `Benvenuto, ${user?.username}`}
               <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-2 py-1 rounded-full">v1.1.1</span>
@@ -4434,21 +4524,42 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               </div>
             )}
 
+            {(isStaff || isMember) && activeTab === 'poll-admin' && isStaff && (
+              <PollsManagement />
+            )}
+
+            {(isStaff || isMember) && activeTab === 'votazioni' && (
+              <VotazioniSection user={user} />
+            )}
+
             {(isStaff || isMember) && activeTab === 'poll' && (
               isStaff ? (
-                <PollsManagement />
+                <div className="space-y-8">
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-stone-100 shadow-sm">
+                    <h3 className="text-xl font-serif text-stone-900 mb-4">Sondaggi Pubblici</h3>
+                    <p className="text-stone-500 text-sm mb-6">
+                      I sondaggi pubblici sono visibili sulla homepage. Puoi gestirli dalla sezione "Gestione Sondaggi".
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('poll-admin')}
+                      className="bg-stone-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-stone-800 transition-all"
+                    >
+                      Vai a Gestione Sondaggi
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {polls.filter((p: any) => p.active).length === 0 ? (
+                    {polls.filter((p: any) => p.active && p.type === 'poll').length === 0 ? (
                       <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border border-stone-100">
                         <div className="w-16 h-16 bg-stone-50 text-stone-300 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                          <Vote className="w-8 h-8" />
+                          <BarChart className="w-8 h-8" />
                         </div>
-                        <p className="text-stone-400 font-medium">Non ci sono sondaggi attivi al momento.</p>
+                        <p className="text-stone-400 font-medium">Non ci sono sondaggi pubblici attivi al momento.</p>
                       </div>
                     ) : (
-                      polls.filter((p: any) => p.active).map((p: any) => {
+                      polls.filter((p: any) => p.active && p.type === 'poll').map((p: any) => {
                         const hasVoted = p.votes?.includes(user.email);
                         return (
                           <motion.div
@@ -4459,7 +4570,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           >
                             <div className="flex justify-between items-start mb-6">
                               <div className="w-12 h-12 bg-stone-50 text-stone-900 rounded-2xl flex items-center justify-center group-hover:bg-stone-900 group-hover:text-white transition-all">
-                                <Vote className="w-6 h-6" />
+                                <BarChart className="w-6 h-6" />
                               </div>
                               {hasVoted && (
                                 <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
@@ -6914,5 +7025,6 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
           )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

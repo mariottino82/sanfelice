@@ -83,7 +83,8 @@ export async function getDb() {
       totalVotes INTEGER DEFAULT 0,
       active INTEGER DEFAULT 1,
       showOnHomepage INTEGER DEFAULT 0,
-      endDate TEXT -- ISO date string
+      endDate TEXT, -- ISO date string
+      type TEXT DEFAULT 'poll' -- 'poll' or 'election'
     );
 
     CREATE TABLE IF NOT EXISTS minutes (
@@ -247,6 +248,7 @@ export async function getDb() {
     'ALTER TABLE polls ADD COLUMN showOnHomepage INTEGER DEFAULT 0',
     'ALTER TABLE polls ADD COLUMN totalVotes INTEGER DEFAULT 0',
     'ALTER TABLE polls ADD COLUMN endDate TEXT',
+    'ALTER TABLE polls ADD COLUMN type TEXT DEFAULT "poll"',
     'ALTER TABLE users ADD COLUMN email TEXT',
     'ALTER TABLE users ADD COLUMN lastLogin TEXT',
     'ALTER TABLE members ADD COLUMN password TEXT',

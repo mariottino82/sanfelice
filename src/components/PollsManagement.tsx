@@ -18,6 +18,7 @@ interface Poll {
   active: boolean;
   showOnHomepage: boolean;
   endDate?: string;
+  type: 'poll' | 'election';
 }
 
 export function PollsManagement() {
@@ -138,7 +139,8 @@ export function PollsManagement() {
             question: '', 
             options: [{ id: 1, text: '', votes: 0 }, { id: 2, text: '', votes: 0 }], 
             active: true,
-            showOnHomepage: false
+            showOnHomepage: false,
+            type: 'poll'
           })}
           className="bg-stone-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
         >
@@ -171,6 +173,11 @@ export function PollsManagement() {
                     Homepage
                   </span>
                 )}
+                <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  poll.type === 'election' ? 'bg-purple-50 text-purple-600' : 'bg-stone-100 text-stone-600'
+                }`}>
+                  {poll.type === 'election' ? 'Votazione Interna' : 'Sondaggio Pubblico'}
+                </span>
               </div>
               <div className="flex gap-2">
                 <button
@@ -313,6 +320,17 @@ export function PollsManagement() {
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Tipo di Consultazione</label>
+                  <select
+                    value={editingPoll.type || 'poll'}
+                    onChange={(e) => setEditingPoll({ ...editingPoll, type: e.target.value as 'poll' | 'election' })}
+                    className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all text-sm"
+                  >
+                    <option value="poll">Sondaggio Pubblico</option>
+                    <option value="election">Votazione Interna (Soci)</option>
+                  </select>
+                </div>
+                <div>
                   <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 ml-1">Data Scadenza (Opzionale)</label>
                   <input
                     type="date"
@@ -321,7 +339,9 @@ export function PollsManagement() {
                     className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none transition-all text-sm"
                   />
                 </div>
-                <div className="flex items-center gap-6 pt-6">
+              </div>
+
+              <div className="flex items-center gap-6 pt-2">
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <div className="relative inline-flex items-center">
                       <input
@@ -348,7 +368,6 @@ export function PollsManagement() {
                     <span className="text-xs font-bold text-stone-600 uppercase tracking-wider group-hover:text-stone-900 transition-colors">Homepage</span>
                   </label>
                 </div>
-              </div>
 
               <div className="pt-6 border-t border-stone-100 flex gap-4">
                 <button

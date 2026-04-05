@@ -18,6 +18,7 @@ interface Poll {
   totalVotes: number;
   active: boolean;
   endDate?: string;
+  type: 'poll' | 'election';
 }
 
 export function PollVoting() {
@@ -221,11 +222,15 @@ export function PollVoting() {
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-12 h-12 bg-stone-900 text-white rounded-2xl flex items-center justify-center">
-                <Vote className="w-6 h-6" />
+                {poll.type === 'election' ? <Lock className="w-6 h-6" /> : <Vote className="w-6 h-6" />}
               </div>
               <div>
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Votazione Soci</span>
-                <h1 className="text-2xl font-serif text-stone-900">Esprimi la tua preferenza</h1>
+                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">
+                  {poll.type === 'election' ? 'Votazione Interna Soci' : 'Sondaggio Pubblico'}
+                </span>
+                <h1 className="text-2xl font-serif text-stone-900">
+                  {poll.type === 'election' ? 'Esprimi la tua preferenza' : 'La tua opinione conta'}
+                </h1>
               </div>
             </div>
 
@@ -247,28 +252,41 @@ export function PollVoting() {
                   <p className="text-sm font-bold uppercase tracking-wide">Il tuo voto è stato registrato in modo anonimo</p>
                 </div>
                 
-                <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4">Risultati in tempo reale</h3>
-                <div className="space-y-4">
-                  {poll.options.map((option) => {
-                    const percentage = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0;
-                    return (
-                      <div key={option.id} className="space-y-2">
-                        <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-                          <span className="text-stone-600">{option.text}</span>
-                          <span className="text-stone-900">{percentage}%</span>
-                        </div>
-                        <div className="h-3 bg-stone-100 rounded-full overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${percentage}%` }}
-                            transition={{ duration: 1, ease: "easeOut" }}
-                            className="h-full bg-stone-900"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {(!poll.active || (poll.endDate && new Date(poll.endDate) < new Date())) ? (
+                  <>
+                    <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4">Risultati Finali</h3>
+                    <div className="space-y-4">
+                      {poll.options.map((option) => {
+                        const percentage = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0;
+                        return (
+                          <div key={option.id} className="space-y-2">
+                            <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+                              <span className="text-stone-600">{option.text}</span>
+                              <span className="text-stone-900">{percentage}%</span>
+                            </div>
+                            <div className="h-3 bg-stone-100 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percentage}%` }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                                className="h-full bg-stone-900"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-12 text-center bg-stone-50 rounded-3xl border border-stone-100">
+                    <div className="w-16 h-16 bg-white text-stone-300 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Lock className="w-8 h-8" />
+                    </div>
+                    <p className="text-stone-500 font-medium px-6">
+                      I risultati saranno visibili al termine della votazione.
+                    </p>
+                  </div>
+                )}
                 
                 <div className="pt-8 mt-8 border-t border-stone-100 text-center">
                   <p className="text-stone-400 text-xs italic mb-6">Grazie per aver partecipato alla vita dell'associazione.</p>
