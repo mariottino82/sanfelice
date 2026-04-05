@@ -1,7 +1,7 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Vote, CheckCircle2, AlertCircle, Loader2, ArrowLeft, LogIn, Mail, Lock, Send } from 'lucide-react';
+import { Vote, CheckCircle2, AlertCircle, Loader2, ArrowLeft, LogIn, Mail, Lock, Send, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PollOption {
@@ -23,6 +23,9 @@ interface Poll {
 
 export function PollVoting() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  
   const navigate = useNavigate();
   const [poll, setPoll] = React.useState<Poll | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -30,6 +33,7 @@ export function PollVoting() {
   const [selectedOptionIndex, setSelectedOptionIndex] = React.useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [hasVoted, setHasVoted] = React.useState(false);
+  const [tokenMemberName, setTokenMemberName] = React.useState<string | null>(null);
   
   // Auth state
   const [user, setUser] = React.useState<any>(() => {
@@ -42,18 +46,30 @@ export function PollVoting() {
   const fetchPoll = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/polls/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPoll(data);
-        
-        // Check if user already voted
-        const userIdentifier = user?.email || user?.username;
-        if (userIdentifier && data.votes && Array.isArray(data.votes) && data.votes.includes(userIdentifier)) {
-          setHasVoted(true);
+      if (token) {
+        const response = await fetch(`/api/polls/${id}/token-info/${token}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPoll(data.poll);
+          setTokenMemberName(data.memberName);
+        } else {
+          const data = await response.json();
+          setError(data.error || 'Link di voto non valido o già utilizzato');
         }
       } else {
-        setError('Sondaggio non trovato o non più attivo');
+        const response = await fetch(`/api/polls/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPoll(data);
+          
+          // Check if user already voted
+          const userIdentifier = user?.email || user?.username;
+          if (userIdentifier && data.votes && Array.isArray(data.votes) && data.votes.includes(userIdentifier)) {
+            setHasVoted(true);
+          }
+        } else {
+          setError('Sondaggio non trovato o non più attivo');
+        }
       }
     } catch (error) {
       console.error('Error fetching poll:', error);
@@ -61,7 +77,7 @@ export function PollVoting() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, user]);
+  }, [id, user, token]);
 
   React.useEffect(() => {
     fetchPoll();
@@ -92,23 +108,26 @@ export function PollVoting() {
   };
 
   const handleVote = async () => {
-    if (selectedOptionIndex === null || !poll || !user) return;
+    if (selectedOptionIndex === null || !poll) return;
+    if (!token && !user) return;
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/polls/${poll.id}/vote`, {
+      const url = token ? `/api/polls/${poll.id}/vote-with-token` : `/api/polls/${poll.id}/vote`;
+      const body = token 
+        ? { token, optionIndex: selectedOptionIndex }
+        : { optionIndex: selectedOptionIndex, email: user.email || user.username };
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          optionIndex: selectedOptionIndex,
-          email: user.email || user.username 
-        })
+        body: JSON.stringify(body)
       });
 
       if (response.ok) {
         setHasVoted(true);
         toast.success('Voto registrato con successo!');
-        fetchPoll(); // Refresh to show results
+        if (!token) fetchPoll(); // Refresh to show results if logged in
       } else {
         const data = await response.json();
         toast.error(data.error || 'Errore durante la votazione');
@@ -148,7 +167,7 @@ export function PollVoting() {
     );
   }
 
-  if (!user) {
+  if (!user && !token) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
         <motion.div
@@ -232,6 +251,12 @@ export function PollVoting() {
                 <h1 className="text-2xl font-serif text-stone-900">
                   {poll.type === 'election' ? 'Esprimi la tua preferenza' : 'La tua opinione conta'}
                 </h1>
+                {tokenMemberName && (
+                  <p className="text-xs text-stone-500 mt-1 flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    Votazione per: <span className="font-bold">{tokenMemberName}</span>
+                  </p>
+                )}
               </div>
             </div>
 

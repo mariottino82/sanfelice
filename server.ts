@@ -36,6 +36,7 @@ const emailUpload = multer({ storage: galleryStorage });
 
 import nodemailer from 'nodemailer';
 import { jsPDF } from 'jspdf';
+import crypto from 'crypto';
 
 async function startServer() {
   const app = express();
@@ -1041,6 +1042,134 @@ async function startServer() {
     } catch (error: any) {
       console.error('Error recording vote:', error);
       res.status(500).json({ error: 'Errore durante la registrazione del voto: ' + error.message });
+    }
+  });
+
+  // Token-based voting endpoints
+  app.get('/api/polls/:id/tokens', async (req, res) => {
+    try {
+      const pollId = req.params.id;
+      const members = await db.all('SELECT id, name, email, phone FROM members WHERE status = "attivo"');
+      const tokens = await db.all('SELECT * FROM voting_tokens WHERE pollId = ?', [pollId]);
+      
+      const result = members.map(m => {
+        const token = tokens.find(t => t.memberId === m.id);
+        return {
+          ...m,
+          token: token ? token.token : null,
+          used: token ? token.used : 0
+        };
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/polls/:id/generate-tokens', async (req, res) => {
+    try {
+      const pollId = req.params.id;
+      const members = await db.all('SELECT id FROM members WHERE status = "attivo"');
+      
+      for (const member of members) {
+        const existing = await db.get('SELECT token FROM voting_tokens WHERE pollId = ? AND memberId = ?', [pollId, member.id]);
+        if (!existing) {
+          const token = crypto.randomBytes(16).toString('hex');
+          await db.run(
+            'INSERT INTO voting_tokens (token, pollId, memberId, used, createdAt) VALUES (?, ?, ?, ?, ?)',
+            [token, pollId, member.id, 0, new Date().toISOString()]
+          );
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/polls/:id/token-info/:token', async (req, res) => {
+    try {
+      const { id, token } = req.params;
+      const tokenData = await db.get(
+        'SELECT vt.*, m.name as memberName FROM voting_tokens vt JOIN members m ON vt.memberId = m.id WHERE vt.token = ? AND vt.pollId = ?',
+        [token, id]
+      );
+      
+      if (!tokenData) {
+        return res.status(404).json({ error: 'Token non valido' });
+      }
+      
+      if (tokenData.used) {
+        return res.status(400).json({ error: 'Questo link di voto è già stato utilizzato' });
+      }
+      
+      const poll = await db.get('SELECT * FROM polls WHERE id = ?', [id]);
+      if (!poll || !poll.active) {
+        return res.status(400).json({ error: 'Sondaggio non attivo o non trovato' });
+      }
+      
+      res.json({
+        poll: {
+          id: poll.id,
+          question: poll.question,
+          options: JSON.parse(poll.options || '[]'),
+          type: poll.type
+        },
+        memberName: tokenData.memberName
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/polls/:id/vote-with-token', async (req, res) => {
+    const { id } = req.params;
+    const { token, optionIndex } = req.body;
+    
+    try {
+      const tokenData = await db.get('SELECT * FROM voting_tokens WHERE token = ? AND pollId = ?', [token, id]);
+      
+      if (!tokenData) {
+        return res.status(404).json({ error: 'Token non valido' });
+      }
+      
+      if (tokenData.used) {
+        return res.status(400).json({ error: 'Voto già registrato per questo link' });
+      }
+      
+      const poll = await db.get('SELECT * FROM polls WHERE id = ?', [id]);
+      if (!poll || !poll.active) {
+        return res.status(400).json({ error: 'Sondaggio non attivo' });
+      }
+      
+      const options = JSON.parse(poll.options || '[]');
+      if (optionIndex === undefined || optionIndex < 0 || optionIndex >= options.length) {
+        return res.status(400).json({ error: 'Opzione non valida' });
+      }
+      
+      // Update poll
+      options[optionIndex].votes = (options[optionIndex].votes || 0) + 1;
+      const currentTotalVotes = (poll.totalVotes || 0) + 1;
+      
+      // We don't need to add to poll.votes because we track it via voting_tokens
+      // But for consistency with the other voting method, we can add the member's ID or name
+      const voters = JSON.parse(poll.votes || '[]');
+      const member = await db.get('SELECT name FROM members WHERE id = ?', [tokenData.memberId]);
+      voters.push(member ? member.name : `TokenUser_${tokenData.memberId}`);
+
+      await db.run(
+        'UPDATE polls SET options = ?, votes = ?, totalVotes = ? WHERE id = ?',
+        [JSON.stringify(options), JSON.stringify(voters), currentTotalVotes, id]
+      );
+      
+      // Mark token as used
+      await db.run('UPDATE voting_tokens SET used = 1 WHERE token = ?', [token]);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Trash2, Edit2, CheckCircle2, XCircle, BarChart3, Share2, Copy, ExternalLink, Save, X, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, CheckCircle2, XCircle, BarChart3, Share2, Copy, ExternalLink, Save, X, Loader2, MessageCircle, User, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PollOption {
@@ -27,6 +27,10 @@ export function PollsManagement() {
   const [editingPoll, setEditingPoll] = React.useState<Partial<Poll> | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [pollToDelete, setPollToDelete] = React.useState<number | null>(null);
+  const [showTokenModal, setShowTokenModal] = React.useState<number | null>(null);
+  const [memberTokens, setMemberTokens] = React.useState<any[]>([]);
+  const [isGeneratingTokens, setIsGeneratingTokens] = React.useState(false);
+  const [isLoadingTokens, setIsLoadingTokens] = React.useState(false);
 
   const fetchPolls = async () => {
     setIsLoading(true);
@@ -47,6 +51,52 @@ export function PollsManagement() {
   React.useEffect(() => {
     fetchPolls();
   }, []);
+
+  const fetchMemberTokens = async (pollId: number) => {
+    setIsLoadingTokens(true);
+    try {
+      const response = await fetch(`/api/polls/${pollId}/tokens`);
+      if (response.ok) {
+        const data = await response.json();
+        setMemberTokens(data);
+      }
+    } catch (error) {
+      console.error('Error fetching tokens:', error);
+      toast.error('Errore nel caricamento dei token');
+    } finally {
+      setIsLoadingTokens(false);
+    }
+  };
+
+  const generateTokens = async (pollId: number) => {
+    setIsGeneratingTokens(true);
+    try {
+      const response = await fetch(`/api/polls/${pollId}/generate-tokens`, { method: 'POST' });
+      if (response.ok) {
+        toast.success('Token generati per tutti i soci attivi');
+        fetchMemberTokens(pollId);
+      }
+    } catch (error) {
+      console.error('Error generating tokens:', error);
+      toast.error('Errore nella generazione dei token');
+    } finally {
+      setIsGeneratingTokens(false);
+    }
+  };
+
+  const copyWhatsAppLink = (pollId: number, token: string, memberName: string) => {
+    const link = `${window.location.origin}/vota/${pollId}?token=${token}`;
+    const text = `Ciao ${memberName}, ecco il tuo link unico e sicuro per votare nel sondaggio dell'Associazione Pro San Felice: ${link}. Il voto è anonimo e il link può essere usato una sola volta. Grazie!`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(link);
+    
+    // Open WhatsApp
+    const encodedText = encodeURIComponent(text);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    
+    toast.success('Link copiato e WhatsApp aperto');
+  };
 
   const handleSavePoll = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +230,16 @@ export function PollsManagement() {
                 </span>
               </div>
               <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowTokenModal(poll.id);
+                    fetchMemberTokens(poll.id);
+                  }}
+                  className="p-2 text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                  title="Gestisci Link WhatsApp"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => setEditingPoll(poll)}
                   className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-all"
@@ -419,6 +479,103 @@ export function PollsManagement() {
               >
                 Elimina
               </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* WhatsApp Tokens Modal */}
+      {showTokenModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+            onClick={() => setShowTokenModal(null)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            <div className="p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+              <div>
+                <h3 className="text-2xl font-serif text-stone-900">Link di Voto WhatsApp</h3>
+                <p className="text-stone-500 text-sm">Invia link unici ai soci per votare senza password</p>
+              </div>
+              <button
+                onClick={() => setShowTokenModal(null)}
+                className="text-stone-400 hover:text-stone-900 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-8 overflow-y-auto flex-1">
+              <div className="flex justify-between items-center mb-6">
+                <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">
+                  Lista Soci ({memberTokens.length})
+                </div>
+                <button
+                  onClick={() => generateTokens(showTokenModal)}
+                  disabled={isGeneratingTokens}
+                  className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-lg text-xs font-bold hover:bg-stone-800 transition-all disabled:opacity-50"
+                >
+                  {isGeneratingTokens ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  Genera/Aggiorna Tutti i Link
+                </button>
+              </div>
+
+              {isLoadingTokens ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-stone-300" />
+                </div>
+              ) : memberTokens.length === 0 ? (
+                <div className="text-center py-20 bg-stone-50 rounded-3xl border border-stone-100">
+                  <User className="w-12 h-12 text-stone-200 mx-auto mb-4" />
+                  <p className="text-stone-400 font-medium">Nessun socio attivo trovato.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {memberTokens.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100 group hover:bg-white hover:shadow-sm transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-stone-100 text-stone-400 group-hover:text-stone-900 transition-colors">
+                          <User className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-stone-900 text-sm">{m.name}</p>
+                          <p className="text-[10px] text-stone-500 uppercase tracking-wider">{m.phone || m.email || 'Nessun contatto'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        {m.used ? (
+                          <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Votato
+                          </span>
+                        ) : m.token ? (
+                          <button
+                            onClick={() => copyWhatsAppLink(showTokenModal, m.token, m.name)}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/10"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            Invia Link
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-stone-400 italic">Link non generato</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 bg-stone-50 border-t border-stone-100 text-center">
+              <p className="text-[10px] text-stone-400 italic">
+                I link sono unici per ogni socio e scadono dopo il primo utilizzo.
+              </p>
             </div>
           </motion.div>
         </div>
