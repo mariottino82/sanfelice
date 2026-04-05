@@ -925,6 +925,38 @@ async function startServer() {
     }
   });
 
+  app.get('/api/polls/:id', async (req, res) => {
+    try {
+      const poll = await db.get('SELECT * FROM polls WHERE id = ?', [req.params.id]);
+      if (!poll) return res.status(404).json({ error: 'Sondaggio non trovato' });
+      
+      let options = [];
+      let votes = [];
+      try {
+        options = JSON.parse(poll.options || '[]');
+      } catch (e) {
+        console.error(`Error parsing options for poll ${poll.id}:`, e);
+      }
+      try {
+        votes = JSON.parse(poll.votes || '[]');
+      } catch (e) {
+        console.error(`Error parsing votes for poll ${poll.id}:`, e);
+      }
+      
+      res.json({ 
+        ...poll, 
+        options,
+        votes,
+        totalVotes: poll.totalVotes || 0,
+        active: !!poll.active,
+        showOnHomepage: !!poll.showOnHomepage
+      });
+    } catch (error) {
+      console.error('Error fetching poll:', error);
+      res.status(500).json({ error: 'Errore durante il caricamento del sondaggio' });
+    }
+  });
+
   app.post('/api/polls', async (req, res) => {
     const { question, options, active, showOnHomepage, endDate } = req.body;
     console.log('Creating new poll:', { question, active, showOnHomepage, endDate });
@@ -964,17 +996,21 @@ async function startServer() {
   });
 
   app.post('/api/polls/:id/vote', async (req, res) => {
-    const { optionIndex, email, phone } = req.body;
-    console.log(`Vote request for poll ${req.params.id}:`, { optionIndex, email, phone });
+    const { optionIndex, email } = req.body;
+    console.log(`Vote request for poll ${req.params.id}:`, { optionIndex, email });
     try {
       const poll = await db.get('SELECT * FROM polls WHERE id = ?', [req.params.id]);
       if (poll) {
+        if (!poll.active) {
+          return res.status(400).json({ error: 'Questo sondaggio è chiuso' });
+        }
+
         const options = JSON.parse(poll.options || '[]');
-        const votes = JSON.parse(poll.votes || '[]');
+        const voters = JSON.parse(poll.votes || '[]'); // votes column stores the list of voters (emails)
         
         // Check if email already voted
-        if (email && votes.some((v: any) => v.email === email)) {
-          return res.status(400).json({ error: 'Hai già votato in questo sondaggio con questa email' });
+        if (email && voters.includes(email)) {
+          return res.status(400).json({ error: 'Hai già votato in questo sondaggio' });
         }
 
         if (optionIndex === undefined || optionIndex < 0 || optionIndex >= options.length) {
@@ -982,23 +1018,19 @@ async function startServer() {
           return res.status(400).json({ error: 'Indice opzione non valido' });
         }
 
-        // Update option vote count
+        // Update option vote count (Secretly)
         options[optionIndex].votes = (options[optionIndex].votes || 0) + 1;
 
-        // Add detailed vote
-        votes.push({
-          email,
-          phone,
-          date: new Date().toISOString(),
-          optionId: options[optionIndex].id,
-          optionText: options[optionIndex].text
-        });
+        // Add voter to the list (to prevent double voting, but without linking to the choice)
+        if (email) {
+          voters.push(email);
+        }
 
         const currentTotalVotes = (poll.totalVotes || 0) + 1;
 
         await db.run(
           'UPDATE polls SET options = ?, votes = ?, totalVotes = ? WHERE id = ?',
-          [JSON.stringify(options), JSON.stringify(votes), currentTotalVotes, req.params.id]
+          [JSON.stringify(options), JSON.stringify(voters), currentTotalVotes, req.params.id]
         );
         
         console.log(`Vote recorded successfully for poll ${req.params.id}. New total: ${currentTotalVotes}`);
@@ -1013,8 +1045,10 @@ async function startServer() {
   });
 
   app.delete('/api/polls/:id', async (req, res) => {
+    console.log(`Delete request for poll ${req.params.id}`);
     try {
-      await db.run('DELETE FROM polls WHERE id = ?', [req.params.id]);
+      const result = await db.run('DELETE FROM polls WHERE id = ?', [req.params.id]);
+      console.log(`Poll ${req.params.id} deleted. Changes:`, result.changes);
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting poll:', error);

@@ -31,6 +31,7 @@ import { Toaster } from 'sonner';
 import { NewsPage } from './pages/NewsPage';
 import { EventsPage } from './pages/EventsPage';
 import { GalleryPage } from './pages/GalleryPage';
+import { PollVoting } from './components/PollVoting';
 
 interface CommonElementsProps {
   showLoginModal: boolean;
@@ -501,6 +502,7 @@ export default function App() {
             <Footer socialLinks={socialLinks} setView={setView} />
           </>
         } />
+        <Route path="/vota/:id" element={<PollVoting />} />
       </Routes>
 
       <CommonElements 

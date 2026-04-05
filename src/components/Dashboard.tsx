@@ -4,6 +4,7 @@ import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, User
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
+import { PollsManagement } from './PollsManagement';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
@@ -2251,6 +2252,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             <>
               {[
                 { id: 'member-home', label: 'Home Socio', icon: UserCheck },
+                { id: 'poll', label: 'Sondaggi', icon: Vote },
                 { id: 'minutes', label: 'Verbali', icon: FileText },
                 { id: 'news', label: 'News', icon: Newspaper },
                 { id: 'gallery', label: 'Foto & Video', icon: ImageIcon },
@@ -2305,8 +2307,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               {activeTab === 'news' && 'News'}
               {activeTab === 'association' && 'Dati Associazione'}
               {activeTab === 'accounts' && 'Gestione Account'}
-              {activeTab === 'poll' && 'Gestione Sondaggi'}
-              {activeTab === 'bookings' && 'Prenotazioni & Biglietti'}
+            {activeTab === 'poll' && 'Sondaggi & Votazioni'}
+            {activeTab === 'bookings' && 'Prenotazioni & Biglietti'}
               {activeTab === 'email' && 'Email & Comunicazioni'}
               {activeTab === 'member-home' && `Benvenuto, ${user?.username}`}
               <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-2 py-1 rounded-full">v1.1.1</span>
@@ -2343,6 +2345,31 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   <p className="font-bold">Quota 2026 non versata</p>
                   <p className="text-sm">Ti ricordiamo di regolarizzare la tua quota associativa per l'anno in corso.</p>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Active Polls Notification for Members */}
+            {polls.filter((p: any) => p.active).length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl flex items-center justify-between gap-4 mb-8"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                    <Vote className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-emerald-900 font-bold">Sondaggi Attivi</h3>
+                    <p className="text-emerald-700 text-sm">Ci sono nuove votazioni disponibili. La tua opinione è importante!</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('poll')}
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 whitespace-nowrap"
+                >
+                  Partecipa ora
+                </button>
               </motion.div>
             )}
 
@@ -4408,332 +4435,61 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             )}
 
             {(isStaff || isMember) && activeTab === 'poll' && (
-              <div className="space-y-8">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-serif text-stone-900">
-                    {isStaff ? 'Gestione Sondaggi' : 'Risultati Sondaggi'}
-                  </h2>
-                  {isStaff && (
-                    <button 
-                      onClick={createNewPoll}
-                      className="flex items-center gap-2 bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:shadow-lg transition-all"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Nuovo Sondaggio
-                    </button>
-                  )}
-                </div>
-
-                {/* Poll List */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {polls.map((p: any) => (
-                    <div 
-                      key={p.id}
-                      onClick={() => selectPoll(p)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                        poll?.id === p.id 
-                          ? 'border-stone-900 bg-stone-900 text-white shadow-lg' 
-                          : 'border-stone-200 bg-white hover:border-stone-400'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                          p.active 
-                            ? (poll?.id === p.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
-                            : (poll?.id === p.id ? 'bg-stone-700 text-stone-400' : 'bg-stone-100 text-stone-500')
-                        }`}>
-                          {p.active ? 'Attivo' : 'Bozza'}
-                        </span>
-                        {p.showOnHomepage && (
-                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                            poll?.id === p.id ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            In Home
-                          </span>
-                        )}
-                      </div>
-                      <p className={`text-sm font-serif line-clamp-2 ${poll?.id === p.id ? 'text-white' : 'text-stone-900'}`}>
-                        {p.question || '(Senza domanda)'}
-                      </p>
-                      <div className="mt-4 flex justify-between items-center">
-                        <span className={`text-[10px] uppercase tracking-widest ${poll?.id === p.id ? 'text-stone-400' : 'text-stone-500'}`}>
-                          {p.votes?.length || 0} voti
-                        </span>
-                        {isStaff && (
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                savePoll({ ...p, active: !p.active });
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                                p.active 
-                                  ? (poll?.id === p.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500 text-white')
-                                  : (poll?.id === p.id ? 'bg-white/10 text-stone-400' : 'bg-stone-200 text-stone-500')
-                              }`}
-                            >
-                              {p.active ? 'Attiva' : 'Disattivata'}
-                            </button>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deletePoll(p);
-                              }}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                poll?.id === p.id ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-red-50 text-stone-400 hover:text-red-500'
-                              }`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-8 border-t border-stone-200">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-serif text-stone-900">
-                      {isStaff ? (poll?.id ? 'Modifica Sondaggio' : 'Nuovo Sondaggio') : 'Dettagli Risultati'}
-                    </h3>
-                    {isStaff && (
-                      <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-stone-400 uppercase">Visibile in Home:</span>
-                          <button 
-                            onClick={() => setPoll({ ...poll, showOnHomepage: !poll.showOnHomepage })}
-                            className={`w-10 h-5 rounded-full transition-colors relative ${poll.showOnHomepage ? 'bg-stone-900' : 'bg-stone-200'}`}
-                          >
-                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${poll.showOnHomepage ? 'left-6' : 'left-1'}`} />
-                          </button>
+              isStaff ? (
+                <PollsManagement />
+              ) : (
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {polls.filter((p: any) => p.active).length === 0 ? (
+                      <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border border-stone-100">
+                        <div className="w-16 h-16 bg-stone-50 text-stone-300 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <Vote className="w-8 h-8" />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-stone-400 uppercase">Stato:</span>
-                          <button 
-                            onClick={() => setPoll({ ...poll, active: !poll.active })}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                              poll.active ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'
-                            }`}
-                          >
-                            {poll.active ? 'Attivo' : 'Disattivato'}
-                          </button>
-                        </div>
-                        {poll?.id && (
-                          <button 
-                            onClick={() => setPollToDelete(poll)}
-                            className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
-                            title="Elimina Sondaggio"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                      {isStaff ? (
-                        <div className="p-8 bg-stone-50 rounded-3xl border border-stone-200">
-                        <h3 className="font-serif text-lg text-stone-900 mb-6">Configurazione Domanda</h3>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Testo della Domanda</label>
-                            <textarea 
-                              value={poll.question}
-                              onChange={(e) => setPoll({ ...poll, question: e.target.value })}
-                              placeholder="Cosa ne pensi delle nuove attività dell'associazione?"
-                              className="w-full px-4 py-3 rounded-2xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all h-24"
-                            />
-                          </div>
-                          
-                          <div className="space-y-4">
-                            <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Opzioni di Risposta</label>
-                            {poll.options.map((option: any) => (
-                              <div key={option.id} className="flex gap-2">
-                                <input 
-                                  type="text"
-                                  value={option.text}
-                                  onChange={(e) => {
-                                    const updated = poll.options.map((o: any) => o.id === option.id ? { ...o, text: e.target.value } : o);
-                                    setPoll({ ...poll, options: updated });
-                                  }}
-                                  className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm"
-                                />
-                                <button 
-                                  onClick={() => {
-                                    const updated = poll.options.filter((o: any) => o.id !== option.id);
-                                    setPoll({ ...poll, options: updated });
-                                  }}
-                                  className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors"
-                                >
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              </div>
-                            ))}
-                            <form 
-                              onSubmit={(e) => {
-                                e.preventDefault();
-                                const formData = new FormData(e.currentTarget);
-                                const text = formData.get('option_text') as string;
-                                const newOption = { id: Date.now() + Math.random(), text };
-                                setPoll({ ...poll, options: [...poll.options, newOption] });
-                                e.currentTarget.reset();
-                              }}
-                              className="flex gap-2"
-                            >
-                              <input name="option_text" placeholder="Aggiungi opzione..." className="flex-1 px-4 py-2 rounded-xl border border-stone-200 text-sm" required />
-                              <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-xl text-sm font-bold">
-                                Aggiungi
-                              </button>
-                            </form>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Data Termine Sondaggio (Opzionale)</label>
-                              <input 
-                                type="datetime-local"
-                                value={poll.endDate ? poll.endDate.slice(0, 16) : ''}
-                                onChange={(e) => setPoll({ ...poll, endDate: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                                className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
-                              />
-                              <p className="text-[10px] text-stone-400 mt-1 ml-1">Dopo questa data, il sondaggio mostrerà solo i risultati per 5 giorni prima di sparire dalla home.</p>
-                            </div>
-                          </div>
-
-                          <div className="pt-6 border-t border-stone-100 flex justify-end">
-                            <button 
-                              onClick={async () => {
-                                try {
-                                  const success = await savePoll(poll);
-                                  if (success) {
-                                    setNotification({ message: 'Sondaggio salvato con successo!', type: 'success' });
-                                  }
-                                } catch (err: any) {
-                                  setNotification({ message: 'Errore durante il salvataggio: ' + err.message, type: 'error' });
-                                }
-                              }}
-                              className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:shadow-lg transition-all active:scale-95"
-                            >
-                              Salva Modifiche Sondaggio
-                            </button>
-                          </div>
-                        </div>
+                        <p className="text-stone-400 font-medium">Non ci sono sondaggi attivi al momento.</p>
                       </div>
                     ) : (
-                      <div className="p-8 bg-stone-50 rounded-3xl border border-stone-200">
-                        <h3 className="font-serif text-lg text-stone-900 mb-6">Dettagli Sondaggio</h3>
-                        <div className="space-y-6">
-                          <div>
-                            <p className="text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Domanda</p>
-                            <p className="text-xl font-serif text-stone-900 bg-white p-6 rounded-2xl border border-stone-100">{poll.question}</p>
-                          </div>
-                          <div className="space-y-3">
-                            <p className="text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Opzioni</p>
-                            {poll.options.map((option: any) => (
-                              <div key={option.id} className="p-4 bg-white rounded-xl border border-stone-100 text-sm text-stone-700">
-                                {option.text}
+                      polls.filter((p: any) => p.active).map((p: any) => {
+                        const hasVoted = p.votes?.includes(user.email);
+                        return (
+                          <motion.div
+                            key={p.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white p-8 rounded-[2.5rem] border border-stone-100 shadow-sm hover:shadow-md transition-all group"
+                          >
+                            <div className="flex justify-between items-start mb-6">
+                              <div className="w-12 h-12 bg-stone-50 text-stone-900 rounded-2xl flex items-center justify-center group-hover:bg-stone-900 group-hover:text-white transition-all">
+                                <Vote className="w-6 h-6" />
                               </div>
-                            ))}
-                          </div>
-                          {poll.endDate && (
-                            <div>
-                              <p className="text-xs font-bold text-stone-500 uppercase mb-2 ml-1">Data Termine</p>
-                              <p className="text-sm text-stone-700">{new Date(poll.endDate).toLocaleString('it-IT')}</p>
+                              {hasVoted && (
+                                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" /> Hai votato
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="p-8 bg-stone-900 rounded-3xl text-white">
-                        <h3 className="font-serif text-lg mb-6">Risultati in tempo reale</h3>
-                        <div className="space-y-6">
-                          {poll.options.map((option: any) => {
-                            const optionVotes = poll.votes?.filter((v: any) => v.optionId === option.id).length || 0;
-                            const totalVotes = poll.votes?.length || 0;
-                            const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
+                            <h3 className="text-xl font-serif text-stone-900 mb-4 leading-tight">{p.question}</h3>
+                            {p.endDate && (
+                              <p className="text-stone-400 text-xs mb-8">Scade il: {new Date(p.endDate).toLocaleDateString('it-IT')}</p>
+                            )}
                             
-                            return (
-                              <div key={option.id} className="space-y-2">
-                                <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-                                  <span className="text-stone-400">{option.text}</span>
-                                  <span>{percentage}%</span>
-                                </div>
-                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${percentage}%` }}
-                                    className="h-full bg-white"
-                                  />
-                                </div>
-                                <p className="text-[10px] text-stone-500">{optionVotes} voti</p>
-                              </div>
-                            );
-                          })}
-                          {poll.options.length === 0 && (
-                            <p className="text-stone-500 text-sm italic text-center py-4">Nessuna opzione configurata</p>
-                          )}
-                        </div>
-                        <div className="mt-8 pt-8 border-t border-white/10 flex items-center justify-between">
-                          <p className="text-xs text-stone-400">Totale votanti: <span className="text-white font-bold">{poll.votes?.length || 0}</span></p>
-                          {poll.votes?.length > 0 && (
-                            <button 
-                              onClick={() => {
-                                const headers = ['Email', 'Cellulare', 'Opzione Scelta', 'Data'];
-                                const csvContent = [
-                                  headers.join(','),
-                                  ...poll.votes.map((v: any) => {
-                                    const option = poll.options.find((o: any) => o.id === v.optionId);
-                                    return [
-                                      `"${v.email}"`,
-                                      `"${v.phone}"`,
-                                      `"${option?.text || 'Sconosciuta'}"`,
-                                      `"${new Date(v.date).toLocaleString('it-IT')}"`
-                                    ].join(',');
-                                  })
-                                ].join('\n');
-                                
-                                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                                const link = document.createElement('a');
-                                link.href = URL.createObjectURL(blob);
-                                link.setAttribute('download', `risultati_sondaggio_${poll.id}.csv`);
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-white transition-colors flex items-center gap-1.5"
+                            <button
+                              onClick={() => window.open(`/vota/${p.id}`, '_blank')}
+                              className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                                hasVoted 
+                                  ? 'bg-stone-100 text-stone-600 hover:bg-stone-200' 
+                                  : 'bg-stone-900 text-white hover:bg-stone-800 shadow-lg shadow-stone-900/20'
+                              }`}
                             >
-                              <Download className="w-3 h-3" />
-                              Esporta CSV
+                              {hasVoted ? 'Vedi Risultati' : 'Vota Ora'}
+                              <ExternalLink className="w-4 h-4" />
                             </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="p-6 bg-white border border-stone-200 rounded-3xl shadow-sm">
-                        <h3 className="font-serif text-lg text-stone-900 mb-4">Dettaglio Votanti</h3>
-                        <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                          {poll.votes?.map((vote: any) => (
-                            <div key={`${vote.email}-${vote.date}`} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
-                              <p className="text-xs font-bold text-stone-900 truncate">{vote.email}</p>
-                              <p className="text-[10px] text-stone-500">{vote.phone}</p>
-                              <p className="text-[10px] text-stone-400 mt-1">{new Date(vote.date).toLocaleString('it-IT')}</p>
-                            </div>
-                          ))}
-                          {(!poll.votes || poll.votes.length === 0) && (
-                            <p className="text-stone-400 text-xs italic text-center py-4">Nessun voto registrato</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                          </motion.div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
-              </div>
+              )
             )}
 
             {isStaff && activeTab === 'email' && (
