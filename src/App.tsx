@@ -414,14 +414,6 @@ export default function App() {
     ]
   };
 
-  if (isLoggedIn) {
-    return <Dashboard user={user} onLogout={() => { 
-      setIsLoggedIn(false); 
-      setUser(null); 
-      localStorage.removeItem('session_user');
-    }} />;
-  }
-
   if (view === 'privacy') {
     return <PrivacyPolicy onBack={() => setView('home')} />;
   }
@@ -446,31 +438,17 @@ export default function App() {
     );
   }
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUser(null);
+    localStorage.removeItem('session_user');
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 font-sans text-stone-900 selection:bg-stone-200">
       <Toaster position="top-right" richColors />
       <Routes>
-        <Route path="/" element={
-          <>
-            <SEO schema={mainSchema} />
-            <Navbar 
-              onLoginClick={() => setShowLoginModal(true)} 
-              onRegisterClick={() => setShowRegistrationModal(true)} 
-              onDonationClick={() => setShowDonationModal(true)}
-            />
-            <main>
-              <Hero />
-              <LiveStreamSection />
-              <SponsorsSection />
-              <PollSection />
-              <LotterySection />
-              <NewsSection onNewsClick={(item) => setSelectedNews(item)} />
-              <EventsSection />
-              <GallerySection />
-            </main>
-            <Footer socialLinks={socialLinks} setView={setView} />
-          </>
-        } />
+        <Route path="/vota/:id" element={<PollVoting />} />
         <Route path="/news" element={
           <>
             <NewsPage 
@@ -502,7 +480,32 @@ export default function App() {
             <Footer socialLinks={socialLinks} setView={setView} />
           </>
         } />
-        <Route path="/vota/:id" element={<PollVoting />} />
+        <Route path="/" element={
+          isLoggedIn ? (
+            <Dashboard user={user} onLogout={handleLogout} />
+          ) : (
+            <>
+              <SEO schema={mainSchema} />
+              <Navbar 
+                onLoginClick={() => setShowLoginModal(true)} 
+                onRegisterClick={() => setShowRegistrationModal(true)} 
+                onDonationClick={() => setShowDonationModal(true)}
+              />
+              <main>
+                <Hero />
+                <LiveStreamSection />
+                <SponsorsSection />
+                <PollSection />
+                <LotterySection />
+                <NewsSection onNewsClick={(item) => setSelectedNews(item)} />
+                <EventsSection />
+                <GallerySection />
+              </main>
+              <Footer socialLinks={socialLinks} setView={setView} />
+            </>
+          )
+        } />
+        {isLoggedIn && <Route path="*" element={<Dashboard user={user} onLogout={handleLogout} />} />}
       </Routes>
 
       <CommonElements 

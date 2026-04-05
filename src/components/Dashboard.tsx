@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
@@ -2233,8 +2234,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <a
-                    href={`/vota/${pendingVotePoll.id}`}
+                  <Link
+                    to={`/vota/${pendingVotePoll.id}`}
                     onClick={() => {
                       setShowVoteModal(false);
                       setHasDismissedVoteModal(true);
@@ -2243,7 +2244,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   >
                     Vota Ora
                     <ArrowRight className="w-5 h-5" />
-                  </a>
+                  </Link>
                   <button
                     onClick={() => {
                       setShowVoteModal(false);
