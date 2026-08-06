@@ -1542,12 +1542,12 @@ app.get('/api/contest-registrations', async (req, res) => {
 });
 
 app.post('/api/contest-registrations', async (req, res) => {
-  const { contestId, name, email, phone, isMinor, parentName, parentEmail, parentPhone, privacyAccepted } = req.body;
+  const { contestId, name, email, phone, songTitle, hasBackingTrack, maestroName, isMinor, parentName, parentEmail, parentPhone, privacyAccepted } = req.body;
   const date = new Date().toISOString();
   try {
     const result = await db.run(
-      'INSERT INTO contest_registrations (contestId, name, email, phone, isMinor, parentName, parentEmail, parentPhone, privacyAccepted, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [contestId, name, email, phone, isMinor ? 1 : 0, parentName, parentEmail, parentPhone, privacyAccepted ? 1 : 0, date]
+      'INSERT INTO contest_registrations (contestId, name, email, phone, songTitle, hasBackingTrack, maestroName, isMinor, parentName, parentEmail, parentPhone, privacyAccepted, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [contestId, name, email, phone, songTitle || null, hasBackingTrack || null, maestroName || null, isMinor ? 1 : 0, parentName, parentEmail, parentPhone, privacyAccepted ? 1 : 0, date]
     );
     res.json({ id: result.lastID });
   } catch (err: any) {

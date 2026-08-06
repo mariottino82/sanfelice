@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { BookingModal } from './BookingModal';
 import { TicketView } from './TicketView';
 import { EventDetailModal } from './EventDetailModal';
+import { ContestRegistrationModal } from './ContestRegistrationModal';
 
 export function EventsSection() {
   const [events, setEvents] = React.useState<any[]>([]);
@@ -13,8 +14,10 @@ export function EventsSection() {
   const [bookingEvents, setBookingEvents] = React.useState<any[]>([]);
   const [selectedBookingEvent, setSelectedBookingEvent] = React.useState<any>(null);
   const [selectedEventForDetail, setSelectedEventForDetail] = React.useState<any>(null);
+  const [selectedContestForRegistration, setSelectedContestForRegistration] = React.useState<any>(null);
   const [showBookingModal, setShowBookingModal] = React.useState(false);
   const [showEventDetailModal, setShowEventDetailModal] = React.useState(false);
+  const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState(false);
   const [showTicketView, setShowTicketView] = React.useState(false);
   const [lastBooking, setLastBooking] = React.useState<any>(null);
 
@@ -88,12 +91,12 @@ export function EventsSection() {
   if (allEvents.length === 0) return null;
 
   return (
-    <section id="eventi" className="py-24 bg-white">
+    <section id="eventi" className="py-16 sm:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-end mb-12">
+        <div className="flex justify-between items-end mb-8 sm:mb-12">
           <div>
-            <h2 className="text-sm uppercase tracking-widest text-stone-500 font-semibold mb-2">Le nostre iniziative</h2>
-            <h3 className="text-4xl font-serif text-stone-900">Eventi & Attività</h3>
+            <h2 className="text-xs sm:text-sm uppercase tracking-widest text-stone-500 font-semibold mb-1 sm:mb-2">Le nostre iniziative</h2>
+            <h3 className="text-2xl sm:text-4xl font-serif text-stone-900">Eventi & Attività</h3>
           </div>
           <Link 
             to="/eventi"
@@ -103,76 +106,89 @@ export function EventsSection() {
           </Link>
         </div>
 
-        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 md:gap-8 pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
-          {allEvents.map((item, index) => (
-            <motion.div
-              key={`${item.type}-${item.id}`}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              viewport={{ once: true }}
-              onClick={() => {
-                setSelectedEventForDetail(item);
-                setShowEventDetailModal(true);
-              }}
-              className="min-w-[85vw] md:min-w-0 snap-center flex-shrink-0 bg-stone-50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer"
-            >
-              <div className="h-56 overflow-hidden relative">
-                <img
-                  src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
-                  alt={item.title}
-                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
-                    (new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
-                  }`}
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                  <span className={`
-                    px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white
-                    ${item.type === 'booking' ? 'bg-amber-500' : ''}
-                    ${item.type === 'lottery' ? 'bg-emerald-500' : ''}
-                    ${item.type === 'contest' ? 'bg-indigo-500' : ''}
-                    ${item.type === 'news_event' ? 'bg-stone-900' : ''}
-                  `}>
-                    {item.type === 'booking' && 'Prenotazione'}
-                    {item.type === 'lottery' && 'Lotteria'}
-                    {item.type === 'contest' && 'Concorso'}
-                    {item.type === 'news_event' && 'Evento'}
-                  </span>
-                  {new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
-                    <span className="px-3 py-1 bg-stone-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
-                      Terminato
-                    </span>
-                  )}
+        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-5 md:gap-8 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
+          {allEvents.map((item, index) => {
+            const isContest = item.type === 'contest';
+            const now = new Date();
+            const contestStart = item.startDate ? new Date(item.startDate) : null;
+            const contestEnd = item.endDate ? new Date(item.endDate) : null;
+            if (contestStart) contestStart.setHours(0, 0, 0, 0);
+            if (contestEnd) contestEnd.setHours(23, 59, 59, 999);
+            
+            const isContestActive = isContest && (!contestStart || now >= contestStart) && (!contestEnd || now <= contestEnd);
+
+            return (
+              <motion.div
+                key={`${item.type}-${item.id}`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                viewport={{ once: true }}
+                onClick={() => {
+                  setSelectedEventForDetail(item);
+                  setShowEventDetailModal(true);
+                }}
+                className="min-w-[85vw] sm:min-w-[320px] md:min-w-0 snap-center flex-shrink-0 bg-stone-50 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="h-48 sm:h-56 overflow-hidden relative">
+                    <img
+                      src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
+                      alt={item.title}
+                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                        (new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
+                      }`}
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-1.5 sm:gap-2">
+                      <span className={`
+                        px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white shadow-sm
+                        ${item.type === 'booking' ? 'bg-amber-500' : ''}
+                        ${item.type === 'lottery' ? 'bg-emerald-500' : ''}
+                        ${item.type === 'contest' ? 'bg-indigo-600' : ''}
+                        ${item.type === 'news_event' ? 'bg-stone-900' : ''}
+                      `}>
+                        {item.type === 'booking' && 'Prenotazione'}
+                        {item.type === 'lottery' && 'Lotteria'}
+                        {item.type === 'contest' && 'Concorso'}
+                        {item.type === 'news_event' && 'Evento'}
+                      </span>
+                      {new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
+                        <span className="px-2.5 py-1 bg-stone-900 text-white rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shadow-lg">
+                          Terminato
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-5 sm:p-6 md:p-8">
+                    <div className="flex items-center gap-3 text-xs text-stone-500 mb-3">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                        {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
+                      </span>
+                      {item.location && (
+                        <span className="flex items-center gap-1 truncate">
+                          <MapPin className="w-3.5 h-3.5 text-stone-400" />
+                          {item.location}
+                        </span>
+                      )}
+                    </div>
+
+                    <h4 className="text-xl sm:text-2xl font-serif text-stone-900 mb-2 sm:mb-3 leading-tight line-clamp-2">{item.title}</h4>
+                    
+                    <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-6">
+                      {item.description || item.excerpt || item.content}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="p-8">
-                <div className="flex items-center gap-4 text-xs text-stone-500 mb-4">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
-                  </span>
-                  {item.location && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" />
-                      {item.location}
-                    </span>
-                  )}
-                </div>
-
-                <h4 className="text-2xl font-serif text-stone-900 mb-4 leading-tight">{item.title}</h4>
-                
-                <p className="text-stone-600 text-sm leading-relaxed line-clamp-3 mb-8">
-                  {item.description || item.excerpt || item.content}
-                </p>
-
-                <div className="flex items-center justify-between pt-6 border-t border-stone-200">
+                <div className="px-5 pb-5 sm:px-6 sm:pb-6 md:px-8 md:pb-8 pt-4 border-t border-stone-200/80 flex items-center justify-between">
                   {item.type === 'booking' ? (
                     new Date(item.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
-                      <span className="text-stone-500 font-bold text-xs uppercase tracking-widest">Iniziativa terminata</span>
+                      <span className="text-stone-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Iniziativa terminata</span>
                     ) : item.soldTickets >= item.totalTickets ? (
-                      <span className="text-red-500 font-bold text-xs uppercase tracking-widest">Sold Out</span>
+                      <span className="text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Sold Out</span>
                     ) : (
                       <button 
                         onClick={(e) => {
@@ -180,10 +196,27 @@ export function EventsSection() {
                           setSelectedBookingEvent(item);
                           setShowBookingModal(true);
                         }}
-                        className="flex items-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10"
+                        className="flex items-center gap-1.5 bg-stone-900 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10"
                       >
-                        Prenota Ora <Ticket className="w-4 h-4" />
+                        Prenota Ora <Ticket className="w-3.5 h-3.5" />
                       </button>
+                    )
+                  ) : isContest ? (
+                    isContestActive ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedContestForRegistration(item);
+                          setShowContestRegistrationModal(true);
+                        }}
+                        className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20"
+                      >
+                        Iscriviti
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
+                        Scopri di più <ArrowRight className="w-4 h-4" />
+                      </div>
                     )
                   ) : (
                     <div className="flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
@@ -191,13 +224,10 @@ export function EventsSection() {
                     </div>
                   )}
 
-                  {item.type === 'lottery' && <Trophy className="w-5 h-5 text-amber-500" />}
-                  {item.type === 'contest' && <Sparkles className="w-5 h-5 text-indigo-500" />}
-                  {item.type === 'booking' && <Star className="w-5 h-5 text-amber-500 fill-amber-500" />}
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       </div>
 
@@ -206,6 +236,12 @@ export function EventsSection() {
         onClose={() => setShowBookingModal(false)}
         event={selectedBookingEvent}
         onSuccess={handleBookingSuccess}
+      />
+
+      <ContestRegistrationModal
+        isOpen={showContestRegistrationModal}
+        onClose={() => setShowContestRegistrationModal(false)}
+        contest={selectedContestForRegistration}
       />
 
       <TicketView 
@@ -222,7 +258,12 @@ export function EventsSection() {
           setSelectedBookingEvent(event);
           setShowBookingModal(true);
         }}
+        onRegisterContest={(contest) => {
+          setSelectedContestForRegistration(contest);
+          setShowContestRegistrationModal(true);
+        }}
       />
     </section>
   );
 }
+

@@ -7,6 +7,7 @@ import { SEO } from '../components/SEO';
 import { BookingModal } from '../components/BookingModal';
 import { TicketView } from '../components/TicketView';
 import { EventDetailModal } from '../components/EventDetailModal';
+import { ContestRegistrationModal } from '../components/ContestRegistrationModal';
 
 export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: any) {
   const [events, setEvents] = React.useState<any[]>([]);
@@ -15,8 +16,10 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
   const [bookingEvents, setBookingEvents] = React.useState<any[]>([]);
   const [selectedBookingEvent, setSelectedBookingEvent] = React.useState<any>(null);
   const [selectedEventForDetail, setSelectedEventForDetail] = React.useState<any>(null);
+  const [selectedContestForRegistration, setSelectedContestForRegistration] = React.useState<any>(null);
   const [showBookingModal, setShowBookingModal] = React.useState(false);
   const [showEventDetailModal, setShowEventDetailModal] = React.useState(false);
+  const [showContestRegistrationModal, setShowContestRegistrationModal] = React.useState(false);
   const [showTicketView, setShowTicketView] = React.useState(false);
   const [lastBooking, setLastBooking] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
@@ -103,15 +106,15 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
         onDonationClick={onDonationClick}
       />
       
-      <main className="pt-32 pb-24">
+      <main className="pt-24 sm:pt-32 pb-16 sm:pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-12">
-            <Link to="/" className="inline-flex items-center gap-2 text-stone-500 hover:text-stone-900 transition-colors mb-6 group">
+          <div className="mb-8 sm:mb-12">
+            <Link to="/" className="inline-flex items-center gap-2 text-stone-500 hover:text-stone-900 transition-colors mb-4 sm:mb-6 group text-xs sm:text-sm font-medium">
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
               Torna alla Home
             </Link>
-            <h1 className="text-5xl font-serif text-stone-900 mb-4">Eventi & Manifestazioni</h1>
-            <p className="text-stone-600 max-w-2xl">
+            <h1 className="text-3xl sm:text-5xl font-serif text-stone-900 mb-3 sm:mb-4">Eventi & Manifestazioni</h1>
+            <p className="text-stone-600 text-sm sm:text-base max-w-2xl leading-relaxed">
               Partecipa alle nostre iniziative: sagre, feste tradizionali, concorsi e rassegne culturali. 
               Unisciti a noi per celebrare le tradizioni di Colle d'Anchise e del Molise.
             </p>
@@ -122,75 +125,88 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
               <div className="w-12 h-12 border-4 border-stone-200 border-t-stone-900 rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {allEvents.map((item, index) => (
-                <motion.div
-                  key={`${item.type}-${item.id}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={() => {
-                    setSelectedEventForDetail(item);
-                    setShowEventDetailModal(true);
-                  }}
-                  className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all group cursor-pointer border border-stone-100"
-                >
-                  <div className="h-64 overflow-hidden relative">
-                    <img
-                      src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
-                      alt={item.title}
-                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ${
-                        (new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
-                      }`}
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute top-4 left-4 flex flex-col gap-2">
-                      <span className={`
-                        px-3 py-1 bg-white/90 backdrop-blur-sm text-stone-900 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm
-                        ${item.type === 'booking' ? 'text-amber-600' : ''}
-                        ${item.type === 'lottery' ? 'text-emerald-600' : ''}
-                        ${item.type === 'contest' ? 'text-indigo-600' : ''}
-                        ${item.type === 'news_event' ? 'text-stone-900' : ''}
-                      `}>
-                        {item.type === 'booking' && 'Prenotazione'}
-                        {item.type === 'lottery' && 'Lotteria'}
-                        {item.type === 'contest' && 'Concorso'}
-                        {item.type === 'news_event' && 'Evento'}
-                      </span>
-                      {new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
-                        <span className="px-3 py-1 bg-stone-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
-                          Evento terminato
-                        </span>
-                      )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {allEvents.map((item, index) => {
+                const isContest = item.type === 'contest';
+                const now = new Date();
+                const contestStart = item.startDate ? new Date(item.startDate) : null;
+                const contestEnd = item.endDate ? new Date(item.endDate) : null;
+                if (contestStart) contestStart.setHours(0, 0, 0, 0);
+                if (contestEnd) contestEnd.setHours(23, 59, 59, 999);
+                
+                const isContestActive = isContest && (!contestStart || now >= contestStart) && (!contestEnd || now <= contestEnd);
+
+                return (
+                  <motion.div
+                    key={`${item.type}-${item.id}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    onClick={() => {
+                      setSelectedEventForDetail(item);
+                      setShowEventDetailModal(true);
+                    }}
+                    className="bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all group cursor-pointer border border-stone-100 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="h-48 sm:h-56 md:h-64 overflow-hidden relative">
+                        <img
+                          src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
+                          alt={item.title}
+                          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ${
+                            (new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
+                          }`}
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-1.5 sm:gap-2">
+                          <span className={`
+                            px-2.5 py-1 bg-white/90 backdrop-blur-sm text-stone-900 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shadow-sm
+                            ${item.type === 'booking' ? 'text-amber-600' : ''}
+                            ${item.type === 'lottery' ? 'text-emerald-600' : ''}
+                            ${item.type === 'contest' ? 'text-indigo-600' : ''}
+                            ${item.type === 'news_event' ? 'text-stone-900' : ''}
+                          `}>
+                            {item.type === 'booking' && 'Prenotazione'}
+                            {item.type === 'lottery' && 'Lotteria'}
+                            {item.type === 'contest' && 'Concorso'}
+                            {item.type === 'news_event' && 'Evento'}
+                          </span>
+                          {new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
+                            <span className="px-2.5 py-1 bg-stone-900 text-white rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shadow-lg">
+                              Evento terminato
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-5 sm:p-6 md:p-8">
+                        <div className="flex items-center gap-3 text-[11px] sm:text-xs text-stone-400 font-bold uppercase tracking-widest mb-3 sm:mb-4">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
+                          </span>
+                          {item.location && (
+                            <span className="flex items-center gap-1.5 truncate">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {item.location}
+                            </span>
+                          )}
+                        </div>
+
+                        <h2 className="text-xl sm:text-2xl font-serif text-stone-900 mb-3 sm:mb-4 leading-tight group-hover:text-stone-700 transition-colors line-clamp-2">{item.title}</h2>
+                        
+                        <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-6">
+                          {item.description || item.excerpt || item.content}
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-8">
-                    <div className="flex items-center gap-4 text-xs text-stone-400 font-bold uppercase tracking-widest mb-4">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
-                      </span>
-                      {item.location && (
-                        <span className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5" />
-                          {item.location}
-                        </span>
-                      )}
-                    </div>
-
-                    <h2 className="text-2xl font-serif text-stone-900 mb-4 leading-tight group-hover:text-stone-700 transition-colors">{item.title}</h2>
-                    
-                    <p className="text-stone-600 text-sm leading-relaxed line-clamp-3 mb-8">
-                      {item.description || item.excerpt || item.content}
-                    </p>
-
-                    <div className="flex items-center justify-between pt-6 border-t border-stone-100">
+                    <div className="p-5 sm:p-6 md:p-8 pt-0 flex items-center justify-between border-t border-stone-100 pt-4 mt-auto">
                       {item.type === 'booking' ? (
                         new Date(item.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
-                          <span className="text-stone-400 font-bold text-xs uppercase tracking-widest">Iniziativa terminata</span>
+                          <span className="text-stone-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Iniziativa terminata</span>
                         ) : item.soldTickets >= item.totalTickets ? (
-                          <span className="text-red-500 font-bold text-xs uppercase tracking-widest">Sold Out</span>
+                          <span className="text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Sold Out</span>
                         ) : (
                           <button 
                             onClick={(e) => {
@@ -198,26 +214,32 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
                               setSelectedBookingEvent(item);
                               setShowBookingModal(true);
                             }}
-                            className="flex items-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10"
+                            className="flex items-center gap-2 bg-stone-900 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10"
                           >
-                            Prenota Ora <Ticket className="w-4 h-4" />
+                            Prenota Ora <Ticket className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         )
+                      ) : isContest ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedContestForRegistration(item);
+                            setShowContestRegistrationModal(true);
+                          }}
+                          className="flex items-center gap-2 bg-indigo-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+                        >
+                          Iscriviti
+                        </button>
                       ) : (
                         <div className="flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
                           Scopri di più <ArrowRight className="w-4 h-4" />
                         </div>
                       )}
 
-                      <div className="flex gap-2">
-                        {item.type === 'lottery' && <Trophy className="w-5 h-5 text-amber-500" />}
-                        {item.type === 'contest' && <Sparkles className="w-5 h-5 text-indigo-500" />}
-                        {item.type === 'booking' && <Star className="w-5 h-5 text-amber-500 fill-amber-500" />}
-                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
               
               {allEvents.length === 0 && (
                 <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border border-dashed border-stone-200">
@@ -237,6 +259,12 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
         onSuccess={handleBookingSuccess}
       />
 
+      <ContestRegistrationModal
+        isOpen={showContestRegistrationModal}
+        onClose={() => setShowContestRegistrationModal(false)}
+        contest={selectedContestForRegistration}
+      />
+
       <TicketView 
         isOpen={showTicketView}
         onClose={() => setShowTicketView(false)}
@@ -251,7 +279,12 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
           setSelectedBookingEvent(event);
           setShowBookingModal(true);
         }}
+        onRegisterContest={(contest) => {
+          setSelectedContestForRegistration(contest);
+          setShowContestRegistrationModal(true);
+        }}
       />
     </div>
   );
 }
+

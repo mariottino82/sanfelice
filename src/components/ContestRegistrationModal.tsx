@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Trophy, Calendar, Euro, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { X, Trophy, Calendar, Euro, CheckCircle2, ShieldCheck, Music, UserCheck } from 'lucide-react';
 
 interface ContestRegistrationModalProps {
   isOpen: boolean;
@@ -157,25 +157,25 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
                     )}
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-3 md:space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-3 md:space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                      <div className="space-y-2 md:space-y-4">
+                      <div className="space-y-2 md:space-y-3">
                         <div>
-                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Nome e Cognome Partecipante</label>
-                          <input name="name" required className="w-full px-3 py-2 md:px-4 md:py-3 rounded-lg md:rounded-xl border border-stone-200 text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Nome e Cognome Partecipante *</label>
+                          <input name="name" required placeholder="Mario Rossi" className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl border border-stone-200 text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
                         </div>
                         <div>
-                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Email di Contatto</label>
-                          <input name="email" type="email" required className="w-full px-3 py-2 md:px-4 md:py-3 rounded-lg md:rounded-xl border border-stone-200 text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Email di Contatto *</label>
+                          <input name="email" type="email" required placeholder="mario@email.it" className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl border border-stone-200 text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
                         </div>
                         <div>
-                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Cellulare</label>
-                          <input name="phone" type="tel" required className="w-full px-3 py-2 md:px-4 md:py-3 rounded-lg md:rounded-xl border border-stone-200 text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Cellulare *</label>
+                          <input name="phone" type="tel" required placeholder="333 1234567" className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl border border-stone-200 text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
                         </div>
                       </div>
 
-                      <div className="space-y-2 md:space-y-4">
-                        <div className="p-3 md:p-4 bg-stone-50 rounded-xl md:rounded-2xl border border-stone-100 space-y-2 md:space-y-3">
+                      <div className="space-y-2 md:space-y-3">
+                        <div className="p-3 md:p-4 bg-stone-50 rounded-xl md:rounded-2xl border border-stone-100 space-y-2">
                           <div className="flex items-center gap-2 md:gap-3">
                             <input 
                               type="checkbox" 
@@ -191,7 +191,7 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
                             <motion.div 
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
-                              className="space-y-2 md:space-y-3 pt-2 border-t border-stone-200"
+                              className="space-y-2 pt-2 border-t border-stone-200"
                             >
                               <div>
                                 <label className="block text-[9px] md:text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Nome Genitore / Tutore</label>
@@ -205,17 +205,65 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
                           )}
                         </div>
 
-                        <div className="p-3 md:p-4 bg-stone-900 rounded-xl md:rounded-2xl text-white space-y-1.5 md:space-y-3">
+                        <div className="p-3 md:p-3.5 bg-stone-900 rounded-xl md:rounded-2xl text-white space-y-1">
                           <div className="flex items-center gap-2 text-stone-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest">
                             <Euro className="w-2.5 h-2.5 md:w-3 md:h-3" />
                             Quota di Partecipazione
                           </div>
-                          <p className="text-lg md:text-2xl font-serif">
+                          <p className="text-base md:text-xl font-serif">
                             {contest.cost > 0 ? `€ ${contest.cost}` : 'Gratuito'}
                           </p>
                           <p className="text-[8px] md:text-[10px] text-stone-400 leading-relaxed">
                             {contest.cost > 0 ? 'Il pagamento verrà richiesto dopo l\'approvazione dell\'iscrizione.' : 'Partecipazione gratuita aperta a tutti.'}
                           </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dettagli Brano, Base Musicale e Maestro */}
+                    <div className="p-3 md:p-4 bg-stone-50/80 rounded-xl md:rounded-2xl border border-stone-200/80 space-y-3">
+                      <div className="flex items-center gap-2 text-stone-900 font-bold text-xs md:text-sm">
+                        <Music className="w-4 h-4 text-stone-700" />
+                        <span>Dettagli Esibizione e Brani</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] md:text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-1 ml-1">
+                          Brano o Brani Portati *
+                        </label>
+                        <input 
+                          name="songTitle" 
+                          required 
+                          placeholder="es. Titolo del brano / Autore (o lista dei brani)" 
+                          className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl border border-stone-200 bg-white text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" 
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-1 ml-1">
+                            Base Musicale *
+                          </label>
+                          <select 
+                            name="hasBackingTrack" 
+                            required 
+                            defaultValue="Sì"
+                            className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl border border-stone-200 bg-white text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none cursor-pointer"
+                          >
+                            <option value="Sì">Sì (Canta su base musicale)</option>
+                            <option value="No">No (Acustico / Strumento dal vivo)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] md:text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-1 ml-1">
+                            Nome del Maestro
+                          </label>
+                          <input 
+                            name="maestroName" 
+                            placeholder="es. M° Mario Rossi (opzionale)" 
+                            className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl border border-stone-200 bg-white text-xs md:text-sm focus:ring-2 focus:ring-stone-900 outline-none" 
+                          />
                         </div>
                       </div>
                     </div>

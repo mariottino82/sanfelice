@@ -145,6 +145,9 @@ export async function getDb() {
       name TEXT,
       email TEXT,
       phone TEXT,
+      songTitle TEXT,
+      hasBackingTrack TEXT,
+      maestroName TEXT,
       isMinor INTEGER DEFAULT 0,
       parentName TEXT,
       parentEmail TEXT,
@@ -284,7 +287,10 @@ export async function getDb() {
     'CREATE TABLE IF NOT EXISTS visits (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT, deviceType TEXT, timestamp TEXT)',
     'CREATE TABLE IF NOT EXISTS donations (id INTEGER PRIMARY KEY AUTOINCREMENT, firstName TEXT, lastName TEXT, email TEXT, amount REAL, date TEXT, status TEXT DEFAULT "pending")',
     'CREATE TABLE IF NOT EXISTS contest_communications (id INTEGER PRIMARY KEY AUTOINCREMENT, contestId INTEGER, title TEXT, message TEXT, attachmentPath TEXT, recipients TEXT, sentAt TEXT, FOREIGN KEY(contestId) REFERENCES contests(id))',
-    'CREATE TABLE IF NOT EXISTS voting_tokens (token TEXT PRIMARY KEY, pollId INTEGER, memberId INTEGER, used INTEGER DEFAULT 0, createdAt TEXT, FOREIGN KEY(pollId) REFERENCES polls(id), FOREIGN KEY(memberId) REFERENCES members(id))'
+    'CREATE TABLE IF NOT EXISTS voting_tokens (token TEXT PRIMARY KEY, pollId INTEGER, memberId INTEGER, used INTEGER DEFAULT 0, createdAt TEXT, FOREIGN KEY(pollId) REFERENCES polls(id), FOREIGN KEY(memberId) REFERENCES members(id))',
+    'ALTER TABLE contest_registrations ADD COLUMN songTitle TEXT',
+    'ALTER TABLE contest_registrations ADD COLUMN hasBackingTrack TEXT',
+    'ALTER TABLE contest_registrations ADD COLUMN maestroName TEXT'
   ];
 
   for (const migration of migrations) {

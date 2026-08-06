@@ -940,7 +940,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     const regs = contestRegistrations.filter(r => r.contestId === contestId);
     if (!contest || regs.length === 0) return;
 
-    const headers = ['Nome', 'Email', 'Cellulare', 'Minorenne', 'Genitore', 'Email Genitore', 'Cellulare Genitore', 'Data'];
+    const headers = ['Nome', 'Email', 'Cellulare', 'Minorenne', 'Genitore', 'Email Genitore', 'Cellulare Genitore', 'Brano/Brani', 'Base Musicale', 'Maestro', 'Data'];
     const csvContent = [
       headers.join(','),
       ...regs.map(r => [
@@ -951,6 +951,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         `"${r.parentName || ''}"`,
         `"${r.parentEmail || ''}"`,
         `"${r.parentPhone || ''}"`,
+        `"${r.songTitle || ''}"`,
+        r.hasBackingTrack ? 'Sì' : 'No',
+        `"${r.maestroName || ''}"`,
         new Date(r.date).toLocaleDateString()
       ].join(','))
     ].join('\n');
@@ -5785,10 +5788,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 </div>
 
                 <div className="overflow-x-auto -mx-4 px-4">
-                  <table className="w-full text-left text-xs md:text-sm min-w-[600px]">
+                  <table className="w-full text-left text-xs md:text-sm min-w-[700px]">
                     <thead>
                       <tr className="text-stone-400 uppercase text-[9px] md:text-[10px] tracking-widest border-b border-stone-100">
                         <th className="pb-4 font-semibold">Partecipante</th>
+                        <th className="pb-4 font-semibold">Brani / Maestro</th>
                         <th className="pb-4 font-semibold">Contatti</th>
                         <th className="pb-4 font-semibold">Minorenne</th>
                         <th className="pb-4 font-semibold">Stato</th>
@@ -5803,6 +5807,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             <td className="py-3 md:py-4">
                               <p className="font-medium text-stone-900">{reg.name}</p>
                               <p className="text-[9px] md:text-[10px] text-stone-400 uppercase tracking-widest">{new Date(reg.date).toLocaleDateString()}</p>
+                            </td>
+                            <td className="py-3 md:py-4">
+                              <p className="text-stone-900 font-medium">{reg.songTitle || '-'}</p>
+                              <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5">
+                                {reg.hasBackingTrack !== undefined && reg.hasBackingTrack !== null && (
+                                  <span className={`px-1.5 py-0.2 rounded font-semibold ${reg.hasBackingTrack ? 'bg-blue-50 text-blue-700' : 'bg-stone-100 text-stone-600'}`}>
+                                    Base: {reg.hasBackingTrack ? 'Sì' : 'No'}
+                                  </span>
+                                )}
+                                {reg.maestroName && (
+                                  <span className="text-stone-500">M° {reg.maestroName}</span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-3 md:py-4">
                               <p className="text-stone-600">{reg.email}</p>
@@ -5849,7 +5866,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         ))}
                       {contestRegistrations.filter((r: any) => r.contestId === showRegistrationDetails.id).length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-12 text-center text-stone-400 italic text-xs md:text-sm">Nessun iscritto per questo concorso.</td>
+                          <td colSpan={6} className="py-12 text-center text-stone-400 italic text-xs md:text-sm">Nessun iscritto per questo concorso.</td>
                         </tr>
                       )}
                     </tbody>
