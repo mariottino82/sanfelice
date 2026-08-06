@@ -106,7 +106,7 @@ export function EventsSection() {
           </Link>
         </div>
 
-        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-5 md:gap-8 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
+        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
           {allEvents.map((item, index) => {
             const isContest = item.type === 'contest';
             const now = new Date();
@@ -128,10 +128,10 @@ export function EventsSection() {
                   setSelectedEventForDetail(item);
                   setShowEventDetailModal(true);
                 }}
-                className="min-w-[85vw] sm:min-w-[320px] md:min-w-0 snap-center flex-shrink-0 bg-stone-50 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer flex flex-col justify-between"
+                className="w-[82vw] max-w-[340px] sm:w-auto min-w-[270px] sm:min-w-[320px] md:min-w-0 snap-center flex-shrink-0 bg-stone-50 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer flex flex-col justify-between"
               >
-                <div>
-                  <div className="h-48 sm:h-56 overflow-hidden relative">
+                <div className="w-full">
+                  <div className="h-44 sm:h-56 overflow-hidden relative w-full">
                     <img
                       src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
                       alt={item.title}
@@ -161,29 +161,29 @@ export function EventsSection() {
                     </div>
                   </div>
 
-                  <div className="p-5 sm:p-6 md:p-8">
-                    <div className="flex items-center gap-3 text-xs text-stone-500 mb-3">
+                  <div className="p-4 sm:p-6 md:p-8">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-stone-500 mb-2 sm:mb-3">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-stone-400" />
                         {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
                       </span>
                       {item.location && (
-                        <span className="flex items-center gap-1 truncate">
-                          <MapPin className="w-3.5 h-3.5 text-stone-400" />
-                          {item.location}
+                        <span className="flex items-center gap-1 truncate max-w-[150px] sm:max-w-none">
+                          <MapPin className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
+                          <span className="truncate">{item.location}</span>
                         </span>
                       )}
                     </div>
 
-                    <h4 className="text-xl sm:text-2xl font-serif text-stone-900 mb-2 sm:mb-3 leading-tight line-clamp-2">{item.title}</h4>
+                    <h4 className="text-lg sm:text-xl md:text-2xl font-serif text-stone-900 mb-2 sm:mb-3 leading-snug line-clamp-3 break-words">{item.title}</h4>
                     
-                    <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-6">
+                    <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-4 sm:mb-6 break-words">
                       {item.description || item.excerpt || item.content}
                     </p>
                   </div>
                 </div>
 
-                <div className="px-5 pb-5 sm:px-6 sm:pb-6 md:px-8 md:pb-8 pt-4 border-t border-stone-200/80 flex items-center justify-between">
+                <div className="px-4 pb-4 sm:px-6 sm:pb-6 md:px-8 md:pb-8 pt-3 sm:pt-4 border-t border-stone-200/80 flex items-center justify-between">
                   {item.type === 'booking' ? (
                     new Date(item.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
                       <span className="text-stone-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Iniziativa terminata</span>
@@ -196,7 +196,7 @@ export function EventsSection() {
                           setSelectedBookingEvent(item);
                           setShowBookingModal(true);
                         }}
-                        className="flex items-center gap-1.5 bg-stone-900 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10"
+                        className="flex items-center gap-1.5 bg-stone-900 text-white px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10 cursor-pointer"
                       >
                         Prenota Ora <Ticket className="w-3.5 h-3.5" />
                       </button>
@@ -209,7 +209,7 @@ export function EventsSection() {
                           setSelectedContestForRegistration(item);
                           setShowContestRegistrationModal(true);
                         }}
-                        className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20"
+                        className="flex items-center gap-1.5 bg-indigo-600 text-white px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
                       >
                         Iscriviti
                       </button>

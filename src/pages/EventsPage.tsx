@@ -179,29 +179,29 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
                         </div>
                       </div>
 
-                      <div className="p-5 sm:p-6 md:p-8">
-                        <div className="flex items-center gap-3 text-[11px] sm:text-xs text-stone-400 font-bold uppercase tracking-widest mb-3 sm:mb-4">
+                      <div className="p-4 sm:p-6 md:p-8">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-stone-400 font-bold uppercase tracking-widest mb-2 sm:mb-4">
                           <span className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" />
                             {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
                           </span>
                           {item.location && (
-                            <span className="flex items-center gap-1.5 truncate">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {item.location}
+                            <span className="flex items-center gap-1.5 truncate max-w-[150px] sm:max-w-none">
+                              <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="truncate">{item.location}</span>
                             </span>
                           )}
                         </div>
 
-                        <h2 className="text-xl sm:text-2xl font-serif text-stone-900 mb-3 sm:mb-4 leading-tight group-hover:text-stone-700 transition-colors line-clamp-2">{item.title}</h2>
+                        <h2 className="text-lg sm:text-xl md:text-2xl font-serif text-stone-900 mb-2 sm:mb-4 leading-snug group-hover:text-stone-700 transition-colors line-clamp-3 break-words">{item.title}</h2>
                         
-                        <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-6">
+                        <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-4 sm:mb-6 break-words">
                           {item.description || item.excerpt || item.content}
                         </p>
                       </div>
                     </div>
 
-                    <div className="p-5 sm:p-6 md:p-8 pt-0 flex items-center justify-between border-t border-stone-100 pt-4 mt-auto">
+                    <div className="px-4 pb-4 sm:px-6 sm:pb-6 md:px-8 md:pb-8 pt-3 sm:pt-4 flex items-center justify-between border-t border-stone-100 mt-auto">
                       {item.type === 'booking' ? (
                         new Date(item.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
                           <span className="text-stone-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Iniziativa terminata</span>
