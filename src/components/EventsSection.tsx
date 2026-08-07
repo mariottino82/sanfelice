@@ -106,7 +106,7 @@ export function EventsSection() {
           </Link>
         </div>
 
-        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {allEvents.map((item, index) => {
             const isContest = item.type === 'contest';
             const now = new Date();
@@ -128,10 +128,10 @@ export function EventsSection() {
                   setSelectedEventForDetail(item);
                   setShowEventDetailModal(true);
                 }}
-                className="w-[82vw] max-w-[340px] sm:w-auto min-w-[270px] sm:min-w-[320px] md:min-w-0 snap-center flex-shrink-0 bg-stone-50 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-100 cursor-pointer flex flex-col justify-between"
+                className="w-full bg-stone-50 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group border border-stone-200/60 cursor-pointer flex flex-col justify-between"
               >
                 <div className="w-full">
-                  <div className="h-44 sm:h-56 overflow-hidden relative w-full">
+                  <div className="h-48 sm:h-56 overflow-hidden relative w-full bg-stone-100">
                     <img
                       src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
                       alt={item.title}
@@ -139,6 +139,9 @@ export function EventsSection() {
                         (new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
                       }`}
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800';
+                      }}
                     />
                     <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col gap-1.5 sm:gap-2">
                       <span className={`

@@ -10,6 +10,7 @@ import { VotazioniSection } from './VotazioniSection';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
+import { resizeAndUploadImage, resizeImage } from '../utils/imageUtils';
 
 const loadImage = (url: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -480,19 +481,19 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const handleContestImageUpload = async (contestId: number, file: File) => {
     setUploadingContestId(contestId);
-    const formData = new FormData();
-    formData.append('image', file);
-
     try {
-      const response = await fetch(`/api/contests/${contestId}/upload`, {
-        method: 'POST',
-        body: formData
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setNotification({ message: 'Immagine caricata con successo!', type: 'success' });
-        fetchData();
-        return data.path;
+      const uploadedPath = await resizeAndUploadImage(file);
+      if (uploadedPath) {
+        const response = await fetch(`/api/contests/${contestId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: uploadedPath })
+        });
+        if (response.ok) {
+          setNotification({ message: 'Immagine elaborata e caricata con successo!', type: 'success' });
+          fetchData();
+          return uploadedPath;
+        }
       }
     } catch (error) {
       console.error('Error uploading contest image:', error);
@@ -557,18 +558,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       let imagePath = newSponsor.image;
       
       if (sponsorImageFile) {
-        const formData = new FormData();
-        formData.append('image', sponsorImageFile);
-        const uploadRes = await fetch('/api/sponsors/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          imagePath = uploadData.path;
-        } else {
-          throw new Error('Errore durante il caricamento dell\'immagine');
-        }
+        imagePath = await resizeAndUploadImage(sponsorImageFile);
       }
 
       const sponsorData = { ...newSponsor, image: imagePath };
@@ -669,35 +659,42 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const handleGalleryUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsUploadingGallery(true);
-    const formData = new FormData(e.currentTarget);
     const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
     const files = fileInput?.files;
     if (!files || files.length === 0) {
       setNotification({ message: 'Seleziona almeno un file', type: 'error' });
+      setIsUploadingGallery(false);
       return;
     }
 
     const uploadData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      uploadData.append('files', files[i]);
-    }
-
     try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const resizedBlob = await resizeImage(file);
+          const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+          uploadData.append('files', resizedBlob, fileName);
+        } else {
+          uploadData.append('files', file);
+        }
+      }
+
       const res = await fetch('/api/upload-gallery', {
         method: 'POST',
         body: uploadData
       });
       if (res.ok) {
         const newItems = await res.json();
-        setGallery(prev => [...newItems, ...prev]);
-        setNotification({ message: `${newItems.length} elementi aggiunti alla gallery!`, type: 'success' });
+        setGallery((prev: any) => [...newItems, ...prev]);
+        setNotification({ message: `${newItems.length} elementi elaborati e aggiunti alla gallery!`, type: 'success' });
         (e.target as HTMLFormElement).reset();
       } else {
         setNotification({ message: 'Errore durante il caricamento', type: 'error' });
       }
     } catch (err) {
       console.error(err);
-      setNotification({ message: 'Errore di rete', type: 'error' });
+      setNotification({ message: 'Errore durante l\'elaborazione dell\'immagine', type: 'error' });
     } finally {
       setIsUploadingGallery(false);
     }
@@ -4343,9 +4340,34 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </div>
                     <textarea name="content" defaultValue={editingNews?.content} placeholder="Contenuto della news..." className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none h-32" required />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="relative">
-                        <ImageIcon className="absolute left-3 top-2.5 w-4 h-4 text-stone-400" />
-                        <input name="image" defaultValue={editingNews?.image} placeholder="URL Immagine" className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
+                      <div className="relative flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <ImageIcon className="absolute left-3 top-2.5 w-4 h-4 text-stone-400" />
+                          <input id="news-image-url-input" name="image" defaultValue={editingNews?.image} placeholder="URL Immagine o Carica File" className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
+                        </div>
+                        <label htmlFor="news-image-upload-file" className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 whitespace-nowrap transition-all">
+                          <Upload className="w-3.5 h-3.5" />
+                          Carica
+                        </label>
+                        <input
+                          id="news-image-upload-file"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const path = await resizeAndUploadImage(file);
+                                const inputEl = document.getElementById('news-image-url-input') as HTMLInputElement;
+                                if (inputEl) inputEl.value = path;
+                                setNotification({ message: 'Immagine ridimensionata e caricata!', type: 'success' });
+                              } catch (err) {
+                                setNotification({ message: 'Errore caricamento immagine', type: 'error' });
+                              }
+                            }
+                          }}
+                        />
                       </div>
                       <div className="relative">
                         <Video className="absolute left-3 top-2.5 w-4 h-4 text-stone-400" />

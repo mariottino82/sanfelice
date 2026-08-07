@@ -39,7 +39,7 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
           </Link>
         </div>
 
-        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory hide-scrollbar">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {news.map((item, index) => (
             <motion.div
               key={item.id}
@@ -48,33 +48,36 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
               onClick={() => onNewsClick(item)}
-              className="w-[82vw] max-w-[340px] sm:w-auto min-w-[270px] sm:min-w-[320px] md:min-w-0 snap-center flex-shrink-0 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer flex flex-col justify-between"
+              className="w-full bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer flex flex-col justify-between border border-stone-100"
             >
               <div>
-                <div className="h-44 sm:h-48 overflow-hidden relative w-full">
+                <div className="h-48 sm:h-56 overflow-hidden relative w-full bg-stone-100">
                   <img
                     src={item.image || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800';
+                    }}
                   />
                 </div>
-                <div className="p-4 sm:p-6">
+                <div className="p-5 sm:p-6">
                   <div className="flex items-center gap-4 text-xs sm:text-sm text-stone-500 mb-2 sm:mb-3">
-                    <span className="flex items-center gap-1">
-                      <Newspaper className="w-4 h-4" />
+                    <span className="flex items-center gap-1 font-medium">
+                      <Newspaper className="w-4 h-4 text-stone-400" />
                       {new Date(item.date).toLocaleDateString('it-IT')}
                     </span>
                   </div>
-                  <h4 className="text-lg sm:text-xl font-serif text-stone-900 mb-2 leading-snug line-clamp-3 break-words">{item.title}</h4>
-                  <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-4 sm:mb-6 break-words">
+                  <h4 className="text-lg sm:text-xl font-serif text-stone-900 mb-2 leading-snug line-clamp-2 break-words">{item.title}</h4>
+                  <p className="text-stone-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-4 break-words">
                     {item.excerpt || item.content}
                   </p>
                 </div>
               </div>
-              <div className="px-4 pb-4 sm:px-6 sm:pb-6 pt-0">
+              <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-0">
                 <div className="flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
-                  Leggi di più <ArrowRight className="w-4 h-4" />
+                  Leggi di più <ArrowRight className="w-4 h-4 text-amber-600" />
                 </div>
               </div>
             </motion.div>

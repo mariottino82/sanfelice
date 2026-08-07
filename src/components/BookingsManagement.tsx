@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Edit2, Trash2, Calendar, MapPin, Clock, Ticket, Users, Download, Search, ChevronRight, CheckCircle2, XCircle, AlertCircle, Loader2, Image as ImageIcon, Star, Upload, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { resizeAndUploadImage } from '../utils/imageUtils';
 
 interface BookingsManagementProps {
   bookingEvents: any[];
@@ -264,7 +265,19 @@ export function BookingsManagement({
                       <input 
                         type="file" 
                         accept="image/*"
-                        onChange={(e) => onImageChange(e.target.files?.[0] || null)}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const uploadedPath = await resizeAndUploadImage(file);
+                              setEditingEvent((prev: any) => ({ ...prev, image: uploadedPath }));
+                              onImageChange(null);
+                            } catch (err) {
+                              console.error('Error uploading image:', err);
+                              onImageChange(file);
+                            }
+                          }
+                        }}
                         className="hidden" 
                         id="event-image-upload"
                       />
