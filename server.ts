@@ -1386,11 +1386,26 @@ app.post('/api/contests', async (req, res) => {
 
 app.put('/api/contests/:id', async (req, res) => {
   console.log(`PUT /api/contests/${req.params.id} - Body:`, req.body);
-  const { title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners } = req.body;
   try {
+    const existing = await db.get('SELECT * FROM contests WHERE id = ?', [req.params.id]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Concorso non trovato' });
+    }
+
+    const title = req.body.title !== undefined ? req.body.title : existing.title;
+    const type = req.body.type !== undefined ? req.body.type : existing.type;
+    const description = req.body.description !== undefined ? req.body.description : existing.description;
+    const image = req.body.image !== undefined ? req.body.image : existing.image;
+    const startDate = req.body.startDate !== undefined ? req.body.startDate : existing.startDate;
+    const endDate = req.body.endDate !== undefined ? req.body.endDate : existing.endDate;
+    const cost = req.body.cost !== undefined ? req.body.cost : existing.cost;
+    const prizes = req.body.prizes !== undefined ? req.body.prizes : existing.prizes;
+    const showOnHomepage = req.body.showOnHomepage !== undefined ? (req.body.showOnHomepage ? 1 : 0) : existing.showOnHomepage;
+    const winners = req.body.winners !== undefined ? (typeof req.body.winners === 'string' ? req.body.winners : JSON.stringify(req.body.winners)) : existing.winners;
+
     const result = await db.run(
       'UPDATE contests SET title = ?, type = ?, description = ?, image = ?, startDate = ?, endDate = ?, cost = ?, prizes = ?, showOnHomepage = ?, winners = ? WHERE id = ?',
-      [title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage ? 1 : 0, winners || '[]', req.params.id]
+      [title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners, req.params.id]
     );
     console.log('Update result:', result);
     res.json({ success: true });

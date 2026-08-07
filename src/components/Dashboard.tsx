@@ -5687,7 +5687,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                     await fetch(`/api/contests/${editingContest.id}`, {
                                       method: 'PUT',
                                       headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ image: uploadedPath })
+                                      body: JSON.stringify({ ...editingContest, image: uploadedPath })
                                     });
                                     fetchData();
                                   }
