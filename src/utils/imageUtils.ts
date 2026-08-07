@@ -74,26 +74,42 @@ export async function resizeAndUploadImage(
   endpoint = '/api/upload-image',
   fieldName = 'image'
 ): Promise<string> {
+  let blobToSend: Blob = file;
+  let fileName = file.name;
+
   try {
-    const resizedBlob = await resizeImage(file);
-    const formData = new FormData();
-    const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
-    formData.append(fieldName, resizedBlob, fileName);
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Errore durante il caricamento dell\'immagine.');
+    if (file.type && file.type.startsWith('image/')) {
+      try {
+        blobToSend = await resizeImage(file);
+        fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+      } catch (resizeErr) {
+        console.warn('Image resizing skipped or failed, uploading original file:', resizeErr);
+        blobToSend = file;
+        fileName = file.name;
+      }
     }
-
-    const data = await response.json();
-    return data.path || data.url;
-  } catch (err: any) {
-    console.error('Image upload failed:', err);
-    throw err;
+  } catch (err) {
+    console.warn('Error in resize step, falling back to original file:', err);
+    blobToSend = file;
   }
+
+  const formData = new FormData();
+  formData.append(fieldName, blobToSend, fileName);
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Errore del server durante il caricamento (${response.status})`);
+  }
+
+  const data = await response.json();
+  const uploadedPath = data.path || data.url;
+  if (!uploadedPath) {
+    throw new Error('Nessun percorso restituito dal server');
+  }
+  return uploadedPath;
 }

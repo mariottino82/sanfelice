@@ -61,6 +61,13 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Serve static uploaded files directly from public/uploads
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use('/uploads', express.static(uploadsDir));
+
   // Sponsors API
   const uploadSponsor = multer({ storage: multer.diskStorage({
     destination: (req, file, cb) => {
