@@ -9,7 +9,7 @@ import { TicketView } from '../components/TicketView';
 import { EventDetailModal } from '../components/EventDetailModal';
 import { ContestRegistrationModal } from '../components/ContestRegistrationModal';
 
-export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: any) {
+export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick, isLoggedIn }: any) {
   const [events, setEvents] = React.useState<any[]>([]);
   const [lotteries, setLotteries] = React.useState<any[]>([]);
   const [contests, setContests] = React.useState<any[]>([]);
@@ -104,6 +104,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick }: a
         onLoginClick={onLoginClick} 
         onRegisterClick={onRegisterClick} 
         onDonationClick={onDonationClick}
+        isLoggedIn={isLoggedIn}
       />
       
       <main className="pt-24 sm:pt-32 pb-16 sm:pb-24">

@@ -26,7 +26,7 @@ import { CookieBanner } from './components/CookieBanner';
 import { SEO } from './components/SEO';
 import { X, LogIn, Facebook, Instagram, Youtube, Twitter, Shield, Cookie, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { NewsPage } from './pages/NewsPage';
 import { EventsPage } from './pages/EventsPage';
@@ -292,6 +292,7 @@ export const Footer = ({ socialLinks, setView }: FooterProps) => (
 );
 
 export default function App() {
+  const navigate = useNavigate();
   const [view, setView] = React.useState<'home' | 'privacy' | 'cookie'>('home');
   const [isLoggedIn, setIsLoggedIn] = React.useState(() => {
     return localStorage.getItem('session_user') !== null;
@@ -375,7 +376,10 @@ export default function App() {
         setUser(data.user);
         setIsLoggedIn(true);
         setShowLoginModal(false);
+        setView('home');
+        setSelectedNews(null);
         localStorage.setItem('session_user', JSON.stringify(data.user));
+        navigate('/');
       } else {
         alert(data.message || 'Credenziali errate. Per gli utenti registrati: usa la tua email come username e la password scelta in fase di iscrizione.');
       }
@@ -456,6 +460,7 @@ export default function App() {
               onLoginClick={() => setShowLoginModal(true)}
               onRegisterClick={() => setShowRegistrationModal(true)}
               onDonationClick={() => setShowDonationModal(true)}
+              isLoggedIn={isLoggedIn}
             />
             <Footer socialLinks={socialLinks} setView={setView} />
           </>
@@ -466,6 +471,7 @@ export default function App() {
               onLoginClick={() => setShowLoginModal(true)}
               onRegisterClick={() => setShowRegistrationModal(true)}
               onDonationClick={() => setShowDonationModal(true)}
+              isLoggedIn={isLoggedIn}
             />
             <Footer socialLinks={socialLinks} setView={setView} />
           </>
@@ -476,6 +482,7 @@ export default function App() {
               onLoginClick={() => setShowLoginModal(true)}
               onRegisterClick={() => setShowRegistrationModal(true)}
               onDonationClick={() => setShowDonationModal(true)}
+              isLoggedIn={isLoggedIn}
             />
             <Footer socialLinks={socialLinks} setView={setView} />
           </>
@@ -490,6 +497,7 @@ export default function App() {
                 onLoginClick={() => setShowLoginModal(true)} 
                 onRegisterClick={() => setShowRegistrationModal(true)} 
                 onDonationClick={() => setShowDonationModal(true)}
+                isLoggedIn={isLoggedIn}
               />
               <main>
                 <Hero />

@@ -4,7 +4,17 @@ import { Link } from 'react-router-dom';
 import { Menu, X, Home, Calendar, Image as ImageIcon, LayoutDashboard, LogIn, Newspaper, Heart } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onLoginClick: () => void, onRegisterClick: () => void, onDonationClick: () => void }) {
+export function Navbar({ 
+  onLoginClick, 
+  onRegisterClick, 
+  onDonationClick,
+  isLoggedIn
+}: { 
+  onLoginClick: () => void, 
+  onRegisterClick: () => void, 
+  onDonationClick: () => void,
+  isLoggedIn?: boolean
+}) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const navItems = [
@@ -55,13 +65,23 @@ export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onL
               >
                 Diventa Socio
               </button>
-              <button 
-                onClick={onLoginClick}
-                className="bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-800 transition-colors flex items-center gap-2"
-              >
-                <LogIn className="w-4 h-4" />
-                Accedi
-              </button>
+              {isLoggedIn ? (
+                <Link 
+                  to="/"
+                  className="bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-800 transition-colors flex items-center gap-2"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Link>
+              ) : (
+                <button 
+                  onClick={onLoginClick}
+                  className="bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-800 transition-colors flex items-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Accedi
+                </button>
+              )}
             </div>
           </div>
 
@@ -120,16 +140,27 @@ export function Navbar({ onLoginClick, onRegisterClick, onDonationClick }: { onL
             >
               Diventa Socio
             </button>
-            <button 
-              onClick={() => {
-                setIsOpen(false);
-                onLoginClick();
-              }}
-              className="w-full text-left px-3 py-2 text-stone-900 font-bold flex items-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              Accedi
-            </button>
+            {isLoggedIn ? (
+              <Link 
+                to="/"
+                onClick={() => setIsOpen(false)}
+                className="block w-full text-left px-3 py-2 text-stone-900 font-bold flex items-center gap-2"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
+            ) : (
+              <button 
+                onClick={() => {
+                  setIsOpen(false);
+                  onLoginClick();
+                }}
+                className="w-full text-left px-3 py-2 text-stone-900 font-bold flex items-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Accedi
+              </button>
+            )}
           </div>
         </motion.div>
       )}

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { SEO } from '../components/SEO';
 
-export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonationClick }: any) {
+export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonationClick, isLoggedIn }: any) {
   const [news, setNews] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -36,6 +36,7 @@ export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonatio
         onLoginClick={onLoginClick} 
         onRegisterClick={onRegisterClick} 
         onDonationClick={onDonationClick}
+        isLoggedIn={isLoggedIn}
       />
       
       <main className="pt-32 pb-24">

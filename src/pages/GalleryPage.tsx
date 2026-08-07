@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { SEO } from '../components/SEO';
 
-export function GalleryPage({ onLoginClick, onRegisterClick, onDonationClick }: any) {
+export function GalleryPage({ onLoginClick, onRegisterClick, onDonationClick, isLoggedIn }: any) {
   const [media, setMedia] = React.useState<any[]>([]);
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -97,6 +97,7 @@ export function GalleryPage({ onLoginClick, onRegisterClick, onDonationClick }: 
         onLoginClick={onLoginClick} 
         onRegisterClick={onRegisterClick} 
         onDonationClick={onDonationClick}
+        isLoggedIn={isLoggedIn}
       />
 
       <main className="pt-32 pb-24">
