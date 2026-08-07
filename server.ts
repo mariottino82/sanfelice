@@ -12,6 +12,49 @@ import { getDb } from './db';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Helper function to sync uploaded files across all potential public and dist directories
+function syncUploadedFile(fileRelPath: string) {
+  try {
+    if (!fileRelPath || typeof fileRelPath !== 'string') return;
+    const cleanPath = fileRelPath.startsWith('/') ? fileRelPath.slice(1) : fileRelPath;
+    
+    const possibleBaseDirs = [
+      path.join(process.cwd(), 'public'),
+      path.join(__dirname, 'public'),
+      path.join(process.cwd(), 'dist'),
+      path.join(__dirname, 'dist')
+    ];
+
+    let foundSource: string | null = null;
+    for (const baseDir of possibleBaseDirs) {
+      const fullP = path.join(baseDir, cleanPath);
+      if (fs.existsSync(fullP) && fs.statSync(fullP).isFile()) {
+        foundSource = fullP;
+        break;
+      }
+    }
+
+    if (!foundSource) return;
+
+    for (const baseDir of possibleBaseDirs) {
+      const targetP = path.join(baseDir, cleanPath);
+      if (targetP !== foundSource) {
+        const targetDir = path.dirname(targetP);
+        if (!fs.existsSync(targetDir)) {
+          fs.mkdirSync(targetDir, { recursive: true });
+        }
+        try {
+          fs.copyFileSync(foundSource, targetP);
+        } catch (e) {
+          // ignore copy error
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error syncing uploaded file:', err);
+  }
+}
+
 // Multer configuration for gallery uploads
 const galleryStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -61,17 +104,53 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Serve all static files from public directory (uploads, contests, sponsors, gallery, etc.)
+  // 1. Dedicated Upload & Static Asset middleware
+  app.use((req, res, next) => {
+    const isUploadPath = req.path.startsWith('/uploads/') ||
+                         req.path.startsWith('/contests/') ||
+                         req.path.startsWith('/minutes/') ||
+                         req.path.startsWith('/receipts/') ||
+                         req.path.startsWith('/lottery-docs/') ||
+                         req.path.startsWith('/sponsors/') ||
+                         req.path.startsWith('/bookings/') ||
+                         req.path === '/logo.png' ||
+                         req.path === '/favicon.ico';
+
+    if (!isUploadPath) return next();
+
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+
+    const cleanPath = req.path.slice(1); // remove leading '/'
+    const candidatePaths = [
+      path.join(process.cwd(), 'public', cleanPath),
+      path.join(__dirname, 'public', cleanPath),
+      path.join(process.cwd(), 'dist', cleanPath),
+      path.join(__dirname, 'dist', cleanPath),
+      path.join(process.cwd(), cleanPath),
+      path.join(__dirname, cleanPath)
+    ];
+
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+        return res.sendFile(p);
+      }
+    }
+
+    // Return 404 for missing static files / images in production instead of returning index.html!
+    return res.status(404).send('File non trovato');
+  });
+
+  // Serve all static files from public and dist directories
   const publicDir = path.join(process.cwd(), 'public');
-  const uploadsDir = path.join(publicDir, 'uploads');
+  const distDir = path.join(process.cwd(), 'dist');
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
   }
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
   app.use(express.static(publicDir));
-  app.use('/uploads', express.static(uploadsDir));
+  app.use(express.static(path.join(__dirname, 'public')));
+  if (fs.existsSync(distDir)) {
+    app.use(express.static(distDir));
+  }
 
   // Sponsors API
   const uploadSponsor = multer({ storage: multer.diskStorage({
@@ -105,12 +184,14 @@ async function startServer() {
   app.post('/api/sponsors/upload', uploadSponsor.single('image'), (req: any, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const url = `/uploads/sponsors/${req.file.filename}`;
+    syncUploadedFile(url);
     res.json({ path: url });
   });
 
   app.post('/api/booking-events/upload', uploadBookingEvent.single('image'), (req: any, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const url = `/uploads/bookings/${req.file.filename}`;
+    syncUploadedFile(url);
     res.json({ path: url });
   });
 
@@ -131,6 +212,7 @@ async function startServer() {
   app.post('/api/upload-image', uploadGeneralImage.single('image'), (req: any, res) => {
     if (!req.file) return res.status(400).json({ error: 'Nessun file caricato' });
     const url = `/uploads/images/${req.file.filename}`;
+    syncUploadedFile(url);
     res.json({ path: url, url });
   });
 
@@ -878,6 +960,7 @@ async function startServer() {
       for (const file of req.files) {
         const type = file.mimetype.startsWith('video/') ? 'video' : 'image';
         const url = `/uploads/gallery/${file.filename}`;
+        syncUploadedFile(url);
         console.log('Saving gallery item:', { url, type });
         const result = await db.run(
           'INSERT INTO gallery (url, type, date) VALUES (?, ?, ?)',
@@ -1234,7 +1317,7 @@ async function startServer() {
 
   const minutesStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const dir = 'public/minutes/';
+      const dir = path.join(process.cwd(), 'public', 'minutes');
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
@@ -1251,6 +1334,7 @@ async function startServer() {
       return res.status(400).json({ error: 'Nessun file caricato' });
     }
     const filePath = `/minutes/${req.file.filename}`;
+    syncUploadedFile(filePath);
     await db.run('UPDATE minutes SET file_path = ? WHERE id = ?', [filePath, req.params.id]);
     res.json({ success: true, path: filePath });
   });
@@ -1317,7 +1401,7 @@ async function startServer() {
 
   const receiptsStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const dir = 'public/receipts/';
+      const dir = path.join(process.cwd(), 'public', 'receipts');
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
@@ -1334,6 +1418,7 @@ async function startServer() {
       return res.status(400).json({ error: 'Nessun file caricato' });
     }
     const filePath = `/receipts/${req.file.filename}`;
+    syncUploadedFile(filePath);
     res.json({ success: true, path: filePath });
   });
 
@@ -1453,7 +1538,7 @@ app.delete('/api/contests/:id', async (req, res) => {
 
 const contestStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = 'public/contests/';
+    const dir = path.join(process.cwd(), 'public', 'contests');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -1470,13 +1555,14 @@ app.post('/api/contests/:id/upload', uploadContest.single('image'), async (req: 
     return res.status(400).json({ error: 'Nessun file caricato' });
   }
   const filePath = `/contests/${req.file.filename}`;
+  syncUploadedFile(filePath);
   await db.run('UPDATE contests SET image = ? WHERE id = ?', [filePath, req.params.id]);
   res.json({ success: true, path: filePath });
 });
 
 const contestCommunicationStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = 'public/uploads/contest_communications/';
+    const dir = path.join(process.cwd(), 'public', 'uploads', 'contest_communications');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -1546,6 +1632,7 @@ app.post('/api/contests/:id/send-communication', uploadContestCommunication.sing
     // 4. Save to history
     const sentAt = new Date().toISOString();
     const attachmentPath = attachment ? `/uploads/contest_communications/${attachment.filename}` : null;
+    if (attachmentPath) syncUploadedFile(attachmentPath);
     
     await db.run(
       'INSERT INTO contest_communications (contestId, title, message, attachmentPath, recipients, sentAt) VALUES (?, ?, ?, ?, ?, ?)',
@@ -1693,7 +1780,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
 
   const lotteryStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const dir = 'public/lottery-docs/';
+      const dir = path.join(process.cwd(), 'public', 'lottery-docs');
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
@@ -1710,6 +1797,7 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       return res.status(400).json({ error: 'Nessun file caricato' });
     }
     const filePath = `/lottery-docs/${req.file.filename}`;
+    syncUploadedFile(filePath);
     res.json({ success: true, path: filePath });
   });
 
@@ -2433,6 +2521,8 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
       if (fs.existsSync(logoPath)) {
         fs.copyFileSync(logoPath, faviconPath);
       }
+      syncUploadedFile('/logo.png');
+      syncUploadedFile('/favicon.ico');
     } catch (err) {
       console.error('Error copying logo to favicon:', err);
     }
@@ -2517,8 +2607,20 @@ Sitemap: https://www.prosanfelice.it/sitemap.xml`);
 
   // SPA fallback - must be last
   app.get('*', async (req, res, next) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/')) return next();
+    // Skip API routes, uploads, and static asset extensions
+    if (
+      req.path.startsWith('/api/') ||
+      req.path.startsWith('/uploads/') ||
+      req.path.startsWith('/contests/') ||
+      req.path.startsWith('/minutes/') ||
+      req.path.startsWith('/receipts/') ||
+      req.path.startsWith('/lottery-docs/') ||
+      req.path.startsWith('/sponsors/') ||
+      req.path.startsWith('/bookings/') ||
+      req.path.match(/\.(png|jpg|jpeg|gif|svg|webp|ico|pdf|zip|xlsx|doc|docx|css|js|map)$/i)
+    ) {
+      return res.status(404).send('Resource not found');
+    }
     
     try {
       if (vite) {
