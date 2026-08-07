@@ -61,11 +61,16 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Serve static uploaded files directly from public/uploads
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+  // Serve all static files from public directory (uploads, contests, sponsors, gallery, etc.)
+  const publicDir = path.join(process.cwd(), 'public');
+  const uploadsDir = path.join(publicDir, 'uploads');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
+  app.use(express.static(publicDir));
   app.use('/uploads', express.static(uploadsDir));
 
   // Sponsors API
@@ -2402,7 +2407,6 @@ app.delete('/api/contest-registrations/:id', async (req, res) => {
   });
 
   // Logo Upload API
-  const publicDir = path.join(process.cwd(), 'public');
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
   }

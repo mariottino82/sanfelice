@@ -5472,11 +5472,24 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   {contests.map((contest: any) => (
                     <div key={contest.id} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm hover:shadow-md transition-all">
                       <div className="flex flex-col md:flex-row gap-6">
-                        {contest.image && (
-                          <div className="w-full md:w-48 h-32 rounded-2xl overflow-hidden flex-shrink-0">
-                            <img src={contest.image} alt={contest.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                        )}
+                        <div className="w-full md:w-48 h-32 rounded-2xl overflow-hidden flex-shrink-0 bg-stone-100 flex items-center justify-center border border-stone-200">
+                          {contest.image ? (
+                            <img 
+                              src={contest.image} 
+                              alt={contest.title} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800';
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-stone-400 p-2 text-center">
+                              <Trophy className="w-8 h-8 mb-1 opacity-50" />
+                              <span className="text-[10px] uppercase font-bold tracking-widest">Nessuna Immagine</span>
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 space-y-4">
                           <div className="flex justify-between items-start">
                             <div>
@@ -5683,15 +5696,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                   setUploadingContestId(editingContest.id || -1);
                                   const uploadedPath = await resizeAndUploadImage(file);
                                   setEditingContest((prev: any) => ({ ...prev, image: uploadedPath }));
-                                  if (editingContest.id) {
-                                    await fetch(`/api/contests/${editingContest.id}`, {
-                                      method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ ...editingContest, image: uploadedPath })
-                                    });
-                                    fetchData();
-                                  }
-                                  setNotification({ message: 'Immagine ridimensionata e caricata con successo!', type: 'success' });
+                                  setNotification({ message: 'Immagine caricata con successo! Clicca "Salva Modifiche" per salvare.', type: 'success' });
                                 } catch (err) {
                                   console.error('Upload error:', err);
                                   setNotification({ message: 'Errore durante il caricamento dell\'immagine.', type: 'error' });
@@ -5721,8 +5726,24 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           </label>
                         </div>
                         {editingContest.image && (
-                          <div className="mt-3 relative w-full h-36 rounded-xl overflow-hidden border border-stone-200 bg-stone-50">
-                            <img src={editingContest.image} alt="Anteprima Concorso" className="w-full h-full object-cover" />
+                          <div className="mt-3 relative w-full h-36 rounded-xl overflow-hidden border border-stone-200 bg-stone-50 group">
+                            <img 
+                              src={editingContest.image} 
+                              alt="Anteprima Concorso" 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800';
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditingContest((prev: any) => ({ ...prev, image: '' }))}
+                              className="absolute top-2 right-2 bg-stone-900/80 hover:bg-stone-900 text-white p-1.5 rounded-lg text-xs transition-all shadow-md"
+                              title="Rimuovi Immagine"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
                       </div>
