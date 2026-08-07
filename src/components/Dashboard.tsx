@@ -5662,18 +5662,42 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">URL Immagine</label>
-                        <input name="image" defaultValue={editingContest.image} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                        <input 
+                          name="image" 
+                          value={editingContest.image || ''} 
+                          onChange={(e) => setEditingContest((prev: any) => ({ ...prev, image: e.target.value }))}
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" 
+                          placeholder="es. /uploads/images/foto.jpg oppure https://..."
+                        />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Carica Immagine (JPG/PNG)</label>
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Carica Immagine (JPG/PNG/WebP)</label>
                         <div className="flex items-center gap-3">
                           <input 
                             type="file" 
-                            accept="image/jpeg,image/png"
+                            accept="image/*"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
-                              if (file && editingContest.id) {
-                                await handleContestImageUpload(editingContest.id, file);
+                              if (file) {
+                                try {
+                                  setUploadingContestId(editingContest.id || -1);
+                                  const uploadedPath = await resizeAndUploadImage(file);
+                                  setEditingContest((prev: any) => ({ ...prev, image: uploadedPath }));
+                                  if (editingContest.id) {
+                                    await fetch(`/api/contests/${editingContest.id}`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ image: uploadedPath })
+                                    });
+                                    fetchData();
+                                  }
+                                  setNotification({ message: 'Immagine ridimensionata e caricata con successo!', type: 'success' });
+                                } catch (err) {
+                                  console.error('Upload error:', err);
+                                  setNotification({ message: 'Errore durante il caricamento dell\'immagine.', type: 'error' });
+                                } finally {
+                                  setUploadingContestId(null);
+                                }
                               }
                             }}
                             className="hidden" 
@@ -5683,8 +5707,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             htmlFor="contest-image-upload"
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900 transition-all cursor-pointer text-xs font-bold uppercase tracking-widest"
                           >
-                            {uploadingContestId === editingContest.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-stone-900 border-t-transparent" />
+                            {uploadingContestId !== null ? (
+                              <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-stone-900 border-t-transparent" />
+                                <span>Elaborazione...</span>
+                              </div>
                             ) : (
                               <>
                                 <Upload className="w-4 h-4" />
@@ -5693,8 +5720,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             )}
                           </label>
                         </div>
-                        {!editingContest.id && (
-                          <p className="text-[10px] text-stone-400 mt-1 italic">Potrai caricare l'immagine dopo aver creato il concorso.</p>
+                        {editingContest.image && (
+                          <div className="mt-3 relative w-full h-36 rounded-xl overflow-hidden border border-stone-200 bg-stone-50">
+                            <img src={editingContest.image} alt="Anteprima Concorso" className="w-full h-full object-cover" />
+                          </div>
                         )}
                       </div>
                     </div>
