@@ -5547,14 +5547,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs">
+                            <div className="space-y-1">
+                              <p className="text-amber-600 uppercase font-bold tracking-widest">Data Evento</p>
+                              <p className="text-stone-900 font-bold">{contest.eventDate ? new Date(contest.eventDate).toLocaleDateString('it-IT') : (contest.startDate ? new Date(contest.startDate).toLocaleDateString('it-IT') : '-')}</p>
+                            </div>
                             <div className="space-y-1">
                               <p className="text-stone-400 uppercase font-bold tracking-widest">Inizio Iscrizioni</p>
-                              <p className="text-stone-900">{new Date(contest.startDate).toLocaleDateString('it-IT')}</p>
+                              <p className="text-stone-900">{contest.startDate ? new Date(contest.startDate).toLocaleDateString('it-IT') : '-'}</p>
                             </div>
                             <div className="space-y-1">
                               <p className="text-stone-400 uppercase font-bold tracking-widest">Fine Iscrizioni</p>
-                              <p className="text-stone-900">{new Date(contest.endDate).toLocaleDateString('it-IT')}</p>
+                              <p className="text-stone-900">{contest.endDate ? new Date(contest.endDate).toLocaleDateString('it-IT') : '-'}</p>
                             </div>
                             <div className="space-y-1">
                               <p className="text-stone-400 uppercase font-bold tracking-widest">Costo</p>
@@ -5766,6 +5770,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     </div>
 
                     <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1 ml-1">Data Evento / Svolgimento</label>
+                        <input name="eventDate" type="date" defaultValue={editingContest.eventDate ? new Date(editingContest.eventDate).toISOString().split('T')[0] : (editingContest.date ? new Date(editingContest.date).toISOString().split('T')[0] : '')} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" />
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 ml-1">Inizio Iscrizioni</label>

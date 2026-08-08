@@ -169,7 +169,6 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
                     onClick={handleShareFacebook}
                     className="flex-1 flex items-center justify-center gap-1.5 p-2 rounded-xl bg-stone-50 text-stone-700 hover:bg-stone-100 transition-all text-xs font-semibold border border-stone-200"
                   >
-                    <Facebook className="w-3.5 h-3.5 text-[#1877F2]" />
                     <span>Facebook</span>
                   </button>
                   <button 

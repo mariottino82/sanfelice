@@ -1489,11 +1489,11 @@ app.get('/api/contests', async (req, res) => {
 
 app.post('/api/contests', async (req, res) => {
   console.log('POST /api/contests - Body:', req.body);
-  const { title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners } = req.body;
+  const { title, type, description, image, startDate, endDate, eventDate, cost, prizes, showOnHomepage, winners } = req.body;
   try {
     const result = await db.run(
-      'INSERT INTO contests (title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage ? 1 : 0, winners || '[]']
+      'INSERT INTO contests (title, type, description, image, startDate, endDate, eventDate, cost, prizes, showOnHomepage, winners) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, type, description, image, startDate, endDate, eventDate || '', cost, prizes, showOnHomepage ? 1 : 0, winners || '[]']
     );
     console.log('Insert result:', result);
     res.json({ id: result.lastID });
@@ -1517,14 +1517,15 @@ app.put('/api/contests/:id', async (req, res) => {
     const image = req.body.image !== undefined ? req.body.image : existing.image;
     const startDate = req.body.startDate !== undefined ? req.body.startDate : existing.startDate;
     const endDate = req.body.endDate !== undefined ? req.body.endDate : existing.endDate;
+    const eventDate = req.body.eventDate !== undefined ? req.body.eventDate : existing.eventDate;
     const cost = req.body.cost !== undefined ? req.body.cost : existing.cost;
     const prizes = req.body.prizes !== undefined ? req.body.prizes : existing.prizes;
     const showOnHomepage = req.body.showOnHomepage !== undefined ? (req.body.showOnHomepage ? 1 : 0) : existing.showOnHomepage;
     const winners = req.body.winners !== undefined ? (typeof req.body.winners === 'string' ? req.body.winners : JSON.stringify(req.body.winners)) : existing.winners;
 
     const result = await db.run(
-      'UPDATE contests SET title = ?, type = ?, description = ?, image = ?, startDate = ?, endDate = ?, cost = ?, prizes = ?, showOnHomepage = ?, winners = ? WHERE id = ?',
-      [title, type, description, image, startDate, endDate, cost, prizes, showOnHomepage, winners, req.params.id]
+      'UPDATE contests SET title = ?, type = ?, description = ?, image = ?, startDate = ?, endDate = ?, eventDate = ?, cost = ?, prizes = ?, showOnHomepage = ?, winners = ? WHERE id = ?',
+      [title, type, description, image, startDate, endDate, eventDate, cost, prizes, showOnHomepage, winners, req.params.id]
     );
     console.log('Update result:', result);
     res.json({ success: true });

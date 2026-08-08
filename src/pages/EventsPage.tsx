@@ -187,7 +187,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick, isL
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-stone-400 font-bold uppercase tracking-widest mb-2 sm:mb-4">
                           <span className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" />
-                            {formatDateDisplay(item.date || item.startDate || item.drawDate || item.createdAt)}
+                            {formatDateDisplay(item.eventDate || item.date || item.startDate || item.drawDate || item.createdAt)}
                           </span>
                           {item.location && (
                             <span className="flex items-center gap-1.5 truncate max-w-[150px] sm:max-w-none">

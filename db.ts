@@ -147,6 +147,7 @@ export async function getDb() {
       image TEXT,
       startDate TEXT,
       endDate TEXT,
+      eventDate TEXT,
       cost REAL,
       prizes TEXT, -- JSON string
       showOnHomepage INTEGER DEFAULT 0,
@@ -292,6 +293,7 @@ export async function getDb() {
     'ALTER TABLE news ADD COLUMN showOnHomepage INTEGER DEFAULT 0',
     'ALTER TABLE events ADD COLUMN video TEXT',
     'ALTER TABLE events ADD COLUMN category TEXT',
+    'ALTER TABLE contests ADD COLUMN eventDate TEXT',
     'ALTER TABLE gallery ADD COLUMN type TEXT DEFAULT "image"',
     'ALTER TABLE lottery ADD COLUMN ticketsCount INTEGER DEFAULT 1000',
     'ALTER TABLE lottery ADD COLUMN ticketPrice REAL DEFAULT 2.50',

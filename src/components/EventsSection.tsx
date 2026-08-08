@@ -175,7 +175,7 @@ export function EventsSection() {
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-stone-500 mb-2 sm:mb-3">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                        {formatDateDisplay(item.date || item.startDate || item.drawDate || item.createdAt)}
+                        {formatDateDisplay(item.eventDate || item.date || item.startDate || item.drawDate || item.createdAt)}
                       </span>
                       {item.location && (
                         <span className="flex items-center gap-1 truncate max-w-[150px] sm:max-w-none">

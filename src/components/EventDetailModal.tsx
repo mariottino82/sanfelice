@@ -141,9 +141,11 @@ export function EventDetailModal({ isOpen, onClose, event, onBook, onRegisterCon
                       <Calendar className="w-4 h-4 text-stone-600" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Data / Periodo</p>
+                      <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Data Evento</p>
                       <p className="text-stone-900 font-semibold text-xs sm:text-sm truncate">
-                        {event.startDate && event.endDate ? (
+                        {event.eventDate ? (
+                          new Date(event.eventDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+                        ) : event.startDate && event.endDate ? (
                           `${new Date(event.startDate).toLocaleDateString('it-IT')} - ${new Date(event.endDate).toLocaleDateString('it-IT')}`
                         ) : (
                           new Date(event.date || event.createdAt || event.drawDate || Date.now()).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -151,6 +153,21 @@ export function EventDetailModal({ isOpen, onClose, event, onBook, onRegisterCon
                       </p>
                     </div>
                   </div>
+
+                  {/* If contest with registration period and separate eventDate, show Periodo Iscrizioni */}
+                  {event.eventDate && event.startDate && event.endDate && (
+                    <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl sm:rounded-2xl border border-stone-100">
+                      <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Periodo Iscrizioni</p>
+                        <p className="text-stone-900 font-semibold text-xs sm:text-sm truncate">
+                          {new Date(event.startDate).toLocaleDateString('it-IT')} - {new Date(event.endDate).toLocaleDateString('it-IT')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Location */}
                   {event.location && (
