@@ -4379,7 +4379,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         type="checkbox" 
                         name="showOnHomepage" 
                         id="news_showOnHomepage"
-                        defaultChecked={editingNews ? (editingNews.showOnHomepage === 1 || editingNews.showOnHomepage === true || editingNews.showOnHomepage === '1') : false}
+                        defaultChecked={editingNews ? (editingNews.showOnHomepage === 1 || editingNews.showOnHomepage === true || editingNews.showOnHomepage === '1') : true}
                         className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                       />
                       <label htmlFor="news_showOnHomepage" className="text-sm text-stone-600">Mostra in homepage</label>

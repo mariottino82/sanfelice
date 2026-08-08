@@ -16,14 +16,7 @@ export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonatio
         if (!response.ok) return;
         const data = await response.json();
         if (Array.isArray(data)) {
-          const filtered = data.filter((item: any) => 
-            !item.category || 
-            item.category === '' || 
-            item.category === 'news' || 
-            item.category.toLowerCase() === 'news' || 
-            item.category.toLowerCase() !== 'evento'
-          );
-          setNews(filtered.length > 0 ? filtered : data);
+          setNews(data);
         }
       } catch (error) {
         console.error('Error fetching news:', error);

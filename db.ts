@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -11,8 +12,21 @@ let db: Database | null = null;
 export async function getDb() {
   if (db) return db;
 
-  const dbPath = path.resolve(__dirname, 'database.sqlite');
+  // Ensure database file is ALWAYS located in the project root directory
+  // process.cwd() is guaranteed to be the root directory in both dev and prod
+  const dbPath = path.resolve(process.cwd(), 'database.sqlite');
   console.log('Opening database at:', dbPath);
+
+  // Rescue database from dist/ if it exists there but not in root
+  const distDbPath = path.resolve(process.cwd(), 'dist', 'database.sqlite');
+  if (!fs.existsSync(dbPath) && fs.existsSync(distDbPath)) {
+    try {
+      fs.copyFileSync(distDbPath, dbPath);
+      console.log('Migrated database from dist/database.sqlite to root database.sqlite');
+    } catch (e) {
+      console.error('Failed to copy database from dist:', e);
+    }
+  }
 
   db = await open({
     filename: dbPath,

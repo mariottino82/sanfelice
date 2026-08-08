@@ -29,13 +29,16 @@ export function EventsSection() {
         if (newsRes.ok) {
           const newsData = await newsRes.json();
           if (Array.isArray(newsData)) {
-            setEvents(newsData.filter((item: any) => 
+            const eventItems = newsData.filter((item: any) => 
               item.category === 'evento' && 
               item.title && 
               item.date &&
-              !isNaN(new Date(item.date).getTime()) &&
-              (item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1')
-            ));
+              !isNaN(new Date(item.date).getTime())
+            );
+            const homepageEvents = eventItems.filter((item: any) => 
+              item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1'
+            );
+            setEvents(homepageEvents.length > 0 ? homepageEvents : eventItems);
           }
         }
 
