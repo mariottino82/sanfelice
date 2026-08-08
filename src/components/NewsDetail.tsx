@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion } from 'motion/react';
-import { ArrowLeft, Calendar, Share2, Facebook, Twitter, Link as LinkIcon, PlayCircle, X, UserPlus, Mail, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ArrowLeft, Calendar, Facebook, Twitter, Link as LinkIcon, PlayCircle, X, UserPlus, Mail, CheckCircle2 } from 'lucide-react';
 import { SEO } from './SEO';
 
 interface NewsDetailProps {
@@ -13,8 +13,14 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
   const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onBack();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
+
+  if (!item) return null;
 
   const handleShareFacebook = () => {
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
@@ -37,210 +43,167 @@ export function NewsDetail({ item, onBack, onRegisterClick }: NewsDetailProps) {
     "@type": item.category === 'evento' ? 'Event' : 'NewsArticle',
     "headline": item.title,
     "name": item.title,
-    "description": item.content.substring(0, 160),
+    "description": (item.content || '').substring(0, 160),
     "image": item.image || `${window.location.origin}/logo.png`,
     "datePublished": item.date,
     "author": {
       "@type": "Organization",
       "name": "Pro San Felice 2023"
-    },
-    ...(item.category === 'evento' ? {
-      "startDate": item.date,
-      "location": {
-        "@type": "Place",
-        "name": "Colle d'Anchise",
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": "Colle d'Anchise",
-          "addressRegion": "CB",
-          "addressCountry": "IT"
-        }
-      }
-    } : {})
+    }
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="min-h-screen bg-white"
-    >
-      <SEO 
-        title={item.title} 
-        description={item.content.substring(0, 160)} 
-        image={item.image}
-        type="article"
-        schema={newsSchema}
-      />
-      {/* Hero Section */}
-      <div className="relative h-[40vh] md:h-[60vh] w-full overflow-hidden">
-        <img 
-          src={item.image || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'} 
-          alt={item.title}
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
+    <AnimatePresence>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-stone-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto"
+        onClick={onBack}
+      >
+        <SEO 
+          title={item.title} 
+          description={(item.content || '').substring(0, 160)} 
+          image={item.image}
+          type="article"
+          schema={newsSchema}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-        
-        <div className="absolute top-4 left-4 md:top-8 md:left-8">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 bg-white/10 backdrop-blur-md text-white px-4 md:px-6 py-2 md:py-3 rounded-full font-bold text-xs md:text-sm hover:bg-white/20 transition-all group"
-          >
-            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="hidden xs:inline">Torna indietro</span>
-            <span className="xs:hidden">Indietro</span>
-          </button>
-        </div>
 
-        <div className="absolute top-4 right-4 md:top-8 md:right-8">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 15 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 15 }}
+          className="bg-white rounded-2xl sm:rounded-[2.5rem] overflow-hidden max-w-4xl w-full max-h-[92vh] sm:max-h-[88vh] shadow-2xl flex flex-col md:flex-row relative my-auto border border-stone-100"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close Button */}
           <button 
             onClick={onBack}
-            className="bg-white/10 backdrop-blur-md text-white p-2 md:p-3 rounded-full hover:bg-white/20 transition-all"
+            className="absolute top-3 right-3 sm:top-5 sm:right-5 z-30 p-2 sm:p-2.5 bg-stone-900/80 text-white hover:bg-stone-900 sm:bg-white/90 sm:text-stone-900 sm:hover:bg-white backdrop-blur-md rounded-full shadow-lg transition-all hover:scale-110"
             aria-label="Chiudi"
           >
-            <X className="w-5 h-5 md:w-6 md:h-6" />
+            <X className="w-5 h-5" />
           </button>
-        </div>
 
-        <div className="absolute bottom-6 md:bottom-12 left-0 w-full">
-          <div className="max-w-4xl mx-auto px-4 md:px-8">
-            <span className={`px-3 md:px-4 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest mb-2 md:mb-4 inline-block ${
-              item.category === 'evento' ? 'bg-amber-500 text-white' : 'bg-white text-stone-900'
-            }`}>
-              {item.category}
-            </span>
-            <h1 className="text-2xl md:text-6xl font-serif text-white mb-3 md:mb-6 leading-tight">
-              {item.title}
-            </h1>
-            <div className="flex items-center gap-4 md:gap-6 text-white/80 text-xs md:text-sm">
-              <span className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 md:w-5 md:h-5" />
-                {new Date(item.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {/* Left Side: Image / Poster Area (Auto-scaled & Responsive) */}
+          <div className="w-full md:w-1/2 min-h-[200px] xs:min-h-[240px] sm:min-h-[280px] md:min-h-[440px] max-h-[300px] xs:max-h-[340px] md:max-h-none relative flex-shrink-0 bg-stone-950 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+            {/* Blurred background for seamless ratio padding */}
+            <img 
+              src={item.image || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'} 
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-110 pointer-events-none"
+              aria-hidden="true"
+            />
+            {/* Main foreground image with object-contain so NO text/photo is cut off */}
+            <img 
+              src={item.image || 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800'} 
+              alt={item.title}
+              className="relative z-10 w-full h-full max-h-[260px] xs:max-h-[300px] md:max-h-[480px] object-contain rounded-xl drop-shadow-2xl"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden pointer-events-none z-10" />
+
+            {/* Mobile Category Badge Overlay */}
+            <div className="absolute bottom-3 left-4 right-12 text-white md:hidden z-20">
+              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest text-white inline-block mb-1 shadow-sm ${
+                item.category === 'evento' ? 'bg-amber-500' : 'bg-stone-900'
+              }`}>
+                {item.category || 'Notizia'}
               </span>
+              <h2 className="text-base sm:text-lg font-serif text-white leading-tight line-clamp-2">{item.title}</h2>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Content Section */}
-      <div className="max-w-4xl mx-auto px-4 md:px-8 py-10 md:py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 md:gap-12">
-          <div className="lg:col-span-3">
-            <div className="prose prose-stone prose-sm md:prose-lg max-w-none">
-              <p className="text-stone-600 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
-                {item.content}
-              </p>
-            </div>
+          {/* Right Side: Details & Scrollable Content */}
+          <div className="w-full md:w-1/2 p-4 sm:p-6 md:p-8 overflow-y-auto flex flex-col justify-between space-y-4 sm:space-y-6">
+            <div>
+              {/* Desktop Header */}
+              <div className="hidden md:block mb-4">
+                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white mb-2 inline-block shadow-sm ${
+                  item.category === 'evento' ? 'bg-amber-500' : 'bg-stone-900'
+                }`}>
+                  {item.category || 'Notizia'}
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 leading-tight font-bold">
+                  {item.title}
+                </h1>
+                <div className="flex items-center gap-2 text-stone-500 text-xs mt-2 font-medium">
+                  <Calendar className="w-4 h-4 text-amber-600" />
+                  <span>
+                    {new Date(item.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              </div>
 
-            {item.video && (
-              <div className="mt-8 md:mt-12">
-                <h3 className="text-xl md:text-2xl font-serif text-stone-900 mb-4 md:mb-6">Video dell'evento</h3>
-                <div className="aspect-video rounded-2xl md:rounded-3xl overflow-hidden bg-stone-100 flex items-center justify-center border border-stone-200">
+              {/* Main Text Content */}
+              <div className="prose prose-stone prose-sm max-w-none">
+                <p className="text-stone-600 leading-relaxed whitespace-pre-wrap text-xs sm:text-sm md:text-base break-words">
+                  {item.content}
+                </p>
+              </div>
+
+              {/* Video if present */}
+              {item.video && (
+                <div className="mt-4 pt-4 border-t border-stone-100">
+                  <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">Video dell'evento</h4>
                   <a 
                     href={item.video} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-3 md:gap-4 text-stone-400 hover:text-stone-900 transition-colors"
+                    className="flex items-center gap-3 p-3 bg-stone-50 hover:bg-stone-100 rounded-xl border border-stone-200 transition-colors text-stone-800 font-bold text-xs"
                   >
-                    <PlayCircle className="w-12 h-12 md:w-16 md:h-16" />
-                    <span className="font-bold text-[10px] md:text-sm uppercase tracking-widest">Guarda il video</span>
+                    <PlayCircle className="w-5 h-5 text-red-600" />
+                    <span>Guarda il video su YouTube / Media</span>
                   </a>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Sidebar / Share */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-8 md:space-y-12">
+            {/* Actions & Sharing Footer */}
+            <div className="pt-4 border-t border-stone-100 space-y-4 mt-auto">
+              {/* Share section */}
               <div>
-                <h4 className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-widest mb-4 md:mb-6">Condividi</h4>
-                <div className="flex flex-row lg:flex-col gap-3 md:gap-4 overflow-x-auto pb-4 lg:pb-0 scrollbar-hide">
-                  <motion.button 
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2">Condividi</p>
+                <div className="flex gap-2">
+                  <button 
                     onClick={handleShareFacebook}
-                    className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-stone-50 text-stone-600 hover:bg-white hover:shadow-md transition-all text-xs md:text-sm font-semibold whitespace-nowrap border border-stone-100"
+                    className="flex-1 flex items-center justify-center gap-1.5 p-2 rounded-xl bg-stone-50 text-stone-700 hover:bg-stone-100 transition-all text-xs font-semibold border border-stone-200"
                   >
-                    <div className="w-8 h-8 rounded-full bg-[#1877F2]/10 flex items-center justify-center">
-                      <Facebook className="w-4 h-4 text-[#1877F2]" />
-                    </div>
-                    Facebook
-                  </motion.button>
-                  <motion.button 
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
+                    <Facebook className="w-3.5 h-3.5 text-[#1877F2]" />
+                    <span>Facebook</span>
+                  </button>
+                  <button 
                     onClick={handleShareTwitter}
-                    className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-stone-50 text-stone-600 hover:bg-white hover:shadow-md transition-all text-xs md:text-sm font-semibold whitespace-nowrap border border-stone-100"
+                    className="flex-1 flex items-center justify-center gap-1.5 p-2 rounded-xl bg-stone-50 text-stone-700 hover:bg-stone-100 transition-all text-xs font-semibold border border-stone-200"
                   >
-                    <div className="w-8 h-8 rounded-full bg-[#1DA1F2]/10 flex items-center justify-center">
-                      <Twitter className="w-4 h-4 text-[#1DA1F2]" />
-                    </div>
-                    Twitter
-                  </motion.button>
-                  <motion.button 
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
+                    <Twitter className="w-3.5 h-3.5 text-[#1DA1F2]" />
+                    <span>X</span>
+                  </button>
+                  <button 
                     onClick={handleCopyLink}
-                    className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-stone-50 text-stone-600 hover:bg-white hover:shadow-md transition-all text-xs md:text-sm font-semibold whitespace-nowrap border border-stone-100"
+                    className="flex-1 flex items-center justify-center gap-1.5 p-2 rounded-xl bg-stone-50 text-stone-700 hover:bg-stone-100 transition-all text-xs font-semibold border border-stone-200"
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${copied ? 'bg-emerald-100' : 'bg-stone-200'}`}>
-                      {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <LinkIcon className="w-4 h-4 text-stone-600" />}
-                    </div>
-                    {copied ? 'Copiato!' : 'Copia Link'}
-                  </motion.button>
+                    {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <LinkIcon className="w-3.5 h-3.5 text-stone-500" />}
+                    <span>{copied ? 'Copiato!' : 'Copia'}</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="p-8 bg-gradient-to-br from-stone-900 to-stone-800 rounded-[2.5rem] text-white shadow-2xl shadow-stone-900/40 relative overflow-hidden group"
-                >
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full -mr-24 -mt-24 group-hover:scale-110 transition-transform duration-700" />
-                  
-                  <div className="relative z-10 space-y-6">
-                    <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
-                      <UserPlus className="w-7 h-7 text-white" />
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-serif text-2xl mb-3 leading-tight">Diventa parte della nostra storia</h4>
-                      <p className="text-stone-400 text-sm leading-relaxed">
-                        Sostieni il territorio e partecipa ai nostri eventi e alle iniziative aperte a tutti.
-                      </p>
-                    </div>
-
-                    <button 
-                      onClick={onRegisterClick}
-                      className="w-full bg-white text-stone-900 py-4 rounded-2xl font-bold text-sm hover:bg-stone-100 transition-all transform active:scale-95 shadow-xl shadow-white/5 flex items-center justify-center gap-2 group/btn"
-                    >
-                      Iscriviti Ora
-                      <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                  </div>
-                </motion.div>
-
-                <div className="px-4">
-                  <p className="text-stone-400 text-xs mb-4 text-center uppercase tracking-widest font-bold">Hai domande?</p>
-                  <motion.a 
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    href="mailto:sanfeliceassociazione@gmail.com"
-                    className="flex items-center justify-center gap-3 text-stone-600 hover:text-stone-900 transition-colors py-3 border-2 border-stone-100 rounded-2xl font-bold text-sm"
-                  >
-                    <Mail className="w-4 h-4" />
-                    Scrivici un'email
-                  </motion.a>
-                </div>
-              </div>
+              {/* Call to Action button */}
+              <button
+                onClick={() => {
+                  onBack();
+                  onRegisterClick();
+                }}
+                className="w-full bg-stone-900 hover:bg-stone-800 text-white py-3 sm:py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-stone-900/20 flex items-center justify-center gap-2 transform active:scale-[0.99]"
+              >
+                <UserPlus className="w-4 h-4 text-amber-400" />
+                Unisciti / Partecipa
+              </button>
             </div>
           </div>
-        </div>
-      </div>
-    </motion.div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

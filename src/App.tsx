@@ -426,22 +426,6 @@ export default function App() {
     return <CookiePolicy onBack={() => setView('home')} />;
   }
 
-  if (selectedNews) {
-    return (
-      <>
-        <NewsDetail 
-          item={selectedNews} 
-          onBack={() => setSelectedNews(null)} 
-          onRegisterClick={() => setShowRegistrationModal(true)} 
-        />
-        <RegistrationModal 
-          isOpen={showRegistrationModal} 
-          onClose={() => setShowRegistrationModal(false)} 
-        />
-      </>
-    );
-  }
-
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUser(null);
@@ -557,6 +541,14 @@ export default function App() {
         selectedContest={selectedContest}
         setSelectedContest={setSelectedContest}
       />
+
+      {selectedNews && (
+        <NewsDetail 
+          item={selectedNews} 
+          onBack={() => setSelectedNews(null)} 
+          onRegisterClick={() => setShowRegistrationModal(true)} 
+        />
+      )}
     </div>
   );
 }
