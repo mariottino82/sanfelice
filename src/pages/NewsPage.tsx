@@ -17,7 +17,10 @@ export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonatio
         if (!response.ok) return;
         const data = await response.json();
         if (Array.isArray(data)) {
-          setNews(data);
+          const newsOnly = data.filter((item: any) => 
+            item.category !== 'evento' && item.category !== 'Evento' && item.category !== 'event'
+          );
+          setNews(newsOnly);
         }
       } catch (error) {
         console.error('Error fetching news:', error);

@@ -14,14 +14,19 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
         if (!response.ok) return;
         const data = await response.json();
         if (Array.isArray(data)) {
+          // Filter to only include news items (not events)
+          const newsOnly = data.filter((item: any) => 
+            item.category !== 'evento' && item.category !== 'Evento' && item.category !== 'event'
+          );
+
           // Priority 1: items with showOnHomepage set
-          let homepageItems = data.filter((item: any) => 
+          let homepageItems = newsOnly.filter((item: any) => 
             item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1'
           );
 
           // Fallback: if no items have showOnHomepage set explicitly, take top items
-          if (homepageItems.length === 0 && data.length > 0) {
-            homepageItems = data.slice(0, 6);
+          if (homepageItems.length === 0 && newsOnly.length > 0) {
+            homepageItems = newsOnly.slice(0, 6);
           }
 
           setNews(homepageItems);
