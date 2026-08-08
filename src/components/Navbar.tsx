@@ -67,7 +67,7 @@ export function Navbar({
               </button>
               {isLoggedIn ? (
                 <Link 
-                  to="/"
+                  to="/dashboard"
                   className="bg-stone-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-stone-800 transition-colors flex items-center gap-2"
                 >
                   <LayoutDashboard className="w-4 h-4" />
@@ -142,7 +142,7 @@ export function Navbar({
             </button>
             {isLoggedIn ? (
               <Link 
-                to="/"
+                to="/dashboard"
                 onClick={() => setIsOpen(false)}
                 className="block w-full text-left px-3 py-2 text-stone-900 font-bold flex items-center gap-2"
               >

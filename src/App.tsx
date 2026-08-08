@@ -487,7 +487,7 @@ export default function App() {
             <Footer socialLinks={socialLinks} setView={setView} />
           </>
         } />
-        <Route path="/" element={
+        <Route path="/dashboard" element={
           isLoggedIn ? (
             <Dashboard user={user} onLogout={handleLogout} />
           ) : (
@@ -513,7 +513,28 @@ export default function App() {
             </>
           )
         } />
-        {isLoggedIn && <Route path="*" element={<Dashboard user={user} onLogout={handleLogout} />} />}
+        <Route path="/" element={
+          <>
+            <SEO schema={mainSchema} />
+            <Navbar 
+              onLoginClick={() => setShowLoginModal(true)} 
+              onRegisterClick={() => setShowRegistrationModal(true)} 
+              onDonationClick={() => setShowDonationModal(true)}
+              isLoggedIn={isLoggedIn}
+            />
+            <main>
+              <Hero />
+              <LiveStreamSection />
+              <SponsorsSection />
+              <PollSection />
+              <LotterySection />
+              <NewsSection onNewsClick={(item) => setSelectedNews(item)} />
+              <EventsSection />
+              <GallerySection />
+            </main>
+            <Footer socialLinks={socialLinks} setView={setView} />
+          </>
+        } />
       </Routes>
 
       <CommonElements 

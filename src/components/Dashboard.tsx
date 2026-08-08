@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck, Globe } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
@@ -1982,22 +1982,27 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   };
 
   const addNews = async (newNews: any) => {
+    const toastId = toast.loading('Pubblicazione in corso...');
     try {
       const response = await fetch('/api/news', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newNews)
       });
-      const data = await response.json();
-      setNews([{ ...newNews, id: data.id, date: newNews.date || new Date().toISOString() }, ...news]);
+      if (!response.ok) {
+        throw new Error('Errore durante il salvataggio');
+      }
+      toast.success('News/Evento pubblicato con successo!', { id: toastId });
       setEditingNews(null);
-      alert('News/Evento pubblicato con successo!');
+      await fetchData();
     } catch (error) {
       console.error('Error adding news:', error);
+      toast.error('Errore durante la pubblicazione. Riprova.', { id: toastId });
     }
   };
 
   const updateNews = async (updated: any) => {
+    const toastId = toast.loading('Aggiornamento in corso...');
     try {
       const response = await fetch(`/api/news/${updated.id}`, {
         method: 'PUT',
@@ -2005,12 +2010,15 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         body: JSON.stringify(updated)
       });
       if (response.ok) {
-        setNews(news.map((n: any) => n.id === updated.id ? updated : n));
+        toast.success('News/Evento aggiornato con successo!', { id: toastId });
         setEditingNews(null);
-        alert('News/Evento aggiornato con successo!');
+        await fetchData();
+      } else {
+        throw new Error('Errore durante l\'aggiornamento');
       }
     } catch (error) {
       console.error('Error updating news:', error);
+      toast.error('Errore durante l\'aggiornamento. Riprova.', { id: toastId });
     }
   };
 
@@ -2428,6 +2436,13 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <Link 
+              to="/" 
+              className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border border-stone-200"
+            >
+              <Globe className="w-4 h-4 text-stone-600" />
+              Vedi Sito Pubblico
+            </Link>
             <div className="text-right">
               <p className="text-sm font-bold text-stone-900">{user?.username}</p>
               <p className="text-xs text-stone-500">{user?.email || 'admin@prosanfelice.it'}</p>
