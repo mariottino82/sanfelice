@@ -8,6 +8,7 @@ import { BookingModal } from '../components/BookingModal';
 import { TicketView } from '../components/TicketView';
 import { EventDetailModal } from '../components/EventDetailModal';
 import { ContestRegistrationModal } from '../components/ContestRegistrationModal';
+import { formatDateDisplay, parseItalianDate } from '../utils/dateUtils';
 
 export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick, isLoggedIn }: any) {
   const [events, setEvents] = React.useState<any[]>([]);
@@ -33,10 +34,9 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick, isL
           const newsData = await newsRes.json();
           if (Array.isArray(newsData)) {
             setEvents(newsData.filter((item: any) => 
-              item.category === 'evento' && 
+              (item.category === 'evento' || item.category === 'Evento' || item.category === 'event') && 
               item.title && 
-              item.date &&
-              !isNaN(new Date(item.date).getTime())
+              item.date
             ));
           }
         }
@@ -187,7 +187,7 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick, isL
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-stone-400 font-bold uppercase tracking-widest mb-2 sm:mb-4">
                           <span className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" />
-                            {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
+                            {formatDateDisplay(item.date || item.startDate || item.drawDate || item.createdAt)}
                           </span>
                           {item.location && (
                             <span className="flex items-center gap-1.5 truncate max-w-[150px] sm:max-w-none">

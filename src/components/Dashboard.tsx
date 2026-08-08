@@ -11,6 +11,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import { resizeAndUploadImage, resizeImage } from '../utils/imageUtils';
+import { formatDateDisplay, formatDateForInput } from '../utils/dateUtils';
 
 const loadImage = (url: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
@@ -4335,7 +4336,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           <option value="news">News</option>
                           <option value="evento">Evento</option>
                         </select>
-                        <input type="date" name="date" defaultValue={editingNews?.date ? new Date(editingNews.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
+                        <input type="date" name="date" defaultValue={formatDateForInput(editingNews?.date)} className="px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none" />
                       </div>
                     </div>
                     <textarea name="content" defaultValue={editingNews?.content} placeholder="Contenuto della news..." className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm outline-none h-32" required />
@@ -4425,7 +4426,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               </span>
                             )}
                           </div>
-                          <span className="text-[10px] text-stone-400 font-bold uppercase">{new Date(n.date).toLocaleDateString('it-IT')}</span>
+                          <span className="text-[10px] text-stone-400 font-bold uppercase">{formatDateDisplay(n.date)}</span>
                         </div>
                         <h3 className="font-serif text-lg text-stone-900 mb-2">{n.title}</h3>
                         <p className="text-sm text-stone-500 line-clamp-2 mb-4">{n.content}</p>

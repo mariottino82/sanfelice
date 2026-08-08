@@ -4,6 +4,7 @@ import { Newspaper, ArrowLeft, Calendar, Clock, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { SEO } from '../components/SEO';
+import { formatDateDisplay } from '../utils/dateUtils';
 
 export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonationClick, isLoggedIn }: any) {
   const [news, setNews] = React.useState<any[]>([]);
@@ -90,7 +91,7 @@ export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonatio
                     <div className="flex items-center gap-4 text-xs text-stone-400 font-bold uppercase tracking-widest mb-4">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
-                        {new Date(item.date).toLocaleDateString('it-IT')}
+                        {formatDateDisplay(item.date)}
                       </span>
                     </div>
                     <h2 className="text-2xl font-serif text-stone-900 mb-4 group-hover:text-stone-700 transition-colors">{item.title}</h2>

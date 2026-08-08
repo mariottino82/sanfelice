@@ -6,6 +6,7 @@ import { BookingModal } from './BookingModal';
 import { TicketView } from './TicketView';
 import { EventDetailModal } from './EventDetailModal';
 import { ContestRegistrationModal } from './ContestRegistrationModal';
+import { formatDateDisplay, parseItalianDate } from '../utils/dateUtils';
 
 export function EventsSection() {
   const [events, setEvents] = React.useState<any[]>([]);
@@ -30,10 +31,9 @@ export function EventsSection() {
           const newsData = await newsRes.json();
           if (Array.isArray(newsData)) {
             const eventItems = newsData.filter((item: any) => 
-              item.category === 'evento' && 
+              (item.category === 'evento' || item.category === 'Evento' || item.category === 'event') && 
               item.title && 
-              item.date &&
-              !isNaN(new Date(item.date).getTime())
+              item.date
             );
             const homepageEvents = eventItems.filter((item: any) => 
               item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1'
@@ -90,8 +90,8 @@ export function EventsSection() {
     ...contests.map(c => ({ ...c, type: 'contest' })),
     ...bookingEvents.map(b => ({ ...b, type: 'booking' }))
   ].sort((a, b) => {
-    const dateA = new Date(a.date || a.startDate || a.drawDate || a.createdAt || 0).getTime();
-    const dateB = new Date(b.date || b.startDate || b.drawDate || b.createdAt || 0).getTime();
+    const dateA = parseItalianDate(a.date || a.startDate || a.drawDate || a.createdAt || 0).getTime();
+    const dateB = parseItalianDate(b.date || b.startDate || b.drawDate || b.createdAt || 0).getTime();
     return dateB - dateA;
   });
 
@@ -175,7 +175,7 @@ export function EventsSection() {
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-stone-500 mb-2 sm:mb-3">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                        {new Date(item.date || item.startDate || item.drawDate || item.createdAt).toLocaleDateString('it-IT')}
+                        {formatDateDisplay(item.date || item.startDate || item.drawDate || item.createdAt)}
                       </span>
                       {item.location && (
                         <span className="flex items-center gap-1 truncate max-w-[150px] sm:max-w-none">

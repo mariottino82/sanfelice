@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Newspaper, ArrowRight } from 'lucide-react';
-
 import { Link } from 'react-router-dom';
+import { formatDateDisplay } from '../utils/dateUtils';
 
 export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void }) {
   const [news, setNews] = React.useState<any[]>([]);
@@ -14,26 +14,12 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
         if (!response.ok) return;
         const data = await response.json();
         if (Array.isArray(data)) {
-          // Filter items that are news (category is 'news', empty, null, or not 'evento')
-          const newsCategoryItems = data.filter((item: any) => 
-            !item.category || 
-            item.category === '' || 
-            item.category === 'news' || 
-            item.category.toLowerCase() === 'news' || 
-            item.category.toLowerCase() !== 'evento'
-          );
-
           // Priority 1: items with showOnHomepage set
-          let homepageItems = newsCategoryItems.filter((item: any) => 
+          let homepageItems = data.filter((item: any) => 
             item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1'
           );
 
-          // Fallback 1: if no items have showOnHomepage set explicitly, take top news items
-          if (homepageItems.length === 0 && newsCategoryItems.length > 0) {
-            homepageItems = newsCategoryItems.slice(0, 6);
-          }
-
-          // Fallback 2: if all database items exist, take top items
+          // Fallback: if no items have showOnHomepage set explicitly, take top items
           if (homepageItems.length === 0 && data.length > 0) {
             homepageItems = data.slice(0, 6);
           }
@@ -92,7 +78,7 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
                   <div className="flex items-center gap-4 text-xs sm:text-sm text-stone-500 mb-2 sm:mb-3">
                     <span className="flex items-center gap-1 font-medium">
                       <Newspaper className="w-4 h-4 text-stone-400" />
-                      {new Date(item.date).toLocaleDateString('it-IT')}
+                      {formatDateDisplay(item.date)}
                     </span>
                   </div>
                   <h4 className="text-lg sm:text-xl font-serif text-stone-900 mb-2 leading-snug line-clamp-2 break-words">{item.title}</h4>

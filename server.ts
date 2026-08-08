@@ -908,9 +908,10 @@ async function startServer() {
   app.post('/api/news', async (req, res) => {
     try {
       const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
+      const isHomepage = (showOnHomepage === 1 || showOnHomepage === '1' || showOnHomepage === true) ? 1 : 0;
       const result = await db.run(
         'INSERT INTO news (title, date, excerpt, content, image, video, category, showOnHomepage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [title, date || new Date().toISOString(), excerpt, content, image, video, category || 'news', showOnHomepage ? 1 : 0]
+        [title || '', date || new Date().toISOString().split('T')[0], excerpt || null, content || '', image || null, video || null, category || 'news', isHomepage]
       );
       res.json({ id: result.lastID });
     } catch (error) {
@@ -922,9 +923,10 @@ async function startServer() {
   app.put('/api/news/:id', async (req, res) => {
     try {
       const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
+      const isHomepage = (showOnHomepage === 1 || showOnHomepage === '1' || showOnHomepage === true) ? 1 : 0;
       await db.run(
         'UPDATE news SET title = ?, date = ?, excerpt = ?, content = ?, image = ?, video = ?, category = ?, showOnHomepage = ? WHERE id = ?',
-        [title, date || new Date().toISOString(), excerpt, content, image, video, category || 'news', showOnHomepage ? 1 : 0, req.params.id]
+        [title || '', date || new Date().toISOString().split('T')[0], excerpt || null, content || '', image || null, video || null, category || 'news', isHomepage, req.params.id]
       );
       res.json({ success: true });
     } catch (error) {
