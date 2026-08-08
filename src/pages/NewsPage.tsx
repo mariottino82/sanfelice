@@ -13,9 +13,18 @@ export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonatio
     const fetchNews = async () => {
       try {
         const response = await fetch('/api/news');
+        if (!response.ok) return;
         const data = await response.json();
-        // Filter only news category
-        setNews(data.filter((item: any) => item.category === 'news'));
+        if (Array.isArray(data)) {
+          const filtered = data.filter((item: any) => 
+            !item.category || 
+            item.category === '' || 
+            item.category === 'news' || 
+            item.category.toLowerCase() === 'news' || 
+            item.category.toLowerCase() !== 'evento'
+          );
+          setNews(filtered.length > 0 ? filtered : data);
+        }
       } catch (error) {
         console.error('Error fetching news:', error);
       } finally {
@@ -74,6 +83,9 @@ export function NewsPage({ onNewsClick, onLoginClick, onRegisterClick, onDonatio
                       alt={item.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&q=80&w=800';
+                      }}
                     />
                     <div className="absolute top-4 left-4">
                       <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-stone-900 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm">

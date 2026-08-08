@@ -29,14 +29,17 @@ export function EventsPage({ onLoginClick, onRegisterClick, onDonationClick, isL
       try {
         // Fetch News (Events)
         const newsRes = await fetch('/api/news');
-        const newsData = await newsRes.json();
-        setEvents(newsData.filter((item: any) => 
-          item.category === 'evento' && 
-          item.title && 
-          item.date &&
-          item.showOnHomepage === 1 &&
-          !isNaN(new Date(item.date).getTime())
-        ));
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          if (Array.isArray(newsData)) {
+            setEvents(newsData.filter((item: any) => 
+              item.category === 'evento' && 
+              item.title && 
+              item.date &&
+              !isNaN(new Date(item.date).getTime())
+            ));
+          }
+        }
 
         // Fetch Lotteries
         const lotteryRes = await fetch('/api/lottery');

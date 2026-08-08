@@ -11,9 +11,35 @@ export function NewsSection({ onNewsClick }: { onNewsClick: (news: any) => void 
     const fetchNews = async () => {
       try {
         const response = await fetch('/api/news');
+        if (!response.ok) return;
         const data = await response.json();
-        // Filter only news category and show on homepage
-        setNews(data.filter((item: any) => item.category === 'news' && (item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1')));
+        if (Array.isArray(data)) {
+          // Filter items that are news (category is 'news', empty, null, or not 'evento')
+          const newsCategoryItems = data.filter((item: any) => 
+            !item.category || 
+            item.category === '' || 
+            item.category === 'news' || 
+            item.category.toLowerCase() === 'news' || 
+            item.category.toLowerCase() !== 'evento'
+          );
+
+          // Priority 1: items with showOnHomepage set
+          let homepageItems = newsCategoryItems.filter((item: any) => 
+            item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1'
+          );
+
+          // Fallback 1: if no items have showOnHomepage set explicitly, take top news items
+          if (homepageItems.length === 0 && newsCategoryItems.length > 0) {
+            homepageItems = newsCategoryItems.slice(0, 6);
+          }
+
+          // Fallback 2: if all database items exist, take top items
+          if (homepageItems.length === 0 && data.length > 0) {
+            homepageItems = data.slice(0, 6);
+          }
+
+          setNews(homepageItems);
+        }
       } catch (error) {
         console.error('Error fetching news:', error);
       }

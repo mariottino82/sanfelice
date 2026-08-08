@@ -896,31 +896,51 @@ async function startServer() {
 
   // News API
   app.get('/api/news', async (req, res) => {
-    const news = await db.all('SELECT * FROM news ORDER BY date DESC');
-    res.json(news);
+    try {
+      const news = await db.all('SELECT * FROM news ORDER BY date DESC');
+      res.json(news || []);
+    } catch (error) {
+      console.error('Error fetching news:', error);
+      res.status(500).json({ error: 'Errore durante il recupero delle news' });
+    }
   });
 
   app.post('/api/news', async (req, res) => {
-    const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
-    const result = await db.run(
-      'INSERT INTO news (title, date, excerpt, content, image, video, category, showOnHomepage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [title, date || new Date().toISOString(), excerpt, content, image, video, category, showOnHomepage ? 1 : 0]
-    );
-    res.json({ id: result.lastID });
+    try {
+      const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
+      const result = await db.run(
+        'INSERT INTO news (title, date, excerpt, content, image, video, category, showOnHomepage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, date || new Date().toISOString(), excerpt, content, image, video, category || 'news', showOnHomepage ? 1 : 0]
+      );
+      res.json({ id: result.lastID });
+    } catch (error) {
+      console.error('Error creating news:', error);
+      res.status(500).json({ error: 'Errore durante la creazione della news' });
+    }
   });
 
   app.put('/api/news/:id', async (req, res) => {
-    const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
-    await db.run(
-      'UPDATE news SET title = ?, date = ?, excerpt = ?, content = ?, image = ?, video = ?, category = ?, showOnHomepage = ? WHERE id = ?',
-      [title, date || new Date().toISOString(), excerpt, content, image, video, category, showOnHomepage ? 1 : 0, req.params.id]
-    );
-    res.json({ success: true });
+    try {
+      const { title, date, excerpt, content, image, video, category, showOnHomepage } = req.body;
+      await db.run(
+        'UPDATE news SET title = ?, date = ?, excerpt = ?, content = ?, image = ?, video = ?, category = ?, showOnHomepage = ? WHERE id = ?',
+        [title, date || new Date().toISOString(), excerpt, content, image, video, category || 'news', showOnHomepage ? 1 : 0, req.params.id]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error updating news:', error);
+      res.status(500).json({ error: 'Errore durante l\'aggiornamento della news' });
+    }
   });
 
   app.delete('/api/news/:id', async (req, res) => {
-    await db.run('DELETE FROM news WHERE id = ?', [req.params.id]);
-    res.json({ success: true });
+    try {
+      await db.run('DELETE FROM news WHERE id = ?', [req.params.id]);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting news:', error);
+      res.status(500).json({ error: 'Errore durante l\'eliminazione della news' });
+    }
   });
 
   // Gallery API

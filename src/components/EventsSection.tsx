@@ -26,14 +26,18 @@ export function EventsSection() {
       try {
         // Fetch News (Events)
         const newsRes = await fetch('/api/news');
-        const newsData = await newsRes.json();
-        setEvents(newsData.filter((item: any) => 
-          item.category === 'evento' && 
-          item.title && 
-          item.date &&
-          !isNaN(new Date(item.date).getTime()) &&
-          (item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1')
-        ));
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          if (Array.isArray(newsData)) {
+            setEvents(newsData.filter((item: any) => 
+              item.category === 'evento' && 
+              item.title && 
+              item.date &&
+              !isNaN(new Date(item.date).getTime()) &&
+              (item.showOnHomepage === 1 || item.showOnHomepage === true || item.showOnHomepage === '1')
+            ));
+          }
+        }
 
         // Fetch Lotteries
         const lotteryRes = await fetch('/api/lottery');
