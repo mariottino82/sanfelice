@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck, Globe } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Clock, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck, Globe } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
@@ -9,6 +9,7 @@ import { PollsManagement } from './PollsManagement';
 import { VotazioniSection } from './VotazioniSection';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { resizeAndUploadImage, resizeImage } from '../utils/imageUtils';
 import { formatDateDisplay, formatDateForInput } from '../utils/dateUtils';
@@ -105,7 +106,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
     >
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
@@ -543,10 +544,18 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         body: JSON.stringify({ status })
       });
       if (response.ok) {
-        fetchData();
+        setNotification({ 
+          message: status === 'confirmed' ? 'Iscrizione confermata con successo!' : 'Stato iscrizione aggiornato in "In Attesa"!', 
+          type: 'success' 
+        });
+        await fetchData();
+      } else {
+        const err = await response.json();
+        setNotification({ message: 'Errore: ' + (err.error || 'Impossibile aggiornare lo stato'), type: 'error' });
       }
     } catch (error) {
       console.error('Error updating registration status:', error);
+      setNotification({ message: 'Errore di connessione', type: 'error' });
     }
   };
 
@@ -936,31 +945,77 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
   const exportContestRegistrations = (contestId: number) => {
     const contest = contests.find(c => c.id === contestId);
     const regs = contestRegistrations.filter(r => r.contestId === contestId);
-    if (!contest || regs.length === 0) return;
+    if (!contest) return;
+    if (regs.length === 0) {
+      toast.error('Nessun iscritto presente per questo concorso/rassegna');
+      return;
+    }
 
-    const headers = ['Nome', 'Email', 'Cellulare', 'Minorenne', 'Genitore', 'Email Genitore', 'Cellulare Genitore', 'Brano/Brani', 'Base Musicale', 'Maestro', 'Data'];
-    const csvContent = [
-      headers.join(','),
-      ...regs.map(r => [
-        `"${r.name}"`,
-        `"${r.email}"`,
-        `"${r.phone}"`,
-        r.isMinor ? 'Sì' : 'No',
-        `"${r.parentName || ''}"`,
-        `"${r.parentEmail || ''}"`,
-        `"${r.parentPhone || ''}"`,
-        `"${r.songTitle || ''}"`,
-        r.hasBackingTrack ? 'Sì' : 'No',
-        `"${r.maestroName || ''}"`,
-        new Date(r.date).toLocaleDateString()
-      ].join(','))
-    ].join('\n');
+    const data = regs.map((r, index) => {
+      let backingTrackStr = 'No';
+      if (r.hasBackingTrack === true || r.hasBackingTrack === 1 || r.hasBackingTrack === '1' || r.hasBackingTrack === 'si' || r.hasBackingTrack === 'sì' || r.hasBackingTrack === 'Sì' || r.hasBackingTrack === 'Si') {
+        backingTrackStr = 'Sì';
+      }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `iscritti_${contest.title.replace(/\s+/g, '_').toLowerCase()}.csv`;
-    link.click();
+      let dateFormatted = '';
+      if (r.date || r.createdAt) {
+        try {
+          const d = new Date(r.date || r.createdAt);
+          dateFormatted = !isNaN(d.getTime()) ? d.toLocaleDateString('it-IT') : (r.date || '');
+        } catch {
+          dateFormatted = r.date || '';
+        }
+      }
+
+      return {
+        'N°': index + 1,
+        'Stato': r.status === 'confirmed' ? 'Confermato' : 'In Attesa',
+        'Partecipante': r.name || '',
+        'Email Partecipante': r.email || '',
+        'Cellulare': r.phone || '',
+        'Minorenne': (r.isMinor === 1 || r.isMinor === true || r.isMinor === '1') ? 'Sì' : 'No',
+        'Genitore / Tutore': r.parentName || '',
+        'Email Genitore': r.parentEmail || '',
+        'Cellulare Genitore': r.parentPhone || '',
+        'Brano / Brani': r.songTitle || '',
+        'Base Musicale': backingTrackStr,
+        'Maestro / Scuola': r.maestroName || '',
+        'Data Iscrizione': dateFormatted
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    // Imposta la larghezza ottimale per ciascuna colonna
+    worksheet['!cols'] = [
+      { wch: 6 },  // N°
+      { wch: 14 }, // Stato
+      { wch: 28 }, // Partecipante
+      { wch: 30 }, // Email Partecipante
+      { wch: 18 }, // Cellulare
+      { wch: 12 }, // Minorenne
+      { wch: 26 }, // Genitore
+      { wch: 28 }, // Email Genitore
+      { wch: 18 }, // Cellulare Genitore
+      { wch: 36 }, // Brano / Brani
+      { wch: 14 }, // Base Musicale
+      { wch: 24 }, // Maestro / Scuola
+      { wch: 16 }  // Data Iscrizione
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    const sheetName = (contest.title || 'Iscritti').slice(0, 30).replace(/[:\\\/\?\*\[\]]/g, '_');
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+    const cleanTitle = (contest.title || 'concorso')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/gi, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    const filename = `iscritti_${cleanTitle}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    XLSX.writeFile(workbook, filename);
+    toast.success('File Excel (.xlsx) scaricato con successo!');
   };
 
   const [selectedYear, setSelectedYear] = React.useState<number | 'all'>('all');
@@ -5596,10 +5651,11 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             </button>
                             <button 
                               onClick={() => exportContestRegistrations(contest.id)}
-                              className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-900 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-stone-200 transition-all"
+                              className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-900 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-50 hover:text-emerald-700 transition-all"
+                              title="Esporta elenco iscritti in file Excel .xlsx"
                             >
                               <Download className="w-4 h-4" />
-                              Esporta Lista
+                              Esporta Excel
                             </button>
                             <button 
                               onClick={() => {
@@ -5873,14 +5929,24 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                   <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
 
-                <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
-                  <div className="w-12 h-12 md:w-16 md:h-16 bg-stone-100 rounded-xl md:rounded-2xl flex items-center justify-center">
-                    <Users className="w-6 h-6 md:w-8 md:h-8 text-stone-900" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8 pr-12">
+                  <div className="flex items-center gap-3 md:gap-4">
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-stone-100 rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <Users className="w-6 h-6 md:w-8 md:h-8 text-stone-900" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg md:text-2xl font-serif text-stone-900">Iscritti: {showRegistrationDetails.title}</h3>
+                      <p className="text-stone-500 text-[10px] md:text-sm">Gestione partecipanti e comunicazioni</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg md:text-2xl font-serif text-stone-900">Iscritti: {showRegistrationDetails.title}</h3>
-                    <p className="text-stone-500 text-[10px] md:text-sm">Gestione partecipanti e comunicazioni</p>
-                  </div>
+                  <button
+                    onClick={() => exportContestRegistrations(showRegistrationDetails.id)}
+                    className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm shadow-emerald-900/10"
+                    title="Esporta elenco completo in formato Excel .xlsx"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Esporta Excel (.xlsx)</span>
+                  </button>
                 </div>
 
                 <div className="overflow-x-auto -mx-4 px-4">
@@ -5932,29 +5998,37 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               )}
                             </td>
                             <td className="py-3 md:py-4">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] md:text-[10px] font-bold uppercase ${
-                                reg.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider ${
+                                reg.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                               }`}>
                                 {reg.status === 'confirmed' ? 'Confermato' : 'In Attesa'}
                               </span>
                             </td>
                             <td className="py-3 md:py-4 text-right">
                               <div className="flex items-center justify-end gap-1 md:gap-2">
-                                {reg.status !== 'confirmed' && (
+                                {reg.status !== 'confirmed' ? (
                                   <button 
                                     onClick={() => updateRegistrationStatus(reg.id, 'confirmed')}
-                                    className="p-1.5 md:p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                    className="p-1.5 md:p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all"
                                     title="Conferma Iscrizione"
                                   >
-                                    <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                    <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />
+                                  </button>
+                                ) : (
+                                  <button 
+                                    onClick={() => updateRegistrationStatus(reg.id, 'pending')}
+                                    className="p-1.5 md:p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all"
+                                    title="Reimposta In Attesa"
+                                  >
+                                    <Clock className="w-4 h-4 md:w-5 md:h-5" />
                                   </button>
                                 )}
                                 <button 
                                   onClick={() => deleteContestRegistration(reg)}
                                   className="p-1.5 md:p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                  title="Elimina"
+                                  title="Elimina Iscrizione"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                  <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
                               </div>
                             </td>
@@ -6410,7 +6484,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
           >
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -6467,7 +6541,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
             >
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -6499,6 +6573,9 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                           setNotification({ message: 'Iscrizione eliminata!', type: 'success' });
                           await fetchData();
                           setRegistrationToDelete(null);
+                        } else {
+                          const errorData = await response.json();
+                          setNotification({ message: 'Errore: ' + (errorData.error || 'Impossibile eliminare'), type: 'error' });
                         }
                       } catch (error) {
                         setNotification({ message: 'Errore di connessione', type: 'error' });
@@ -6521,7 +6598,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+              className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
             >
               <motion.div 
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -7142,7 +7219,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[300]"
           >
               <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
                 notification.type === 'success' 

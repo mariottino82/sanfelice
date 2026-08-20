@@ -310,7 +310,8 @@ export async function getDb() {
     'CREATE TABLE IF NOT EXISTS voting_tokens (token TEXT PRIMARY KEY, pollId INTEGER, memberId INTEGER, used INTEGER DEFAULT 0, createdAt TEXT, FOREIGN KEY(pollId) REFERENCES polls(id), FOREIGN KEY(memberId) REFERENCES members(id))',
     'ALTER TABLE contest_registrations ADD COLUMN songTitle TEXT',
     'ALTER TABLE contest_registrations ADD COLUMN hasBackingTrack TEXT',
-    'ALTER TABLE contest_registrations ADD COLUMN maestroName TEXT'
+    'ALTER TABLE contest_registrations ADD COLUMN maestroName TEXT',
+    'ALTER TABLE contest_registrations ADD COLUMN status TEXT DEFAULT "pending"'
   ];
 
   for (const migration of migrations) {

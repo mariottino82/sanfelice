@@ -1712,6 +1712,32 @@ app.post('/api/contest-registrations', async (req, res) => {
   }
 });
 
+app.put('/api/contest-registrations/:id', async (req, res) => {
+  const { status, name, email, phone, songTitle, hasBackingTrack, maestroName } = req.body;
+  try {
+    const existing = await db.get('SELECT * FROM contest_registrations WHERE id = ?', [req.params.id]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Iscrizione non trovata' });
+    }
+    const newStatus = status !== undefined ? status : existing.status;
+    const newName = name !== undefined ? name : existing.name;
+    const newEmail = email !== undefined ? email : existing.email;
+    const newPhone = phone !== undefined ? phone : existing.phone;
+    const newSongTitle = songTitle !== undefined ? songTitle : existing.songTitle;
+    const newHasBackingTrack = hasBackingTrack !== undefined ? hasBackingTrack : existing.hasBackingTrack;
+    const newMaestroName = maestroName !== undefined ? maestroName : existing.maestroName;
+
+    await db.run(
+      'UPDATE contest_registrations SET status = ?, name = ?, email = ?, phone = ?, songTitle = ?, hasBackingTrack = ?, maestroName = ? WHERE id = ?',
+      [newStatus, newName, newEmail, newPhone, newSongTitle, newHasBackingTrack, newMaestroName, req.params.id]
+    );
+    res.json({ success: true, status: newStatus });
+  } catch (err: any) {
+    console.error('Error updating contest registration:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/contest-registrations/:id', async (req, res) => {
   try {
     await db.run('DELETE FROM contest_registrations WHERE id = ?', [req.params.id]);

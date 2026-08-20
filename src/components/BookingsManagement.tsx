@@ -65,14 +65,28 @@ export function BookingsManagement({
   const handleExportExcel = () => {
     if (!selectedEvent || eventBookings.length === 0) return;
 
-    const data = eventBookings.map(b => ({
-      'Nome': b.name,
-      'Email': b.email,
-      'Codice Biglietto': b.ticketNumber,
-      'Data Prenotazione': new Date(b.createdAt).toLocaleString('it-IT')
+    const data = eventBookings.map((b, index) => ({
+      'N°': index + 1,
+      'Nome': b.name || '',
+      'Email': b.email || '',
+      'Telefono': b.phone || '',
+      'Codice Biglietto': b.ticketNumber || '',
+      'Posti': b.seats || 1,
+      'Stato': b.status || 'Confermato',
+      'Data Prenotazione': b.createdAt ? new Date(b.createdAt).toLocaleString('it-IT') : ''
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
+    worksheet['!cols'] = [
+      { wch: 6 },
+      { wch: 28 },
+      { wch: 30 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 8 },
+      { wch: 14 },
+      { wch: 22 }
+    ];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Prenotazioni');
     
