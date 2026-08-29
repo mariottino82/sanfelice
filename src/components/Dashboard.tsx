@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Clock, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck, Globe } from 'lucide-react';
+import { Users, FileText, Calendar, Euro, Plus, TrendingUp, LogOut, Shield, UserPlus, Settings, UserCheck, Trash2, Edit2, Ticket, Gift, CheckCircle2, Clock, Newspaper, Facebook, Instagram, Youtube, Share2, Image as ImageIcon, Video, Vote, Menu, X, ShieldCheck, Wand2, Download, Upload, Trophy, ClipboardCheck, Mail, Phone, XCircle, AlertCircle, ChevronRight, ChevronLeft, Building, Save, Send, Loader2, Inbox, Archive, RotateCcw, Reply, Forward, Paperclip, MoreVertical, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Search, Zap, RefreshCw, CreditCard, BarChart, Heart, Copy, ExternalLink, FileCheck, Globe, Award, Printer } from 'lucide-react';
 import { MeetingMinutesWizard } from './MeetingMinutesWizard';
 import { BookingsManagement } from './BookingsManagement';
 import { DonationsManagement } from './DonationsManagement';
@@ -1016,6 +1016,253 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
     XLSX.writeFile(workbook, filename);
     toast.success('File Excel (.xlsx) scaricato con successo!');
+  };
+
+  const drawCertificatePage = (
+    doc: jsPDF, 
+    contest: any, 
+    reg: any, 
+    assocDetails: any, 
+    logoImg: HTMLImageElement | null
+  ) => {
+    // Canvas dimensions: 297mm x 210mm (Landscape A4)
+    const pageWidth = 297;
+    const pageHeight = 210;
+    const centerX = pageWidth / 2;
+
+    // Background subtle tone
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    // Outer decorative border
+    doc.setDrawColor(180, 140, 60); // Gold/Amber
+    doc.setLineWidth(1.2);
+    doc.rect(8, 8, 281, 194);
+
+    // Inner thin border
+    doc.setDrawColor(210, 180, 120);
+    doc.setLineWidth(0.4);
+    doc.rect(11, 11, 275, 188);
+
+    // Corner decorative accents
+    doc.setFillColor(180, 140, 60);
+    doc.rect(11, 11, 5, 5, 'F');
+    doc.rect(281, 11, 5, 5, 'F');
+    doc.rect(11, 194, 5, 5, 'F');
+    doc.rect(281, 194, 5, 5, 'F');
+
+    // Add Logo if available
+    let headerY = 15;
+    if (logoImg) {
+      try {
+        doc.addImage(logoImg, 'PNG', centerX - 12, headerY, 24, 24);
+        headerY += 28;
+      } catch (e) {
+        headerY += 10;
+      }
+    } else {
+      headerY += 8;
+    }
+
+    // Association Name & Info
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(55, 65, 81);
+    doc.text((assocDetails.name || 'ASSOCIAZIONE PRO SAN FELICE').toUpperCase(), centerX, headerY, { align: 'center' });
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(120, 120, 120);
+    const locSub = [assocDetails.address, assocDetails.municipality ? `${assocDetails.municipality} (${assocDetails.province || 'CB'})` : ''].filter(Boolean).join(' • ');
+    if (locSub) {
+      headerY += 4.5;
+      doc.text(locSub, centerX, headerY, { align: 'center' });
+    }
+
+    // Certificate Title
+    headerY += 13;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(23);
+    doc.setTextColor(180, 110, 30); // Warm gold/bronze
+    doc.text('ATTESTATO DI RICONOSCIMENTO', centerX, headerY, { align: 'center' });
+
+    // Decorative line under title
+    doc.setDrawColor(180, 140, 60);
+    doc.setLineWidth(0.6);
+    doc.line(centerX - 65, headerY + 4, centerX + 65, headerY + 4);
+    doc.setFillColor(180, 140, 60);
+    doc.circle(centerX, headerY + 4, 1.2, 'F');
+
+    // Dedication sentence
+    headerY += 13;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(75, 85, 99);
+    doc.text('Si conferisce il presente attestato di merito e partecipazione a:', centerX, headerY, { align: 'center' });
+
+    // Participant Name
+    headerY += 13;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.text((reg.name || 'Partecipante').toUpperCase(), centerX, headerY, { align: 'center' });
+
+    // Underline below name
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.4);
+    doc.line(centerX - 80, headerY + 3, centerX + 80, headerY + 3);
+
+    // Optional song / maestro
+    if (reg.songTitle || reg.maestroName) {
+      headerY += 8;
+      const detailsList = [];
+      if (reg.songTitle) detailsList.push(`Brano: "${reg.songTitle}"`);
+      if (reg.maestroName) detailsList.push(`M° ${reg.maestroName}`);
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(detailsList.join('   —   '), centerX, headerY, { align: 'center' });
+    }
+
+    // Motivation / Event context
+    headerY += 9;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(75, 85, 99);
+    doc.text('Per la brillante esibizione e il prezioso contributo artistico in occasione di:', centerX, headerY, { align: 'center' });
+
+    // Contest Name
+    headerY += 8;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`"${(contest.title || '').toUpperCase()}"`, centerX, headerY, { align: 'center' });
+
+    // Date & Place
+    headerY += 9;
+    let eventDateStr = '';
+    const rawDate = contest.eventDate || contest.startDate || reg.date;
+    if (rawDate) {
+      try {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          eventDateStr = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+      } catch {
+        eventDateStr = rawDate;
+      }
+    }
+    if (!eventDateStr) {
+      eventDateStr = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    const place = assocDetails.municipality || "Colle d'Anchise";
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${place}, lì ${eventDateStr}`, centerX, headerY, { align: 'center' });
+
+    // Signatures: President & Artistic Director
+    const sigY = 168;
+    const leftSigX = 75;
+    const rightSigX = 222;
+
+    // President Signature Box
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(50, 50, 50);
+    doc.text('IL PRESIDENTE', leftSigX, sigY, { align: 'center' });
+    if (assocDetails.legalRepresentative && assocDetails.legalRepresentative !== '___________________________') {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(80, 80, 80);
+      doc.text(assocDetails.legalRepresentative, leftSigX, sigY + 4.5, { align: 'center' });
+    }
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineWidth(0.5);
+    doc.line(leftSigX - 32, sigY + 17, leftSigX + 32, sigY + 17);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setTextColor(140, 140, 140);
+    doc.text('(Firma del Presidente)', leftSigX, sigY + 21, { align: 'center' });
+
+    // Artistic Director Signature Box
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(50, 50, 50);
+    doc.text('IL DIRETTORE ARTISTICO', rightSigX, sigY, { align: 'center' });
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineWidth(0.5);
+    doc.line(rightSigX - 32, sigY + 17, rightSigX + 32, sigY + 17);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setTextColor(140, 140, 140);
+    doc.text('(Firma del Direttore Artistico)', rightSigX, sigY + 21, { align: 'center' });
+  };
+
+  const generateContestCertificatePDF = async (contest: any, reg: any) => {
+    try {
+      toast.info(`Generazione attestato per ${reg.name}...`);
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      let logoImg: HTMLImageElement | null = null;
+      try {
+        logoImg = await loadImage('/logo.png');
+      } catch (e) {
+        console.warn('Logo not loaded for certificate:', e);
+      }
+
+      drawCertificatePage(doc, contest, reg, associationDetails, logoImg);
+
+      const cleanName = (reg.name || 'partecipante').toLowerCase().replace(/[^a-z0-9]/gi, '_');
+      const cleanContest = (contest.title || 'concorso').toLowerCase().replace(/[^a-z0-9]/gi, '_');
+      const filename = `attestato_${cleanName}_${cleanContest}.pdf`;
+
+      doc.save(filename);
+      toast.success(`Attestato per ${reg.name} scaricato con successo!`);
+    } catch (err: any) {
+      console.error('Error generating certificate:', err);
+      toast.error('Errore durante la generazione dell\'attestato');
+    }
+  };
+
+  const generateAllContestCertificatesPDF = async (contestId: number) => {
+    const contest = contests.find((c: any) => c.id === contestId);
+    const regs = contestRegistrations.filter((r: any) => r.contestId === contestId);
+    if (!contest) return;
+    if (regs.length === 0) {
+      toast.error('Nessun iscritto presente per generare gli attestati');
+      return;
+    }
+
+    try {
+      toast.info(`Generazione di ${regs.length} attestati in corso...`);
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      let logoImg: HTMLImageElement | null = null;
+      try {
+        logoImg = await loadImage('/logo.png');
+      } catch (e) {
+        console.warn('Logo not loaded for certificates:', e);
+      }
+
+      regs.forEach((reg: any, index: number) => {
+        if (index > 0) {
+          doc.addPage('a4', 'landscape');
+        }
+        drawCertificatePage(doc, contest, reg, associationDetails, logoImg);
+      });
+
+      const cleanContest = (contest.title || 'concorso')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/gi, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      const filename = `attestati_tutti_${cleanContest}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      doc.save(filename);
+      toast.success(`${regs.length} attestati scaricati con successo in un unico file PDF!`);
+    } catch (err: any) {
+      console.error('Error generating all certificates:', err);
+      toast.error('Errore durante la generazione degli attestati');
+    }
   };
 
   const [selectedYear, setSelectedYear] = React.useState<number | 'all'>('all');
@@ -5658,6 +5905,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                               Esporta Excel
                             </button>
                             <button 
+                              onClick={() => generateAllContestCertificatesPDF(contest.id)}
+                              className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-800 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-amber-100 transition-all border border-amber-200/60"
+                              title="Stampa gli attestati di riconoscimento per tutti gli iscritti al concorso"
+                            >
+                              <Award className="w-4 h-4 text-amber-600" />
+                              Stampa Attestati
+                            </button>
+                            <button 
                               onClick={() => {
                                 setSelectedContestForComm(contest);
                                 fetchContestCommHistory(contest.id);
@@ -5939,14 +6194,24 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       <p className="text-stone-500 text-[10px] md:text-sm">Gestione partecipanti e comunicazioni</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => exportContestRegistrations(showRegistrationDetails.id)}
-                    className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm shadow-emerald-900/10"
-                    title="Esporta elenco completo in formato Excel .xlsx"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Esporta Excel (.xlsx)</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => exportContestRegistrations(showRegistrationDetails.id)}
+                      className="flex items-center gap-2 px-3.5 py-2 md:px-4 md:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm shadow-emerald-900/10"
+                      title="Esporta elenco completo in formato Excel .xlsx"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Esporta Excel</span>
+                    </button>
+                    <button
+                      onClick={() => generateAllContestCertificatesPDF(showRegistrationDetails.id)}
+                      className="flex items-center gap-2 px-3.5 py-2 md:px-4 md:py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm shadow-amber-900/10"
+                      title="Genera e scarica tutti gli attestati di riconoscimento in un unico file PDF"
+                    >
+                      <Award className="w-4 h-4" />
+                      <span>Stampa Tutti gli Attestati (PDF)</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto -mx-4 px-4">
@@ -6006,6 +6271,13 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             </td>
                             <td className="py-3 md:py-4 text-right">
                               <div className="flex items-center justify-end gap-1 md:gap-2">
+                                <button 
+                                  onClick={() => generateContestCertificatePDF(showRegistrationDetails, reg)}
+                                  className="p-1.5 md:p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all"
+                                  title="Stampa Attestato di Riconoscimento (PDF)"
+                                >
+                                  <Award className="w-4 h-4 md:w-5 md:h-5" />
+                                </button>
                                 {reg.status !== 'confirmed' ? (
                                   <button 
                                     onClick={() => updateRegistrationStatus(reg.id, 'confirmed')}
