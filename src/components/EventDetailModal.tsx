@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar, MapPin, Clock, Share2, Facebook, Instagram, Twitter, Trophy, Euro, Sparkles, Ticket } from 'lucide-react';
+import { formatDateDisplay, getContestRegistrationStatus, isEventEnded } from '../utils/dateUtils';
 
 interface EventDetailModalProps {
   isOpen: boolean;
@@ -36,20 +37,8 @@ export function EventDetailModal({ isOpen, onClose, event, onBook, onRegisterCon
   const isContest = event.type === 'contest' || Boolean(event.prizes) || (event.startDate && event.endDate && event.cost !== undefined);
   const isBooking = event.type === 'booking';
 
-  // Active status calculation for contests
-  const now = new Date();
-  const startDate = event.startDate ? new Date(event.startDate) : (event.date ? new Date(event.date) : null);
-  const endDate = event.endDate ? new Date(event.endDate) : (event.date ? new Date(event.date) : null);
-
-  if (startDate) startDate.setHours(0, 0, 0, 0);
-  if (endDate) endDate.setHours(23, 59, 59, 999);
-
-  const isContestBeforeStart = startDate && now < startDate;
-  const isContestAfterEnd = endDate && now > endDate;
-  const isContestActive = !isContestBeforeStart && !isContestAfterEnd;
-
-  // Booking calculations
-  const isBookingPast = event.date && new Date(event.date).setHours(23, 59, 59, 999) < now.getTime();
+  const contestStatus = isContest ? getContestRegistrationStatus(event) : null;
+  const isEnded = isEventEnded(event);
   const isBookingSoldOut = isBooking && (event.soldTickets || 0) >= (event.totalTickets || Infinity);
 
   return (
@@ -262,9 +251,17 @@ export function EventDetailModal({ isOpen, onClose, event, onBook, onRegisterCon
                 {/* Registration / Booking Button Section */}
                 <div>
                   {isContest ? (
-                    isContestAfterEnd ? (
-                      <div className="w-full bg-stone-100 border border-stone-200 text-stone-500 text-center py-3 rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider">
-                        Iscrizioni Concorso Chiuse
+                    contestStatus?.isEnded ? (
+                      <div className="w-full bg-stone-100 border border-stone-200 text-stone-500 text-center py-3.5 rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider">
+                        Evento Concluso
+                      </div>
+                    ) : contestStatus?.isDeadlinePassed ? (
+                      <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 text-center py-3.5 rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider">
+                        Iscrizioni Chiuse ({event.endDate ? formatDateDisplay(event.endDate) : 'Termine Scaduto'})
+                      </div>
+                    ) : contestStatus?.isNotStarted ? (
+                      <div className="w-full bg-stone-100 border border-stone-200 text-stone-600 text-center py-3.5 rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider">
+                        Apertura Iscrizioni: {formatDateDisplay(event.startDate)}
                       </div>
                     ) : (
                       <div className="space-y-1.5">
@@ -282,15 +279,10 @@ export function EventDetailModal({ isOpen, onClose, event, onBook, onRegisterCon
                           <Sparkles className="w-4 h-4 text-amber-300" />
                           Iscriviti al Concorso
                         </button>
-                        {isContestBeforeStart && (
-                          <p className="text-[10px] text-center text-amber-700 font-semibold">
-                            Iscrizioni aperte per questo concorso
-                          </p>
-                        )}
                       </div>
                     )
                   ) : isBooking ? (
-                    isBookingPast ? (
+                    isEnded ? (
                       <span className="block text-center text-stone-500 font-bold text-xs uppercase tracking-widest py-2">
                         Iniziativa terminata
                       </span>
@@ -312,20 +304,26 @@ export function EventDetailModal({ isOpen, onClose, event, onBook, onRegisterCon
                     )
                   ) : (
                     /* Generic Event / News Event */
-                    <button
-                      onClick={() => {
-                        onClose();
-                        if (onRegisterContest) {
-                          onRegisterContest(event);
-                        } else if (onBook) {
-                          onBook(event);
-                        }
-                      }}
-                      className="w-full bg-stone-900 text-white py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm uppercase tracking-widest hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2 transform active:scale-[0.99] cursor-pointer"
-                    >
-                      <Ticket className="w-4 h-4 text-amber-400" />
-                      Iscriviti all'Evento
-                    </button>
+                    isEnded ? (
+                      <span className="block text-center text-stone-500 font-bold text-xs uppercase tracking-widest py-2">
+                        Evento Concluso
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          onClose();
+                          if (onRegisterContest) {
+                            onRegisterContest(event);
+                          } else if (onBook) {
+                            onBook(event);
+                          }
+                        }}
+                        className="w-full bg-stone-900 text-white py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm uppercase tracking-widest hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2 transform active:scale-[0.99] cursor-pointer"
+                      >
+                        <Ticket className="w-4 h-4 text-amber-400" />
+                        Partecipa all'Evento
+                      </button>
+                    )
                   )}
                 </div>
 

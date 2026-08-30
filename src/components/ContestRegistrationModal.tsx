@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Trophy, Calendar, Euro, CheckCircle2, ShieldCheck, Music, UserCheck } from 'lucide-react';
+import { X, Trophy, Calendar, Euro, CheckCircle2, ShieldCheck, Music, UserCheck, AlertCircle } from 'lucide-react';
+import { getContestRegistrationStatus, formatDateDisplay } from '../utils/dateUtils';
 
 interface ContestRegistrationModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
   const [isSuccess, setIsSuccess] = React.useState(false);
 
   if (!contest) return null;
+
+  const contestStatus = getContestRegistrationStatus(contest);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -75,6 +78,13 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative bg-white p-4 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl max-w-2xl w-full overflow-hidden"
             >
+              <button 
+                onClick={onClose}
+                className="absolute top-3 right-3 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-1.5 md:p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
+              >
+                <X className="w-4 h-4 md:w-6 md:h-6" />
+              </button>
+
               {isSuccess ? (
                 <div className="text-center py-6 md:py-12 space-y-4 md:space-y-6">
                   <div className="w-14 h-14 md:w-20 md:h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
@@ -85,15 +95,31 @@ export const ContestRegistrationModal: React.FC<ContestRegistrationModalProps> =
                     La tua richiesta è stata presa in carico. Riceverai una conferma via email non appena verrà approvata.
                   </p>
                 </div>
+              ) : !contestStatus.isOpen ? (
+                <div className="text-center py-8 md:py-12 space-y-4">
+                  <div className="w-14 h-14 md:w-16 md:h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-700">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-serif text-stone-900">Iscrizioni non disponibili</h3>
+                  <p className="text-stone-600 text-sm max-w-sm mx-auto">
+                    {contestStatus.isEnded 
+                      ? "L'evento e il concorso si sono già conclusi."
+                      : contestStatus.isDeadlinePassed
+                      ? `Il termine ultimo per le iscrizioni (${contest.endDate ? formatDateDisplay(contest.endDate) : ''}) è scaduto.`
+                      : `Le iscrizioni apriranno il ${contest.startDate ? formatDateDisplay(contest.startDate) : ''}.`}
+                  </p>
+                  <div className="pt-4">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-6 py-2.5 bg-stone-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-stone-800"
+                    >
+                      Chiudi
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <>
-                  <button 
-                    onClick={onClose}
-                    className="absolute top-3 right-3 md:top-6 md:right-6 text-stone-400 hover:text-stone-900 transition-colors z-50 p-1.5 md:p-2 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-sm border border-stone-100"
-                  >
-                    <X className="w-4 h-4 md:w-6 md:h-6" />
-                  </button>
-
                   <div className="space-y-4 md:space-y-6 mb-5 md:mb-8">
                     {contest.image && (
                       <div className="w-full h-28 md:h-48 rounded-xl md:rounded-3xl overflow-hidden shadow-lg border border-stone-100">

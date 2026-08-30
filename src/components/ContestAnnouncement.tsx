@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Calendar, Euro, ArrowRight, X } from 'lucide-react';
+import { isContestRegistrationOpen, formatDateDisplay } from '../utils/dateUtils';
 
 interface ContestAnnouncementProps {
   onRegisterClick: (contest: any) => void;
@@ -15,8 +16,13 @@ export const ContestAnnouncement: React.FC<ContestAnnouncementProps> = ({ onRegi
     fetch('/api/contests')
       .then(res => res.json())
       .then(data => {
-        const activeContests = data.filter((c: any) => Number(c.showOnHomepage) === 1 || c.showOnHomepage === true);
-        setContests(activeContests);
+        if (Array.isArray(data)) {
+          const activeContests = data.filter((c: any) => 
+            (Number(c.showOnHomepage) === 1 || c.showOnHomepage === true) &&
+            isContestRegistrationOpen(c)
+          );
+          setContests(activeContests);
+        }
       })
       .catch(err => console.error('Error fetching contests:', err));
   }, []);
@@ -24,6 +30,7 @@ export const ContestAnnouncement: React.FC<ContestAnnouncementProps> = ({ onRegi
   if (!isVisible || contests.length === 0) return null;
 
   const currentContest = contests[currentIndex];
+  if (!currentContest) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:bottom-8 md:left-8 md:right-auto z-[90] max-w-sm w-auto md:w-full">
@@ -71,7 +78,7 @@ export const ContestAnnouncement: React.FC<ContestAnnouncementProps> = ({ onRegi
             <div className="grid grid-cols-2 gap-2 md:gap-4 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-stone-400">
               <div className="flex items-center gap-1.5 md:gap-2">
                 <Calendar className="w-2.5 h-2.5 md:w-3 h-3" />
-                Fine: {new Date(currentContest.endDate).toLocaleDateString('it-IT')}
+                Fine: {currentContest.endDate ? formatDateDisplay(currentContest.endDate) : 'In corso'}
               </div>
               <div className="flex items-center gap-1.5 md:gap-2">
                 <Euro className="w-2.5 h-2.5 md:w-3 h-3" />
@@ -104,3 +111,4 @@ export const ContestAnnouncement: React.FC<ContestAnnouncementProps> = ({ onRegi
     </div>
   );
 };
+

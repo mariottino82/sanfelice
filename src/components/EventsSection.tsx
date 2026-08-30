@@ -6,7 +6,7 @@ import { BookingModal } from './BookingModal';
 import { TicketView } from './TicketView';
 import { EventDetailModal } from './EventDetailModal';
 import { ContestRegistrationModal } from './ContestRegistrationModal';
-import { formatDateDisplay, parseItalianDate } from '../utils/dateUtils';
+import { formatDateDisplay, parseItalianDate, isEventEnded, getContestRegistrationStatus } from '../utils/dateUtils';
 
 export function EventsSection() {
   const [events, setEvents] = React.useState<any[]>([]);
@@ -116,13 +116,9 @@ export function EventsSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {allEvents.map((item, index) => {
             const isContest = item.type === 'contest';
-            const now = new Date();
-            const contestStart = item.startDate ? new Date(item.startDate) : null;
-            const contestEnd = item.endDate ? new Date(item.endDate) : null;
-            if (contestStart) contestStart.setHours(0, 0, 0, 0);
-            if (contestEnd) contestEnd.setHours(23, 59, 59, 999);
-            
-            const isContestActive = isContest && (!contestStart || now >= contestStart) && (!contestEnd || now <= contestEnd);
+            const isBooking = item.type === 'booking';
+            const isEnded = isEventEnded(item);
+            const contestStatus = isContest ? getContestRegistrationStatus(item) : null;
 
             return (
               <motion.div
@@ -143,7 +139,7 @@ export function EventsSection() {
                       src={item.image || 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=800'}
                       alt={item.title}
                       className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
-                        (new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime()) ? 'grayscale opacity-75' : ''
+                        isEnded || (isContest && contestStatus?.isDeadlinePassed) ? 'grayscale opacity-75' : ''
                       }`}
                       referrerPolicy="no-referrer"
                       onError={(e) => {
@@ -163,11 +159,27 @@ export function EventsSection() {
                         {item.type === 'contest' && 'Concorso'}
                         {item.type === 'news_event' && 'Evento'}
                       </span>
-                      {new Date(item.date || item.endDate || item.startDate || item.drawDate || item.createdAt).setHours(23, 59, 59, 999) < new Date().getTime() && (
+                      
+                      {/* Expiration and Status Badges */}
+                      {isContest ? (
+                        contestStatus?.isEnded ? (
+                          <span className="px-2.5 py-1 bg-stone-900 text-white rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shadow-lg">
+                            Terminato
+                          </span>
+                        ) : contestStatus?.isDeadlinePassed ? (
+                          <span className="px-2.5 py-1 bg-amber-900/90 text-amber-100 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shadow-lg">
+                            Iscrizioni chiuse
+                          </span>
+                        ) : contestStatus?.isNotStarted ? (
+                          <span className="px-2.5 py-1 bg-sky-900/90 text-sky-100 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shadow-lg">
+                            Iscrizioni a breve
+                          </span>
+                        ) : null
+                      ) : isEnded ? (
                         <span className="px-2.5 py-1 bg-stone-900 text-white rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shadow-lg">
                           Terminato
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
@@ -194,8 +206,8 @@ export function EventsSection() {
                 </div>
 
                 <div className="px-4 pb-4 sm:px-6 sm:pb-6 md:px-8 md:pb-8 pt-3 sm:pt-4 border-t border-stone-200/80 flex items-center justify-between">
-                  {item.type === 'booking' ? (
-                    new Date(item.date).setHours(23, 59, 59, 999) < new Date().getTime() ? (
+                  {isBooking ? (
+                    isEnded ? (
                       <span className="text-stone-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Iniziativa terminata</span>
                     ) : item.soldTickets >= item.totalTickets ? (
                       <span className="text-red-500 font-bold text-[10px] sm:text-xs uppercase tracking-widest">Sold Out</span>
@@ -212,7 +224,7 @@ export function EventsSection() {
                       </button>
                     )
                   ) : isContest ? (
-                    isContestActive ? (
+                    contestStatus?.isOpen ? (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -224,8 +236,13 @@ export function EventsSection() {
                         Iscriviti
                       </button>
                     ) : (
-                      <div className="flex items-center gap-2 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
-                        Scopri di più <ArrowRight className="w-4 h-4" />
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-stone-400 font-bold text-[10px] sm:text-xs uppercase tracking-widest">
+                          {contestStatus?.isEnded ? 'Evento Concluso' : contestStatus?.isDeadlinePassed ? 'Iscrizioni Chiuse' : 'Iscrizioni Non Aperte'}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-stone-900 font-bold text-xs uppercase tracking-widest group-hover:gap-3 transition-all">
+                          Dettagli <ArrowRight className="w-4 h-4" />
+                        </div>
                       </div>
                     )
                   ) : (
