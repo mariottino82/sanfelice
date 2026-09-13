@@ -1674,14 +1674,24 @@ async function startServer() {
         forwardHeaders['Range'] = req.headers.range;
       }
 
+      let cleanedUp = false;
+      let upstreamResInstance: http.IncomingMessage | null = null;
+
       const upstreamReq = client.request(
         parsedUrl,
         {
           method: 'GET',
           headers: forwardHeaders,
-          timeout: 15000,
+          timeout: 12000,
         },
         (upstreamRes) => {
+          upstreamResInstance = upstreamRes;
+
+          if (cleanedUp) {
+            upstreamRes.destroy();
+            return;
+          }
+
           res.setHeader('Access-Control-Allow-Origin', '*');
           res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
           res.setHeader('Access-Control-Allow-Headers', '*');
@@ -1698,33 +1708,57 @@ async function startServer() {
           }
 
           res.status(upstreamRes.statusCode || 200);
+
+          // Pipe directly with backpressure handling
           upstreamRes.pipe(res);
 
           upstreamRes.on('error', (err) => {
-            console.error('Errore durante la lettura dello stream remoto:', err);
+            console.error('Errore durante la lettura dello stream remoto:', err.message);
+            cleanup();
             if (!res.headersSent) {
               res.status(502).end();
             }
           });
+
+          upstreamRes.on('end', cleanup);
+          upstreamRes.on('close', cleanup);
         }
       );
 
+      const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        try {
+          if (upstreamResInstance) {
+            upstreamResInstance.unpipe(res);
+            upstreamResInstance.destroy();
+          }
+        } catch (_) {}
+        try {
+          upstreamReq.destroy();
+        } catch (_) {}
+      };
+
+      // Ensure immediate teardown when browser client disconnects
+      req.on('close', cleanup);
+      req.on('aborted', cleanup);
+      res.on('close', cleanup);
+      res.on('finish', cleanup);
+      res.on('error', cleanup);
+
       upstreamReq.on('timeout', () => {
-        upstreamReq.destroy();
+        cleanup();
         if (!res.headersSent) {
           res.status(504).json({ error: 'Timeout connessione al server stream' });
         }
       });
 
       upstreamReq.on('error', (err) => {
-        console.error('Errore richiesta upstream stream:', err);
+        console.error('Errore richiesta upstream stream:', err.message);
+        cleanup();
         if (!res.headersSent) {
           res.status(502).json({ error: 'Impossibile connettersi al flusso remoto', details: err.message });
         }
-      });
-
-      req.on('close', () => {
-        upstreamReq.destroy();
       });
 
       upstreamReq.end();

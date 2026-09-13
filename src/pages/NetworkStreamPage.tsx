@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mpegts from 'mpegts.js';
 import { 
   Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, Minimize2, 
   Tv, Radio, Copy, Check, Download, ExternalLink, ShieldAlert, 
-  Info, Sliders, Activity, AlertTriangle, Monitor, Sparkles, Film
+  Info, Sliders, Activity, AlertTriangle, Monitor, Sparkles, Film, Square
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -12,7 +11,7 @@ const DEFAULT_STREAM_URL = 'http://fls-jkd328ed3.dns-cloud.net/live/PippoBaudo1/
 export function NetworkStreamPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const playerRef = useRef<mpegts.Player | null>(null);
+  const playerRef = useRef<any>(null);
 
   const [streamUrl, setStreamUrl] = useState(DEFAULT_STREAM_URL);
   const [inputUrl, setInputUrl] = useState(DEFAULT_STREAM_URL);
@@ -32,15 +31,10 @@ export function NetworkStreamPage() {
   const [streamError, setStreamError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
 
-  // Initialize and load stream
-  const loadStream = (targetUrl: string, mode: 'proxy' | 'direct') => {
-    if (!videoRef.current) return;
-    setStreamError(null);
-    setIsLoading(true);
-
-    // Destroy existing player if any
+  // Stop and completely detach any existing stream/player
+  const stopStream = () => {
     if (playerRef.current) {
       try {
         playerRef.current.pause();
@@ -48,10 +42,29 @@ export function NetworkStreamPage() {
         playerRef.current.detachMediaElement();
         playerRef.current.destroy();
       } catch (e) {
-        console.warn('Error destroying old mpegts player:', e);
+        console.warn('Error destroying player:', e);
       }
       playerRef.current = null;
     }
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
+      } catch (e) {}
+    }
+    setIsPlaying(false);
+    setIsLoading(false);
+    setStats({});
+  };
+
+  // Initialize and load stream
+  const loadStream = async (targetUrl: string, mode: 'proxy' | 'direct') => {
+    if (!videoRef.current) return;
+    setStreamError(null);
+    setIsLoading(true);
+    setHasStarted(true);
+    stopStream();
 
     const cleanUrl = targetUrl.trim();
     if (!cleanUrl) {
@@ -67,23 +80,27 @@ export function NetworkStreamPage() {
 
     console.log(`[StreamPlayer] Caricamento flusso (${mode}):`, effectiveUrl);
 
-    if (mpegts.isSupported()) {
-      try {
+    try {
+      // Dynamic import to avoid bundling mpegts.js into the main chunk and avoid memory leaks
+      const mpegtsModule: any = await import('mpegts.js');
+      const mpegts: any = mpegtsModule.default || mpegtsModule;
+
+      if (mpegts && mpegts.isSupported()) {
         const player = mpegts.createPlayer({
-          type: 'mse', // or 'mpegts'
+          type: 'mse',
           isLive: true,
           url: effectiveUrl,
           hasAudio: true,
           hasVideo: true,
         }, {
           enableWorker: true,
-          lazyLoad: false,
+          lazyLoad: true,
           liveBufferLatencyChasing: true,
           liveBufferLatencyMaxLatency: 3.0,
           liveBufferLatencyMinRemain: 1.0,
           autoCleanupSourceBuffer: true,
-          autoCleanupMaxBackwardDuration: 30,
-          autoCleanupMinBackwardDuration: 15,
+          autoCleanupMaxBackwardDuration: 15,
+          autoCleanupMinBackwardDuration: 5,
         });
 
         playerRef.current = player;
@@ -97,10 +114,9 @@ export function NetworkStreamPage() {
               setIsPlaying(true);
               setIsLoading(false);
               setStreamError(null);
-              setHasLoadedOnce(true);
             })
             .catch((err: any) => {
-              console.warn('[StreamPlayer] Autoplay bloccato o errore iniziale:', err);
+              console.warn('[StreamPlayer] Autoplay bloccato:', err);
               setIsLoading(false);
             });
         } else {
@@ -114,8 +130,8 @@ export function NetworkStreamPage() {
           let userMsg = `Errore di riproduzione: ${errorDetail || errorType}`;
           if (errorDetail === 'NetworkError' || errorType === 'NetworkError') {
             userMsg = mode === 'proxy'
-              ? 'Errore di connessione al flusso remoto (il server dello stream potrebbe richiedere IP italiano o ha risposto con restrizione d\'accesso).'
-              : 'Impossibile caricare direttamente lo stream dal browser (possibile blocco Mixed Content HTTP su HTTPS o CORS). Prova la modalità Proxy.';
+              ? 'Errore di connessione al flusso remoto. Spesso i flussi IPTV bloccano i server cloud e richiedono di essere aperti direttamente con VLC sul tuo dispositivo.'
+              : 'Impossibile caricare direttamente lo stream dal browser (Mixed Content HTTP su HTTPS o CORS). Consigliamo di aprirlo direttamente con VLC Player.';
           }
           setStreamError(userMsg);
         });
@@ -137,43 +153,30 @@ export function NetworkStreamPage() {
           }
         });
 
-      } catch (err: any) {
-        console.error('[StreamPlayer] Inizializzazione mpegts fallita:', err);
-        setStreamError(`Inizializzazione fallita: ${err.message}`);
-        setIsLoading(false);
+      } else {
+        // Fallback to native video tag
+        videoRef.current.src = effectiveUrl;
+        videoRef.current.play()
+          .then(() => {
+            setIsPlaying(true);
+            setIsLoading(false);
+          })
+          .catch(err => {
+            setStreamError(`Riproduzione nativa non supportata dal browser: ${err.message}. Usa VLC Player.`);
+            setIsLoading(false);
+          });
       }
-    } else {
-      // Fallback to native video tag
-      console.warn('[StreamPlayer] mpegts non supportato, provo riproduzione nativa');
-      videoRef.current.src = effectiveUrl;
-      videoRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-          setIsLoading(false);
-        })
-        .catch(err => {
-          setStreamError(`Riproduzione nativa fallita: ${err.message}`);
-          setIsLoading(false);
-        });
+    } catch (err: any) {
+      console.error('[StreamPlayer] Inizializzazione mpegts fallita:', err);
+      setStreamError(`Inizializzazione fallita: ${err.message}`);
+      setIsLoading(false);
     }
   };
 
-  // Mount effect
+  // Do not auto-stream in background on mount - clean up on unmount
   useEffect(() => {
-    loadStream(streamUrl, connectionMode);
-
     return () => {
-      if (playerRef.current) {
-        try {
-          playerRef.current.pause();
-          playerRef.current.unload();
-          playerRef.current.detachMediaElement();
-          playerRef.current.destroy();
-        } catch (e) {
-          console.warn('Cleanup error:', e);
-        }
-        playerRef.current = null;
-      }
+      stopStream();
     };
   }, []);
 
@@ -206,6 +209,10 @@ export function NetworkStreamPage() {
 
   const handlePlayToggle = () => {
     if (!videoRef.current) return;
+    if (!hasStarted) {
+      loadStream(streamUrl, connectionMode);
+      return;
+    }
     if (isPlaying) {
       if (playerRef.current) {
         playerRef.current.pause();
@@ -472,6 +479,45 @@ export function NetworkStreamPage() {
               onPause={() => setIsPlaying(false)}
             />
 
+            {/* Initial Welcome & Launch Screen */}
+            {!hasStarted && !isLoading && !streamError && (
+              <div className="absolute inset-0 bg-stone-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-amber-400 shadow-xl shadow-amber-500/10">
+                  <Tv className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Flusso di Rete MPEG-TS</h3>
+                <p className="text-sm text-stone-300 max-w-md mb-6 leading-relaxed">
+                  Scegli la modalità preferita. Puoi riprodurlo direttamente su <strong className="text-amber-400">VLC Media Player</strong> (consigliato per stabilità e zero carico sul server) oppure avviare il decoder web nel browser.
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    onClick={() => loadStream(streamUrl, connectionMode)}
+                    className="bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold px-6 py-3 rounded-xl text-sm flex items-center gap-2.5 shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <Play className="w-5 h-5 fill-stone-950" />
+                    <span>Riproduci nel Browser</span>
+                  </button>
+
+                  <button
+                    onClick={handleDownloadM3U}
+                    className="bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold px-5 py-3 rounded-xl text-sm border border-stone-700 transition-all flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4 text-amber-400" />
+                    <span>Scarica .M3U per VLC</span>
+                  </button>
+
+                  <button
+                    onClick={handleCopyStreamUrl}
+                    className="bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold px-4 py-3 rounded-xl text-sm border border-stone-700 transition-all flex items-center gap-2"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-stone-400" />}
+                    <span>{copied ? 'Copiato!' : 'Copia Link VLC'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Loading Indicator Overlay */}
             {isLoading && (
               <div className="absolute inset-0 bg-stone-950/70 backdrop-blur-sm flex flex-col items-center justify-center z-10 gap-3">
@@ -581,6 +627,14 @@ export function NetworkStreamPage() {
                 title="Ricarica Flusso / Riconnetti"
               >
                 <RotateCcw className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={stopStream}
+                className="w-9 h-9 rounded-lg bg-stone-800 hover:bg-red-500/20 text-stone-300 hover:text-red-400 flex items-center justify-center transition-colors"
+                title="Ferma Flusso e Libera Risorse"
+              >
+                <Square className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-stone-950 border border-stone-800">

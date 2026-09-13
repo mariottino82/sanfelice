@@ -32,7 +32,10 @@ import { NewsPage } from './pages/NewsPage';
 import { EventsPage } from './pages/EventsPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { PollVoting } from './components/PollVoting';
-import { NetworkStreamPage } from './pages/NetworkStreamPage';
+
+const NetworkStreamPage = React.lazy(() => 
+  import('./pages/NetworkStreamPage').then((module) => ({ default: module.NetworkStreamPage }))
+);
 
 interface CommonElementsProps {
   showLoginModal: boolean;
@@ -498,11 +501,11 @@ export default function App() {
             </>
           )
         } />
-        <Route path="/stream" element={<NetworkStreamPage />} />
-        <Route path="/stream-ts" element={<NetworkStreamPage />} />
-        <Route path="/ts-stream" element={<NetworkStreamPage />} />
-        <Route path="/vlc-stream" element={<NetworkStreamPage />} />
-        <Route path="/live-stream-ts" element={<NetworkStreamPage />} />
+        <Route path="/stream" element={<React.Suspense fallback={<div className="min-h-screen bg-stone-950 flex items-center justify-center text-stone-400 font-mono text-sm">Caricamento player streaming...</div>}><NetworkStreamPage /></React.Suspense>} />
+        <Route path="/stream-ts" element={<React.Suspense fallback={<div className="min-h-screen bg-stone-950 flex items-center justify-center text-stone-400 font-mono text-sm">Caricamento player streaming...</div>}><NetworkStreamPage /></React.Suspense>} />
+        <Route path="/ts-stream" element={<React.Suspense fallback={<div className="min-h-screen bg-stone-950 flex items-center justify-center text-stone-400 font-mono text-sm">Caricamento player streaming...</div>}><NetworkStreamPage /></React.Suspense>} />
+        <Route path="/vlc-stream" element={<React.Suspense fallback={<div className="min-h-screen bg-stone-950 flex items-center justify-center text-stone-400 font-mono text-sm">Caricamento player streaming...</div>}><NetworkStreamPage /></React.Suspense>} />
+        <Route path="/live-stream-ts" element={<React.Suspense fallback={<div className="min-h-screen bg-stone-950 flex items-center justify-center text-stone-400 font-mono text-sm">Caricamento player streaming...</div>}><NetworkStreamPage /></React.Suspense>} />
         <Route path="/" element={
           <>
             <SEO schema={mainSchema} />
