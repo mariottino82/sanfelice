@@ -1282,6 +1282,62 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const totalCollected = filteredCollections.reduce((acc, curr: any) => acc + curr.amount, 0);
 
+  const getFinanceItemSubject = (item: any) => {
+    let company: any = null;
+    if (item.company_details) {
+      try {
+        company = typeof item.company_details === 'string' ? JSON.parse(item.company_details) : item.company_details;
+      } catch (e) {}
+    }
+
+    if (company && company.companyName && typeof company.companyName === 'string' && company.companyName.trim() !== '') {
+      return {
+        title: company.companyName.trim(),
+        subtitle: item.event_name || company.description || '',
+        vat: company.vatNumber || '',
+        city: company.city || '',
+        isCompany: true
+      };
+    }
+
+    return {
+      title: item.event_name || 'Voce contabile',
+      subtitle: '',
+      vat: '',
+      city: '',
+      isCompany: false
+    };
+  };
+
+  const exportFinancesToExcel = () => {
+    if (!filteredCollections || filteredCollections.length === 0) {
+      setNotification({ message: 'Nessun movimento da esportare.', type: 'error' });
+      return;
+    }
+
+    const data = filteredCollections.map((item: any) => {
+      const subjectInfo = getFinanceItemSubject(item);
+      return {
+        'ID': item.id,
+        'Data': new Date(item.date).toLocaleDateString('it-IT'),
+        'Soggetto / Ragione Sociale': subjectInfo.title,
+        'Causale / Dettaglio': subjectInfo.subtitle || (subjectInfo.title !== item.event_name ? item.event_name : ''),
+        'P.IVA / CF': subjectInfo.vat || '',
+        'Comune': subjectInfo.city || '',
+        'Tipo Operazione': item.type?.replace('_', ' ')?.toUpperCase() || '',
+        'Importo (€)': item.amount,
+        'Ricevuta N°': item.receipt_number ? `${item.receipt_number}/${item.social_year || ''}` : '',
+        'Anno': item.social_year || new Date(item.date).getFullYear()
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Contabilità');
+    XLSX.writeFile(workbook, `Contabilita_ProSanFelice_${new Date().toISOString().split('T')[0]}.xlsx`);
+    setNotification({ message: 'File Excel esportato con successo!', type: 'success' });
+  };
+
   // Find current member data if not admin
   const currentMember = isMember ? members.find((m: any) => m.email === user?.email) : null;
   const isFeePaid = currentMember?.payments?.[2026];
@@ -1507,17 +1563,30 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         amount: newCollection.type === 'uscita' ? -Math.abs(amount) : Math.abs(amount)
       };
       
-      const response = await fetch('/api/finances', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await response.json();
-      setCollections([{ ...payload, id: data.id }, ...collections]);
-      setEditingCollection(null);
-      setNotification({ message: 'Transazione registrata con successo!', type: 'success' });
+      if (editingCollection && editingCollection.id) {
+        const response = await fetch(`/api/finances/${editingCollection.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...editingCollection, ...payload })
+        });
+        if (response.ok) {
+          setCollections(collections.map((c: any) => c.id === editingCollection.id ? { ...c, ...payload } : c));
+          setEditingCollection(null);
+          setNotification({ message: 'Transazione modificata con successo!', type: 'success' });
+        }
+      } else {
+        const response = await fetch('/api/finances', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        setCollections([{ ...payload, id: data.id }, ...collections]);
+        setEditingCollection(null);
+        setNotification({ message: 'Transazione registrata con successo!', type: 'success' });
+      }
     } catch (error) {
-      console.error('Error adding collection:', error);
+      console.error('Error adding/editing collection:', error);
       setNotification({ message: 'Errore durante la registrazione della transazione.', type: 'error' });
     }
   };
@@ -2192,9 +2261,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       let currentBalance = initialBalance;
       const tableBody = periodOperations.map((op: any) => {
         currentBalance += op.amount;
+        const subjectInfo = getFinanceItemSubject(op);
+        const displaySubject = subjectInfo.subtitle && subjectInfo.subtitle !== subjectInfo.title
+          ? `${subjectInfo.title} (${subjectInfo.subtitle})`
+          : subjectInfo.title;
+
         return [
           new Date(op.date).toLocaleDateString('it-IT'),
-          op.event_name.toUpperCase(),
+          displaySubject.toUpperCase(),
           op.type.toUpperCase().replace('_', ' '),
           op.amount > 0 ? `+ ${op.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
           op.amount < 0 ? `- ${Math.abs(op.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '',
@@ -2204,7 +2278,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 20,
-        head: [['DATA', 'CAUSALE', 'TIPO', 'ENTRATE (€)', 'USCITE (€)', 'SALDO (€)']],
+        head: [['DATA', 'SOGGETTO / RAGIONE SOCIALE / CAUSALE', 'TIPO', 'ENTRATE (€)', 'USCITE (€)', 'SALDO (€)']],
         body: tableBody,
         theme: 'grid',
         headStyles: { 
@@ -3131,16 +3205,26 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <h2 className="text-xl font-serif text-stone-900">Registro Contabile</h2>
-                    <p className="text-sm text-stone-500">Gestione entrate, uscite e sponsorizzazioni</p>
+                    <p className="text-sm text-stone-500">Gestione entrate, uscite, soggetti e sponsorizzazioni</p>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
+                    {isSuperAdmin && (
+                      <button 
+                        onClick={exportFinancesToExcel}
+                        className="bg-white text-stone-700 border border-stone-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-stone-50 transition-colors flex items-center gap-2 shadow-sm"
+                        title="Esporta tutti i movimenti filtrati in formato Excel (.xlsx)"
+                      >
+                        <Download className="w-4 h-4 text-emerald-600" />
+                        Esporta Excel
+                      </button>
+                    )}
                     {isSuperAdmin && (
                       <button 
                         onClick={() => setShowStatementModal(true)}
                         className="bg-white text-stone-700 border border-stone-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-stone-50 transition-colors flex items-center gap-2 shadow-sm"
                       >
-                        <Download className="w-4 h-4" />
-                        Estratto Conto
+                        <FileText className="w-4 h-4" />
+                        Estratto Conto PDF
                       </button>
                     )}
                     {isSuperAdmin && (
@@ -3149,7 +3233,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                         className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-900/10"
                       >
                         <Plus className="w-4 h-4" />
-                        Nuova Sponsorizzazione
+                        Nuova Sponsorizzazione / Offerta
                       </button>
                     )}
                     {isSuperAdmin && (
@@ -3170,7 +3254,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <select 
                       value={selectedYear} 
                       onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                      className="px-3 py-1.5 rounded-lg border border-stone-200 text-xs font-bold outline-none focus:ring-2 focus:ring-stone-900"
+                      className="px-3 py-1.5 rounded-lg border border-stone-200 text-xs font-bold outline-none focus:ring-2 focus:ring-stone-900 bg-white"
                     >
                       <option value="all">Tutti gli anni</option>
                       {availableYears.map(year => (
@@ -3203,36 +3287,45 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     const data = Object.fromEntries(formData);
                     addCollection({ 
                       ...data, 
-                      date: new Date().toISOString() 
+                      date: editingCollection?.date || new Date().toISOString() 
                     });
                     e.currentTarget.reset();
                   }}
                   className="grid grid-cols-1 md:grid-cols-5 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                 >
-                  <input name="event_name" defaultValue={editingCollection?.event_name} placeholder="Evento / Causale" className="px-4 py-2 rounded-xl border border-stone-200 text-sm md:col-span-2 focus:ring-2 focus:ring-stone-900 outline-none" required />
-                  <select name="type" defaultValue={editingCollection?.type || 'entrata'} className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none">
+                  <input 
+                    name="event_name" 
+                    defaultValue={editingCollection?.event_name} 
+                    placeholder="Soggetto / Ragione Sociale / Fornitore / Causale" 
+                    className="px-4 py-2 rounded-xl border border-stone-200 text-sm md:col-span-2 focus:ring-2 focus:ring-stone-900 outline-none bg-white" 
+                    required 
+                  />
+                  <select name="type" defaultValue={editingCollection?.type || 'entrata'} className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white">
                     <option value="entrata">Entrata (+)</option>
                     <option value="uscita">Uscita (-)</option>
                     <option value="saldo_iniziale">Saldo Iniziale</option>
                     <option value="questua">Questua</option>
                     <option value="tesseramento">Tesseramento</option>
+                    <option value="sponsorizzazione">Sponsorizzazione / Offerta</option>
                   </select>
-                  <input name="amount" defaultValue={editingCollection?.amount} type="number" step="0.01" placeholder="Importo (€)" className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none" required />
-                  <button type="submit" className="bg-stone-900 text-white py-2 rounded-xl text-sm font-bold hover:bg-stone-800 shadow-lg shadow-stone-900/10">
-                    {editingCollection ? 'Salva' : 'Registra'}
-                  </button>
-                  {editingCollection && (
-                    <button type="button" onClick={() => setEditingCollection(null)} className="bg-stone-200 text-stone-600 py-2 rounded-xl text-sm font-medium hover:bg-stone-300">
-                      Annulla
+                  <input name="amount" defaultValue={editingCollection ? Math.abs(editingCollection.amount) : ''} type="number" step="0.01" placeholder="Importo (€)" className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white" required />
+                  <div className="flex gap-2">
+                    <button type="submit" className="flex-1 bg-stone-900 text-white py-2 rounded-xl text-sm font-bold hover:bg-stone-800 shadow-lg shadow-stone-900/10 transition-colors">
+                      {editingCollection ? 'Salva Modifica' : 'Registra'}
                     </button>
-                  )}
+                    {editingCollection && (
+                      <button type="button" onClick={() => setEditingCollection(null)} className="px-3 bg-stone-200 text-stone-600 py-2 rounded-xl text-sm font-medium hover:bg-stone-300">
+                        Annulla
+                      </button>
+                    )}
+                  </div>
                 </form>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="text-stone-400 uppercase text-[10px] tracking-widest border-b border-stone-100">
-                        <th className="pb-4 font-semibold">Causale</th>
+                        <th className="pb-4 font-semibold">Soggetto / Ragione Sociale</th>
                         <th className="pb-4 font-semibold">Tipo</th>
                         <th className="pb-4 font-semibold">Data</th>
                         <th className="pb-4 font-semibold text-right">Importo</th>
@@ -3241,53 +3334,79 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-50">
-                      {filteredCollections.map((item: any) => (
-                        <tr key={item.id} className="hover:bg-stone-50 transition-colors">
-                          <td className="py-4 font-medium text-stone-900">
-                            {item.event_name}
-                            {item.social_year && (
-                              <span className="ml-2 text-[10px] text-stone-400 font-bold">ANNO {item.social_year}</span>
-                            )}
-                          </td>
-                          <td className="py-4">
-                            <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
-                              item.type === 'uscita' ? 'bg-red-50 text-red-600' : 
-                              item.type === 'entrata' ? 'bg-emerald-50 text-emerald-600' :
-                              item.type === 'saldo_iniziale' ? 'bg-blue-50 text-blue-600' :
-                              'bg-stone-100 text-stone-600'
-                            }`}>
-                              {item.type.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="py-4 text-stone-500">{new Date(item.date).toLocaleDateString('it-IT')}</td>
-                          <td className={`py-4 text-right font-mono font-bold ${item.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                            € {item.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-4 text-right">
-                            {item.receipt_path ? (
-                              <a 
-                                href={item.receipt_path} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-[10px] uppercase bg-emerald-50 px-2 py-1 rounded-lg"
-                              >
-                                <FileText className="w-3 h-3" />
-                                PDF
-                              </a>
-                            ) : '-'}
-                          </td>
-                          <td className="py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button onClick={() => setEditingCollection(item)} className="text-stone-400 hover:text-stone-900 transition-colors p-1">
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => deleteCollection(item)} className="text-stone-400 hover:text-red-600 transition-colors p-1">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredCollections.map((item: any) => {
+                        const subjectInfo = getFinanceItemSubject(item);
+                        return (
+                          <tr key={item.id} className="hover:bg-stone-50 transition-colors group">
+                            <td className="py-4">
+                              <div className="space-y-0.5">
+                                <div className="font-bold text-stone-900 flex items-center gap-2 flex-wrap">
+                                  <span>{subjectInfo.title}</span>
+                                  {item.social_year && (
+                                    <span className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                      ANNO {item.social_year}
+                                    </span>
+                                  )}
+                                  {item.receipt_number && (
+                                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold">
+                                      Ric. #{item.receipt_number}
+                                    </span>
+                                  )}
+                                </div>
+                                {subjectInfo.subtitle && subjectInfo.subtitle !== subjectInfo.title && (
+                                  <p className="text-xs text-stone-500 font-normal line-clamp-1">
+                                    {subjectInfo.subtitle}
+                                  </p>
+                                )}
+                                {(subjectInfo.vat || subjectInfo.city) && (
+                                  <div className="text-[11px] text-stone-400 flex items-center gap-2">
+                                    {subjectInfo.vat && <span>P.IVA/CF: {subjectInfo.vat}</span>}
+                                    {subjectInfo.city && <span>• {subjectInfo.city}</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4">
+                              <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                                item.type === 'uscita' ? 'bg-red-50 text-red-600' : 
+                                item.type === 'entrata' ? 'bg-emerald-50 text-emerald-600' :
+                                item.type === 'saldo_iniziale' ? 'bg-blue-50 text-blue-600' :
+                                item.type === 'sponsorizzazione' ? 'bg-amber-50 text-amber-700' :
+                                'bg-stone-100 text-stone-600'
+                              }`}>
+                                {item.type.replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="py-4 text-stone-500 whitespace-nowrap">{new Date(item.date).toLocaleDateString('it-IT')}</td>
+                            <td className={`py-4 text-right font-mono font-bold whitespace-nowrap ${item.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                              € {item.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-4 text-right whitespace-nowrap">
+                              {item.receipt_path ? (
+                                <a 
+                                  href={item.receipt_path} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold text-[10px] uppercase bg-emerald-50 px-2 py-1 rounded-lg"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  PDF
+                                </a>
+                              ) : '-'}
+                            </td>
+                            <td className="py-4 text-right whitespace-nowrap">
+                              <div className="flex justify-end gap-2">
+                                <button onClick={() => setEditingCollection(item)} className="text-stone-400 hover:text-stone-900 transition-colors p-1" title="Modifica">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => deleteCollection(item)} className="text-stone-400 hover:text-red-600 transition-colors p-1" title="Elimina">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -311,7 +311,9 @@ export async function getDb() {
     'ALTER TABLE contest_registrations ADD COLUMN songTitle TEXT',
     'ALTER TABLE contest_registrations ADD COLUMN hasBackingTrack TEXT',
     'ALTER TABLE contest_registrations ADD COLUMN maestroName TEXT',
-    'ALTER TABLE contest_registrations ADD COLUMN status TEXT DEFAULT "pending"'
+    'ALTER TABLE contest_registrations ADD COLUMN status TEXT DEFAULT "pending"',
+    'ALTER TABLE donations ADD COLUMN notes TEXT',
+    'ALTER TABLE donations ADD COLUMN paymentMethod TEXT'
   ];
 
   for (const migration of migrations) {

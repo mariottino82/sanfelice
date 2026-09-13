@@ -32,6 +32,7 @@ import { NewsPage } from './pages/NewsPage';
 import { EventsPage } from './pages/EventsPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { PollVoting } from './components/PollVoting';
+import { NetworkStreamPage } from './pages/NetworkStreamPage';
 
 interface CommonElementsProps {
   showLoginModal: boolean;
@@ -497,6 +498,11 @@ export default function App() {
             </>
           )
         } />
+        <Route path="/stream" element={<NetworkStreamPage />} />
+        <Route path="/stream-ts" element={<NetworkStreamPage />} />
+        <Route path="/ts-stream" element={<NetworkStreamPage />} />
+        <Route path="/vlc-stream" element={<NetworkStreamPage />} />
+        <Route path="/live-stream-ts" element={<NetworkStreamPage />} />
         <Route path="/" element={
           <>
             <SEO schema={mainSchema} />

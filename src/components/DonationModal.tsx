@@ -11,9 +11,20 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   const [formData, setFormData] = React.useState({
     firstName: '',
     lastName: '',
-    email: ''
+    email: '',
+    amount: '20'
   });
+  const [selectedPreset, setSelectedPreset] = React.useState<string>('20');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const presets = ['10', '20', '50', '100'];
+
+  const handlePresetSelect = (val: string) => {
+    setSelectedPreset(val);
+    if (val !== 'custom') {
+      setFormData(prev => ({ ...prev, amount: val }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +86,57 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Scelta Importo Donazione */}
+                  <div className="space-y-2 pt-1 pb-1">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Importo Donazione</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {presets.map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => handlePresetSelect(val)}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
+                            selectedPreset === val
+                              ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
+                              : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                          }`}
+                        >
+                          € {val}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handlePresetSelect('custom')}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border whitespace-nowrap ${
+                          selectedPreset === 'custom'
+                            ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
+                            : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        Altro importo
+                      </button>
+                      {selectedPreset === 'custom' && (
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 font-bold text-sm">€</span>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            required
+                            placeholder="Es. 35"
+                            value={formData.amount}
+                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                            className="w-full pl-8 pr-3 py-2 rounded-xl border border-stone-300 text-sm font-semibold focus:ring-2 focus:ring-stone-900 outline-none"
+                            autoFocus
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Nome</label>

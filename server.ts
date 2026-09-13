@@ -8,6 +8,8 @@ import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import Pop3Command from 'node-pop3';
 import { getDb } from './db';
+import http from 'http';
+import https from 'https';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -498,15 +500,91 @@ async function startServer() {
     }
   });
 
+  // Helper to generate donation certificate buffer
+  function generateDonationCertificateBuffer(donation: any): Buffer {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Background decoration
+    doc.setDrawColor(28, 25, 23); // stone-900
+    doc.setLineWidth(1.5);
+    doc.rect(10, 10, 277, 190);
+    doc.setLineWidth(0.5);
+    doc.rect(12, 12, 273, 186);
+
+    // Add Logo if exists
+    try {
+      const logoPath = path.join(process.cwd(), 'logo.png');
+      if (fs.existsSync(logoPath)) {
+        const logoData = fs.readFileSync(logoPath).toString('base64');
+        doc.addImage(logoData, 'PNG', 133.5, 18, 30, 30); // Centered logo
+      }
+    } catch (e) {
+      console.error('Error adding logo to PDF:', e);
+    }
+
+    // Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(36);
+    doc.setTextColor(28, 25, 23);
+    doc.text('ATTESTATO DI RINGRAZIAMENTO', 148.5, 65, { align: 'center' });
+
+    // Separator line
+    doc.setDrawColor(28, 25, 23);
+    doc.setLineWidth(0.5);
+    doc.line(80, 72, 217, 72);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(18);
+    doc.text('Si ringrazia sentitamente', 148.5, 85, { align: 'center' });
+
+    // Name
+    doc.setFont('helvetica', 'bolditalic');
+    doc.setFontSize(34);
+    doc.setTextColor(28, 25, 23);
+    doc.text(`${donation.firstName} ${donation.lastName}`, 148.5, 105, { align: 'center' });
+
+    // Body
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(16);
+    doc.setTextColor(68, 64, 60); // stone-600
+    const amountVal = Number(donation.amount) || 0;
+    const amountText = amountVal > 0 ? ` di € ${amountVal.toFixed(2)}` : '';
+    const bodyText = `Per il prezioso contributo${amountText} e il generoso sostegno offerto all'Associazione Pro San Felice 2023. Grazie alla tua donazione possiamo continuare a valorizzare il nostro territorio e le nostre tradizioni.`;
+    const splitText = doc.splitTextToSize(bodyText, 200);
+    doc.text(splitText, 148.5, 125, { align: 'center' });
+
+    // Decorative element
+    doc.setDrawColor(231, 229, 228); // stone-200
+    doc.setLineWidth(0.2);
+    doc.line(40, 155, 257, 155);
+
+    // Footer
+    doc.setTextColor(28, 25, 23);
+    doc.setFontSize(12);
+    doc.text(`Data: ${new Date(donation.date || Date.now()).toLocaleDateString('it-IT')}`, 40, 175);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Il Presidente', 220, 175, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text('Associazione Pro San Felice 2023', 220, 182, { align: 'center' });
+
+    return Buffer.from(doc.output('arraybuffer'));
+  }
+
   // Donations API
   app.post('/api/donations', async (req, res) => {
     try {
-      const { firstName, lastName, email, amount } = req.body;
+      const { firstName, lastName, email, amount, paymentMethod, notes } = req.body;
       const date = new Date().toISOString();
       
       const result = await db.run(
-        'INSERT INTO donations (firstName, lastName, email, amount, date, status) VALUES (?, ?, ?, ?, ?, ?)',
-        [firstName, lastName, email, amount || 0, date, 'pending']
+        'INSERT INTO donations (firstName, lastName, email, amount, date, status, paymentMethod, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [firstName, lastName, email, Number(amount) || 0, date, 'pending', paymentMethod || 'paypal', notes || '']
       );
 
       res.json({ success: true, id: result.lastID });
@@ -518,86 +596,21 @@ async function startServer() {
 
   app.post('/api/donations/confirm', async (req, res) => {
     try {
-      const { id } = req.body;
+      const { id, amount } = req.body;
       const donation = await db.get('SELECT * FROM donations WHERE id = ?', [id]);
       
       if (!donation) return res.status(404).json({ error: 'Donazione non trovata' });
       if (donation.status === 'confirmed') return res.json({ success: true, alreadyConfirmed: true });
 
-      // Update status
-      await db.run('UPDATE donations SET status = ? WHERE id = ?', ['confirmed', id]);
+      const finalAmount = amount !== undefined ? Number(amount) : (donation.amount || 0);
+
+      // Update status & amount
+      await db.run('UPDATE donations SET status = ?, amount = ? WHERE id = ?', ['confirmed', finalAmount, id]);
+      donation.status = 'confirmed';
+      donation.amount = finalAmount;
 
       // Generate PDF Attestato
-      const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      // Background decoration
-      doc.setDrawColor(28, 25, 23); // stone-900
-      doc.setLineWidth(1.5);
-      doc.rect(10, 10, 277, 190);
-      doc.setLineWidth(0.5);
-      doc.rect(12, 12, 273, 186);
-
-      // Add Logo if exists
-      try {
-        const logoPath = path.join(process.cwd(), 'logo.png');
-        if (fs.existsSync(logoPath)) {
-          const logoData = fs.readFileSync(logoPath).toString('base64');
-          doc.addImage(logoData, 'PNG', 133.5, 18, 30, 30); // Centered logo
-        }
-      } catch (e) {
-        console.error('Error adding logo to PDF:', e);
-      }
-
-      // Header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(36);
-      doc.setTextColor(28, 25, 23);
-      doc.text('ATTESTATO DI RINGRAZIAMENTO', 148.5, 65, { align: 'center' });
-
-      // Separator line
-      doc.setDrawColor(28, 25, 23);
-      doc.setLineWidth(0.5);
-      doc.line(80, 72, 217, 72);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(18);
-      doc.text('Si ringrazia sentitamente', 148.5, 85, { align: 'center' });
-
-      // Name
-      doc.setFont('helvetica', 'bolditalic');
-      doc.setFontSize(34);
-      doc.setTextColor(28, 25, 23);
-      doc.text(`${donation.firstName} ${donation.lastName}`, 148.5, 105, { align: 'center' });
-
-      // Body
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(16);
-      doc.setTextColor(68, 64, 60); // stone-600
-      const bodyText = "Per il prezioso contributo e il generoso sostegno offerto all'Associazione Pro San Felice 2023. Grazie alla tua donazione possiamo continuare a valorizzare il nostro territorio e le nostre tradizioni.";
-      const splitText = doc.splitTextToSize(bodyText, 200);
-      doc.text(splitText, 148.5, 125, { align: 'center' });
-
-      // Decorative element
-      doc.setDrawColor(231, 229, 228); // stone-200
-      doc.setLineWidth(0.2);
-      doc.line(40, 155, 257, 155);
-
-      // Footer
-      doc.setTextColor(28, 25, 23);
-      doc.setFontSize(12);
-      doc.text(`Data: ${new Date(donation.date).toLocaleDateString('it-IT')}`, 40, 175);
-      
-      doc.setFont('helvetica', 'bold');
-      doc.text('Il Presidente', 220, 175, { align: 'center' });
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text('Associazione Pro San Felice 2023', 220, 182, { align: 'center' });
-
-      const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+      const pdfBuffer = generateDonationCertificateBuffer(donation);
 
       // Send thank you email with PDF
       try {
@@ -629,10 +642,10 @@ async function startServer() {
                   <div style="background-color: #fafaf9; border-radius: 16px; padding: 24px; margin-bottom: 32px; border: 1px solid #f5f5f4;">
                     <p style="color: #1c1917; font-size: 16px; line-height: 1.6; margin: 0;">
                       Gentile <strong>${donation.firstName} ${donation.lastName}</strong>,<br><br>
-                      Ti ringraziamo di cuore per aver scelto di sostenere la <strong>Pro San Felice</strong>. 
+                      Ti ringraziamo di cuore per aver scelto di sostenere la <strong>Pro San Felice</strong>${finalAmount > 0 ? ` con una donazione di <strong>€ ${finalAmount.toFixed(2)}</strong>` : ''}. 
                       Le donazioni come la tua ci permettono di continuare a valorizzare il nostro territorio e le nostre tradizioni.
                       <br><br>
-                      In allegato trovi un attestato di ringraziamento come segno della nostra gratitudine.
+                      In allegato trovi l'attestato di ringraziamento come segno tangibile della nostra gratitudine.
                     </p>
                   </div>
 
@@ -673,6 +686,160 @@ async function startServer() {
       const donations = await db.all('SELECT * FROM donations ORDER BY date DESC');
       res.json(donations);
     } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/admin/donations', async (req, res) => {
+    try {
+      const { firstName, lastName, email, amount, status, date, notes, paymentMethod } = req.body;
+      const donationDate = date || new Date().toISOString();
+      const donationStatus = status || 'confirmed';
+
+      const result = await db.run(
+        'INSERT INTO donations (firstName, lastName, email, amount, date, status, notes, paymentMethod) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [firstName, lastName, email, Number(amount) || 0, donationDate, donationStatus, notes || '', paymentMethod || 'contanti']
+      );
+
+      res.json({ success: true, id: result.lastID });
+    } catch (error) {
+      console.error('Error creating donation:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/admin/donations/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { firstName, lastName, email, amount, status, notes, paymentMethod, date } = req.body;
+
+      const existing = await db.get('SELECT * FROM donations WHERE id = ?', [id]);
+      if (!existing) return res.status(404).json({ error: 'Donazione non trovata' });
+
+      await db.run(
+        `UPDATE donations SET 
+          firstName = COALESCE(?, firstName),
+          lastName = COALESCE(?, lastName),
+          email = COALESCE(?, email),
+          amount = COALESCE(?, amount),
+          status = COALESCE(?, status),
+          notes = COALESCE(?, notes),
+          paymentMethod = COALESCE(?, paymentMethod),
+          date = COALESCE(?, date)
+        WHERE id = ?`,
+        [
+          firstName !== undefined ? firstName : existing.firstName,
+          lastName !== undefined ? lastName : existing.lastName,
+          email !== undefined ? email : existing.email,
+          amount !== undefined ? Number(amount) : existing.amount,
+          status !== undefined ? status : existing.status,
+          notes !== undefined ? notes : existing.notes,
+          paymentMethod !== undefined ? paymentMethod : existing.paymentMethod,
+          date !== undefined ? date : existing.date,
+          id
+        ]
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error updating donation:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/admin/donations/:id/send-email', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { subject, message, attachCertificate, updateStatusToConfirmed } = req.body;
+
+      const donation = await db.get('SELECT * FROM donations WHERE id = ?', [id]);
+      if (!donation) return res.status(404).json({ error: 'Donazione non trovata' });
+
+      if (!donation.email) {
+        return res.status(400).json({ error: 'Nessun indirizzo email registrato per questo donatore.' });
+      }
+
+      const emailSettingsRow = await db.get('SELECT value FROM settings WHERE key = ?', ['email_settings']);
+      if (!emailSettingsRow) {
+        return res.status(400).json({ error: 'Configurazione SMTP non trovata nelle impostazioni.' });
+      }
+
+      const settings = JSON.parse(emailSettingsRow.value);
+      if (!settings.smtp_host || !settings.smtp_user || !settings.smtp_pass) {
+        return res.status(400).json({ error: 'Credenziali SMTP incomplete nelle impostazioni di sistema.' });
+      }
+
+      const transporter = nodemailer.createTransport({
+        host: settings.smtp_host,
+        port: parseInt(settings.smtp_port) || 465,
+        secure: parseInt(settings.smtp_port) === 465,
+        auth: {
+          user: settings.smtp_user,
+          pass: settings.smtp_pass
+        }
+      });
+
+      const attachments: any[] = [];
+      if (attachCertificate) {
+        const pdfBuffer = generateDonationCertificateBuffer(donation);
+        attachments.push({
+          filename: `Attestato_Donazione_${donation.firstName}_${donation.lastName}.pdf`,
+          content: pdfBuffer
+        });
+      }
+
+      const formattedHtml = `
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 24px;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <h1 style="color: #1c1917; font-size: 22px; margin: 0; font-weight: 700;">Associazione Pro San Felice 2023</h1>
+            <p style="color: #78716c; font-size: 14px; margin-top: 6px;">Comunicazione relativa alla tua donazione</p>
+          </div>
+
+          <div style="background-color: #fafaf9; border-radius: 16px; padding: 24px; margin-bottom: 28px; border: 1px solid #f5f5f4;">
+            <div style="color: #1c1917; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">${message || ''}</div>
+          </div>
+
+          <div style="text-align: center; color: #78716c; font-size: 12px; line-height: 1.6; margin-top: 32px;">
+            <p style="margin-top: 24px; border-top: 1px solid #e5e5e5; padding-top: 24px;">
+              <strong>Associazione Pro San Felice 2023</strong><br />
+              Via Salita la chiesa, 19 - Colle d'Anchise (CB)<br />
+              sanfeliceassociazione@gmail.com
+            </p>
+          </div>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: `"${settings.from_name || 'Pro San Felice'}" <${settings.from_email || settings.smtp_user}>`,
+        to: donation.email,
+        subject: subject || 'Comunicazione Donazione - Pro San Felice',
+        html: formattedHtml,
+        attachments
+      });
+
+      if (updateStatusToConfirmed && donation.status !== 'confirmed') {
+        await db.run('UPDATE donations SET status = "confirmed" WHERE id = ?', [id]);
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error sending donation email:', error);
+      res.status(500).json({ error: error.message || 'Errore durante l\'invio dell\'email' });
+    }
+  });
+
+  app.get('/api/admin/donations/:id/certificate', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const donation = await db.get('SELECT * FROM donations WHERE id = ?', [id]);
+      if (!donation) return res.status(404).json({ error: 'Donazione non trovata' });
+
+      const pdfBuffer = generateDonationCertificateBuffer(donation);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="Attestato_Donazione_${donation.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Certificate generation error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -1421,6 +1588,15 @@ async function startServer() {
     res.json({ id: result.lastID });
   });
 
+  app.put('/api/finances/:id', async (req, res) => {
+    const { event_name, type, amount, date, company_details, receipt_number, social_year, receipt_path } = req.body;
+    await db.run(
+      'UPDATE finances SET event_name = ?, type = ?, amount = ?, date = ?, company_details = ?, receipt_number = ?, social_year = ?, receipt_path = ? WHERE id = ?',
+      [event_name, type, amount, date, company_details || null, receipt_number || null, social_year || null, receipt_path || null, req.params.id]
+    );
+    res.json({ success: true });
+  });
+
   const receiptsStorage = multer.diskStorage({
     destination: (req, file, cb) => {
       const dir = path.join(process.cwd(), 'public', 'receipts');
@@ -1475,6 +1651,97 @@ async function startServer() {
       console.error('Error deleting finance record:', error);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Stream Proxy & VLC Network Stream API
+  app.get('/api/stream/proxy', (req, res) => {
+    const targetUrl = (req.query.url as string) || 'http://fls-jkd328ed3.dns-cloud.net/live/PippoBaudo1/PippoBaudo123/374660.ts';
+    if (!targetUrl) {
+      return res.status(400).json({ error: 'URL del flusso non fornito' });
+    }
+
+    try {
+      const parsedUrl = new URL(targetUrl);
+      const client = parsedUrl.protocol === 'https:' ? https : http;
+      const customUserAgent = (req.query.ua as string) || 'VLC/3.0.18 LibVLC/3.0.18';
+
+      const forwardHeaders: Record<string, string> = {
+        'User-Agent': customUserAgent,
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+      };
+      if (req.headers.range) {
+        forwardHeaders['Range'] = req.headers.range;
+      }
+
+      const upstreamReq = client.request(
+        parsedUrl,
+        {
+          method: 'GET',
+          headers: forwardHeaders,
+          timeout: 15000,
+        },
+        (upstreamRes) => {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', '*');
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+          const contentType = upstreamRes.headers['content-type'] || 'video/mp2t';
+          res.setHeader('Content-Type', contentType);
+
+          if (upstreamRes.headers['content-length']) {
+            res.setHeader('Content-Length', upstreamRes.headers['content-length']);
+          }
+          if (upstreamRes.headers['content-range']) {
+            res.setHeader('Content-Range', upstreamRes.headers['content-range']);
+          }
+
+          res.status(upstreamRes.statusCode || 200);
+          upstreamRes.pipe(res);
+
+          upstreamRes.on('error', (err) => {
+            console.error('Errore durante la lettura dello stream remoto:', err);
+            if (!res.headersSent) {
+              res.status(502).end();
+            }
+          });
+        }
+      );
+
+      upstreamReq.on('timeout', () => {
+        upstreamReq.destroy();
+        if (!res.headersSent) {
+          res.status(504).json({ error: 'Timeout connessione al server stream' });
+        }
+      });
+
+      upstreamReq.on('error', (err) => {
+        console.error('Errore richiesta upstream stream:', err);
+        if (!res.headersSent) {
+          res.status(502).json({ error: 'Impossibile connettersi al flusso remoto', details: err.message });
+        }
+      });
+
+      req.on('close', () => {
+        upstreamReq.destroy();
+      });
+
+      upstreamReq.end();
+    } catch (err: any) {
+      res.status(400).json({ error: 'Formato URL non valido', details: err.message });
+    }
+  });
+
+  app.get('/api/stream/m3u', (req, res) => {
+    const targetUrl = (req.query.url as string) || 'http://fls-jkd328ed3.dns-cloud.net/live/PippoBaudo1/PippoBaudo123/374660.ts';
+    const name = (req.query.name as string) || 'Flusso Rete Live TS';
+    const m3uContent = `#EXTM3U\n#EXTINF:-1 tvg-name="${name}" group-title="Live",${name}\n${targetUrl}\n`;
+    
+    res.setHeader('Content-Type', 'audio/x-mpegurl; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="flusso_live.m3u"');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(m3uContent);
   });
 
   // Contests API
