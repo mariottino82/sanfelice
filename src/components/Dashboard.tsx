@@ -338,6 +338,8 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
   const [editingMember, setEditingMember] = React.useState<any>(null);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
+  const [editingReceiptItem, setEditingReceiptItem] = React.useState<any>(null);
+  const [isSavingSponsorship, setIsSavingSponsorship] = React.useState(false);
   const [showSponsorshipModal, setShowSponsorshipModal] = React.useState(false);
 
   const [isSendingContestComm, setIsSendingContestComm] = React.useState(false);
@@ -412,6 +414,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     amount: '',
     date: new Date().toISOString().split('T')[0],
     paymentMethod: 'BONIFICO',
+    city: "86020 Colle d'Anchise (CB)",
     description: "Erogazione liberale festività San Felice 2026 - Colle d'Anchise (CB)"
   });
   const [editingMinute, setEditingMinute] = React.useState<any>(null);
@@ -1555,15 +1558,193 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     setMemberToDelete(member);
   };
 
+  const formatDateForReceipt = (dateInput: string | Date | undefined) => {
+    if (!dateInput) return new Date().toLocaleDateString('it-IT');
+    if (typeof dateInput === 'string') {
+      const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        return `${match[3]}/${match[2]}/${match[1]}`;
+      }
+    }
+    const d = new Date(dateInput);
+    return isNaN(d.getTime()) ? String(dateInput) : d.toLocaleDateString('it-IT');
+  };
+
+  const generateReceiptPDF = async (financeData: any) => {
+    console.log('[PDF] Starting generation with data:', financeData);
+    try {
+      const doc = new jsPDF();
+      const company = typeof financeData.company_details === 'string' ? JSON.parse(financeData.company_details) : (financeData.company_details || {});
+      
+      console.log('[PDF] Company details parsed:', company);
+
+      // Header
+      try {
+        console.log('[PDF] Attempting to add logo from /logo.png');
+        const logoImg = await loadImage('/logo.png');
+        doc.addImage(logoImg, 'PNG', 15, 10, 30, 30);
+        console.log('[PDF] Logo added successfully');
+      } catch (e) {
+        console.warn('[PDF] Logo not found or failed to load:', e);
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(15);
+      doc.setTextColor(40, 40, 40);
+      doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text('Via Salita la Chiesa, 19 - 86020 - Colle d\'Anchise (CB)', 200, 26, { align: 'right' });
+      doc.text('Codice Fiscale: 92083740701', 200, 31, { align: 'right' });
+      doc.text('Email: sanfeliceassociazione@gmail.com', 200, 36, { align: 'right' });
+      
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.line(15, 50, 200, 50);
+      
+      // Titolo Ricevuta
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text(`RICEVUTA EROGAZIONE LIBERALE nr. ${financeData.receipt_number}/${financeData.social_year}`, 15, 65);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Data emissione: ${formatDateForReceipt(financeData.date)}`, 15, 72);
+      
+      // Destinatario Box
+      doc.setDrawColor(240, 240, 240);
+      doc.setFillColor(250, 250, 250);
+      doc.roundedRect(120, 60, 80, 45, 3, 3, 'FD');
+      
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('SPETT.LE / DESTINATARIO', 125, 68);
+      
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+      doc.setFont('helvetica', 'bold');
+      doc.text((company.companyName || '').toUpperCase(), 125, 75, { maxWidth: 70 });
+      doc.setFont('helvetica', 'normal');
+      doc.text((company.address || '').toUpperCase(), 125, 85, { maxWidth: 70 });
+      if (company.city) doc.text(company.city.toUpperCase(), 125, 90);
+      doc.text(`P.IVA / C.F. ${company.vatNumber || ''}`, 125, 95);
+      
+      // Corpo
+      doc.setFontSize(11);
+      doc.setTextColor(60, 60, 60);
+      const bodyText = `L'Associazione Pro San Felice dichiara di aver ricevuto in data ${formatDateForReceipt(financeData.date)} la somma di € ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })} a titolo di erogazione liberale per il sostegno delle attività istituzionali dell'associazione.`;
+      const splitBody = doc.splitTextToSize(bodyText, 170);
+      doc.text(splitBody, 15, 120);
+      
+      // Table
+      console.log('[PDF] Generating table with autoTable');
+      autoTable(doc, {
+        startY: 140,
+        head: [['DESCRIZIONE', 'IMPORTO']],
+        body: [[`EROGAZIONE LIBERALE - ${financeData.event_name}`, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [40, 40, 40], 
+          textColor: [255, 255, 255], 
+          fontSize: 9, 
+          fontStyle: 'bold',
+          cellPadding: 5
+        },
+        bodyStyles: { 
+          textColor: [40, 40, 40], 
+          fontSize: 11,
+          cellPadding: 8
+        },
+        columnStyles: {
+          1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }
+        },
+        margin: { left: 15, right: 15 }
+      });
+      
+      const finalY = (doc as any).lastAutoTable?.finalY || 200;
+      console.log('[PDF] Table generated, finalY:', finalY);
+      
+      // Payment Info
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DETTAGLI PAGAMENTO', 15, finalY + 20);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Metodo: ${company.paymentMethod || 'BONIFICO'}`, 15, finalY + 27);
+      doc.text('IBAN: IT36L0760103800001067338085', 15, finalY + 33);
+      doc.text('Banca: Poste Italiane', 15, finalY + 39);
+      
+      // Signature
+      doc.setFontSize(10);
+      doc.text('Il Presidente', 150, finalY + 30);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Associazione Pro San Felice', 150, finalY + 45);
+      
+      // Legal Note
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      const legalNote = "Il presente contributo, ai sensi dell'art. 83 del D.Lgs. 117/2017 (Codice del Terzo Settore), è deducibile o detraibile nei limiti previsti dalla normativa vigente, a condizione che il versamento sia eseguito tramite sistemi di pagamento tracciabili.";
+      const splitNote = doc.splitTextToSize(legalNote, 170);
+      doc.text(splitNote, 15, 280);
+
+      console.log('[PDF] Generation complete');
+      return doc;
+    } catch (err) {
+      console.error('[PDF] Fatal error during PDF generation:', err);
+      throw err;
+    }
+  };
+
   const addCollection = async (newCollection: any) => {
     try {
       const amount = parseFloat(newCollection.amount);
-      const payload = { 
+      const chosenDate = newCollection.date || (editingCollection?.date ? (editingCollection.date.includes('T') ? editingCollection.date.split('T')[0] : editingCollection.date) : new Date().toISOString().split('T')[0]);
+      let payload: any = { 
         ...newCollection, 
+        date: chosenDate,
         amount: newCollection.type === 'uscita' ? -Math.abs(amount) : Math.abs(amount)
       };
       
       if (editingCollection && editingCollection.id) {
+        // If it has a receipt, regenerate the PDF receipt with the updated emission date!
+        if (editingCollection.receipt_number || editingCollection.type === 'sponsorizzazione') {
+          try {
+            let compDetails = editingCollection.company_details;
+            if (compDetails) {
+              try {
+                const parsed = typeof compDetails === 'string' ? JSON.parse(compDetails) : compDetails;
+                parsed.date = chosenDate;
+                if (newCollection.event_name) parsed.description = newCollection.event_name;
+                parsed.amount = Math.abs(amount).toString();
+                compDetails = JSON.stringify(parsed);
+              } catch (e) {}
+            }
+            const updatedFinanceData = {
+              ...editingCollection,
+              ...payload,
+              company_details: compDetails,
+              date: chosenDate
+            };
+            const doc = await generateReceiptPDF(updatedFinanceData);
+            const pdfBlob = doc.output('blob');
+            const formData = new FormData();
+            formData.append('file', pdfBlob, `ricevuta_${editingCollection.receipt_number}_${editingCollection.social_year || new Date(chosenDate).getFullYear()}.pdf`);
+            const uploadRes = await fetch('/api/finances/upload-receipt', {
+              method: 'POST',
+              body: formData
+            });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              payload.receipt_path = uploadData.path;
+            }
+            if (compDetails) {
+              payload.company_details = compDetails;
+            }
+          } catch (pdfErr) {
+            console.error('Error updating receipt PDF on inline edit:', pdfErr);
+          }
+        }
+
         const response = await fetch(`/api/finances/${editingCollection.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1572,7 +1753,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         if (response.ok) {
           setCollections(collections.map((c: any) => c.id === editingCollection.id ? { ...c, ...payload } : c));
           setEditingCollection(null);
-          setNotification({ message: 'Transazione modificata con successo!', type: 'success' });
+          setNotification({ 
+            message: `Transazione modificata con successo! Data emissione: ${formatDateForReceipt(chosenDate)}`, 
+            type: 'success' 
+          });
         }
       } else {
         const response = await fetch('/api/finances', {
@@ -1921,134 +2105,10 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
     return null;
   };
 
-  const generateReceiptPDF = async (financeData: any) => {
-    console.log('[PDF] Starting generation with data:', financeData);
-    try {
-      const doc = new jsPDF();
-      const company = typeof financeData.company_details === 'string' ? JSON.parse(financeData.company_details) : financeData.company_details;
-      
-      console.log('[PDF] Company details parsed:', company);
-
-      // Header
-      try {
-        console.log('[PDF] Attempting to add logo from /logo.png');
-        const logoImg = await loadImage('/logo.png');
-        doc.addImage(logoImg, 'PNG', 15, 10, 30, 30);
-        console.log('[PDF] Logo added successfully');
-      } catch (e) {
-        console.warn('[PDF] Logo not found or failed to load:', e);
-      }
-      
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(15);
-      doc.setTextColor(40, 40, 40);
-      doc.text('ASSOCIAZIONE PRO SAN FELICE', 200, 20, { align: 'right' });
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text('Via Salita la Chiesa, 19 - 86020 - Colle d\'Anchise (CB)', 200, 26, { align: 'right' });
-      doc.text('Codice Fiscale: 92083740701', 200, 31, { align: 'right' });
-      doc.text('Email: sanfeliceassociazione@gmail.com', 200, 36, { align: 'right' });
-      
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      doc.line(15, 50, 200, 50);
-      
-      // Titolo Ricevuta
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text(`RICEVUTA EROGAZIONE LIBERALE nr. ${financeData.receipt_number}/${financeData.social_year}`, 15, 65);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Data emissione: ${new Date(financeData.date).toLocaleDateString('it-IT')}`, 15, 72);
-      
-      // Destinatario Box
-      doc.setDrawColor(240, 240, 240);
-      doc.setFillColor(250, 250, 250);
-      doc.roundedRect(120, 60, 80, 45, 3, 3, 'FD');
-      
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text('SPETT.LE / DESTINATARIO', 125, 68);
-      
-      doc.setFontSize(9);
-      doc.setTextColor(40, 40, 40);
-      doc.setFont('helvetica', 'bold');
-      doc.text((company.companyName || '').toUpperCase(), 125, 75, { maxWidth: 70 });
-      doc.setFont('helvetica', 'normal');
-      doc.text((company.address || '').toUpperCase(), 125, 85, { maxWidth: 70 });
-      if (company.city) doc.text(company.city.toUpperCase(), 125, 90);
-      doc.text(`P.IVA / C.F. ${company.vatNumber || ''}`, 125, 95);
-      
-      // Corpo
-      doc.setFontSize(11);
-      doc.setTextColor(60, 60, 60);
-      const bodyText = `L'Associazione Pro San Felice dichiara di aver ricevuto in data ${new Date(financeData.date).toLocaleDateString('it-IT')} la somma di € ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })} a titolo di erogazione liberale per il sostegno delle attività istituzionali dell'associazione.`;
-      const splitBody = doc.splitTextToSize(bodyText, 170);
-      doc.text(splitBody, 15, 120);
-      
-      // Table
-      console.log('[PDF] Generating table with autoTable');
-      autoTable(doc, {
-        startY: 140,
-        head: [['DESCRIZIONE', 'IMPORTO']],
-        body: [[`EROGAZIONE LIBERALE - ${financeData.event_name}`, `€ ${Math.abs(financeData.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` ]],
-        theme: 'grid',
-        headStyles: { 
-          fillColor: [40, 40, 40], 
-          textColor: [255, 255, 255], 
-          fontSize: 9, 
-          fontStyle: 'bold',
-          cellPadding: 5
-        },
-        bodyStyles: { 
-          textColor: [40, 40, 40], 
-          fontSize: 11,
-          cellPadding: 8
-        },
-        columnStyles: {
-          1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }
-        },
-        margin: { left: 15, right: 15 }
-      });
-      
-      const finalY = (doc as any).lastAutoTable?.finalY || 200;
-      console.log('[PDF] Table generated, finalY:', finalY);
-      
-      // Payment Info
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DETTAGLI PAGAMENTO', 15, finalY + 20);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Metodo: ${company.paymentMethod || 'BONIFICO'}`, 15, finalY + 27);
-      doc.text('IBAN: IT36L0760103800001067338085', 15, finalY + 33);
-      doc.text('Banca: Poste Italiane', 15, finalY + 39);
-      
-      // Signature
-      doc.setFontSize(10);
-      doc.text('Il Presidente', 150, finalY + 30);
-      doc.setFont('helvetica', 'italic');
-      doc.text('Associazione Pro San Felice', 150, finalY + 45);
-      
-      // Legal Note
-      doc.setFontSize(7);
-      doc.setTextColor(150, 150, 150);
-      const legalNote = "Il presente contributo, ai sensi dell'art. 83 del D.Lgs. 117/2017 (Codice del Terzo Settore), è deducibile o detraibile nei limiti previsti dalla normativa vigente, a condizione che il versamento sia eseguito tramite sistemi di pagamento tracciabili.";
-      const splitNote = doc.splitTextToSize(legalNote, 170);
-      doc.text(splitNote, 15, 280);
-
-      console.log('[PDF] Generation complete');
-      return doc;
-    } catch (err) {
-      console.error('[PDF] Fatal error during PDF generation:', err);
-      throw err;
-    }
-  };
-
   const handleSponsorshipSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('--- Sponsorship Submission Started ---');
+    setIsSavingSponsorship(true);
     
     try {
       if (!sponsorshipData.date) {
@@ -2067,10 +2127,17 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
         throw new Error('Errore interno: dati finanziari non caricati correttamente');
       }
 
-      const yearReceipts = collections.filter((c: any) => c.social_year === year && c.receipt_number);
-      const nextNumber = yearReceipts.length + 1;
+      const isEditing = Boolean(editingReceiptItem && editingReceiptItem.id);
+      let receiptNumber = editingReceiptItem?.receipt_number;
+      let socialYear = editingReceiptItem?.social_year || year;
+
+      if (!isEditing || !receiptNumber) {
+        const yearReceipts = collections.filter((c: any) => c.social_year === year && c.receipt_number);
+        receiptNumber = (yearReceipts.length + 1).toString();
+        socialYear = year;
+      }
       
-      console.log('Next receipt number:', nextNumber);
+      console.log('Receipt number:', receiptNumber, 'Social year:', socialYear, 'isEditing:', isEditing);
 
       const amount = parseFloat(sponsorshipData.amount);
       if (isNaN(amount)) {
@@ -2078,13 +2145,14 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       }
       
       const financeData = {
+        ...(editingReceiptItem || {}),
         event_name: sponsorshipData.description,
         type: 'sponsorizzazione',
         amount: amount,
         date: sponsorshipData.date,
         company_details: JSON.stringify(sponsorshipData),
-        receipt_number: nextNumber.toString(),
-        social_year: year
+        receipt_number: receiptNumber.toString(),
+        social_year: socialYear
       };
 
       console.log('Finance data prepared:', financeData);
@@ -2103,7 +2171,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
 
       // Upload PDF
       const formData = new FormData();
-      formData.append('file', pdfBlob, `ricevuta_${nextNumber}_${year}.pdf`);
+      formData.append('file', pdfBlob, `ricevuta_${receiptNumber}_${socialYear}.pdf`);
       
       console.log('Uploading PDF to server...');
       const uploadRes = await fetch('/api/finances/upload-receipt', {
@@ -2123,43 +2191,76 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
       const uploadData = await uploadRes.json();
       console.log('PDF uploaded successfully, path:', uploadData.path);
       
-      // Save to DB
-      console.log('Saving record to database...');
-      const response = await fetch('/api/finances', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...financeData, receipt_path: uploadData.path })
-      });
-      
-      console.log('DB save response status:', response.status);
-      if (response.ok) {
-        const dbData = await response.json();
-        console.log('Record saved to DB, ID:', dbData.id);
-        
-        setCollections([{ ...financeData, id: dbData.id, receipt_path: uploadData.path }, ...collections]);
-        setShowSponsorshipModal(false);
-        setNotification({ message: 'Sponsorizzazione e ricevuta create con successo!', type: 'success' });
-        
-        // Download PDF for the user
-        try {
-          console.log('Triggering browser download of PDF...');
-          doc.save(`ricevuta_${nextNumber}_${year}.pdf`);
-          console.log('Download triggered');
-        } catch (downloadErr) {
-          console.error('Error during PDF download trigger:', downloadErr);
-          // Don't throw here, the record is already saved
+      if (isEditing) {
+        console.log('Updating record in database...');
+        const response = await fetch(`/api/finances/${editingReceiptItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...financeData, receipt_path: uploadData.path })
+        });
+
+        if (response.ok) {
+          const updatedItem = { ...financeData, id: editingReceiptItem.id, receipt_path: uploadData.path };
+          setCollections(collections.map((c: any) => c.id === editingReceiptItem.id ? updatedItem : c));
+          setShowSponsorshipModal(false);
+          setEditingReceiptItem(null);
+          setNotification({ 
+            message: `Ricevuta n. ${receiptNumber} aggiornata con successo! Data emissione: ${formatDateForReceipt(sponsorshipData.date)}`, 
+            type: 'success' 
+          });
+
+          try {
+            console.log('Triggering browser download of updated PDF...');
+            doc.save(`ricevuta_${receiptNumber}_${socialYear}.pdf`);
+          } catch (downloadErr) {
+            console.warn('PDF download warning:', downloadErr);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('DB update failed:', errorText);
+          let errorData;
+          try { errorData = JSON.parse(errorText); } catch(e) {}
+          throw new Error(`Errore salvataggio database: ${errorData?.error || response.statusText}`);
         }
       } else {
-        const errorText = await response.text();
-        console.error('DB save failed:', errorText);
-        let errorData;
-        try { errorData = JSON.parse(errorText); } catch(e) {}
-        throw new Error(`Errore salvataggio database: ${errorData?.error || response.statusText}`);
+        // Save to DB
+        console.log('Saving record to database...');
+        const response = await fetch('/api/finances', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...financeData, receipt_path: uploadData.path })
+        });
+        
+        console.log('DB save response status:', response.status);
+        if (response.ok) {
+          const dbData = await response.json();
+          console.log('Record saved to DB, ID:', dbData.id);
+          
+          setCollections([{ ...financeData, id: dbData.id, receipt_path: uploadData.path }, ...collections]);
+          setShowSponsorshipModal(false);
+          setNotification({ message: 'Sponsorizzazione e ricevuta create con successo!', type: 'success' });
+          
+          // Download PDF for the user
+          try {
+            console.log('Triggering browser download of PDF...');
+            doc.save(`ricevuta_${receiptNumber}_${socialYear}.pdf`);
+            console.log('Download triggered');
+          } catch (downloadErr) {
+            console.error('Error during PDF download trigger:', downloadErr);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('DB save failed:', errorText);
+          let errorData;
+          try { errorData = JSON.parse(errorText); } catch(e) {}
+          throw new Error(`Errore salvataggio database: ${errorData?.error || response.statusText}`);
+        }
       }
     } catch (error: any) {
       console.error('CRITICAL ERROR in handleSponsorshipSubmit:', error);
-      setNotification({ message: `Errore: ${error.message || 'Errore durante la creazione della sponsorizzazione.'}`, type: 'error' });
+      setNotification({ message: `Errore: ${error.message || 'Errore durante la creazione/modifica della sponsorizzazione.'}`, type: 'error' });
     } finally {
+      setIsSavingSponsorship(false);
       console.log('--- Sponsorship Submission Finished ---');
     }
   };
@@ -3229,7 +3330,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     )}
                     {isSuperAdmin && (
                       <button 
-                        onClick={() => setShowSponsorshipModal(true)}
+                        onClick={() => {
+                          setEditingReceiptItem(null);
+                          setSponsorshipData({
+                            companyName: '',
+                            address: '',
+                            vatNumber: '',
+                            amount: '',
+                            date: new Date().toISOString().split('T')[0],
+                            paymentMethod: 'BONIFICO',
+                            city: "86020 Colle d'Anchise (CB)",
+                            description: "Erogazione liberale festività San Felice 2026 - Colle d'Anchise (CB)"
+                          });
+                          setShowSponsorshipModal(true);
+                        }}
                         className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-900/10"
                       >
                         <Plus className="w-4 h-4" />
@@ -3285,31 +3399,56 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
                     const data = Object.fromEntries(formData);
-                    addCollection({ 
-                      ...data, 
-                      date: editingCollection?.date || new Date().toISOString() 
-                    });
+                    addCollection(data);
                     e.currentTarget.reset();
                   }}
-                  className="grid grid-cols-1 md:grid-cols-5 gap-4 p-6 bg-stone-50 rounded-2xl border border-stone-200"
+                  className="grid grid-cols-1 md:grid-cols-12 gap-3 p-6 bg-stone-50 rounded-2xl border border-stone-200"
                 >
-                  <input 
-                    name="event_name" 
-                    defaultValue={editingCollection?.event_name} 
-                    placeholder="Soggetto / Ragione Sociale / Fornitore / Causale" 
-                    className="px-4 py-2 rounded-xl border border-stone-200 text-sm md:col-span-2 focus:ring-2 focus:ring-stone-900 outline-none bg-white" 
-                    required 
-                  />
-                  <select name="type" defaultValue={editingCollection?.type || 'entrata'} className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white">
-                    <option value="entrata">Entrata (+)</option>
-                    <option value="uscita">Uscita (-)</option>
-                    <option value="saldo_iniziale">Saldo Iniziale</option>
-                    <option value="questua">Questua</option>
-                    <option value="tesseramento">Tesseramento</option>
-                    <option value="sponsorizzazione">Sponsorizzazione / Offerta</option>
-                  </select>
-                  <input name="amount" defaultValue={editingCollection ? Math.abs(editingCollection.amount) : ''} type="number" step="0.01" placeholder="Importo (€)" className="px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white" required />
-                  <div className="flex gap-2">
+                  <div className="md:col-span-4">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">
+                      Soggetto / Causale
+                    </label>
+                    <input 
+                      name="event_name" 
+                      defaultValue={editingCollection?.event_name} 
+                      placeholder="Soggetto / Ragione Sociale / Fornitore / Causale" 
+                      className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white" 
+                      required 
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">
+                      Tipo
+                    </label>
+                    <select name="type" defaultValue={editingCollection?.type || 'entrata'} className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white">
+                      <option value="entrata">Entrata (+)</option>
+                      <option value="uscita">Uscita (-)</option>
+                      <option value="saldo_iniziale">Saldo Iniziale</option>
+                      <option value="questua">Questua</option>
+                      <option value="tesseramento">Tesseramento</option>
+                      <option value="sponsorizzazione">Sponsorizzazione / Offerta</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">
+                      {editingCollection?.receipt_number ? 'Data Emissione' : 'Data'}
+                    </label>
+                    <input 
+                      name="date" 
+                      type="date"
+                      defaultValue={editingCollection?.date ? (editingCollection.date.includes('T') ? editingCollection.date.split('T')[0] : editingCollection.date) : new Date().toISOString().split('T')[0]} 
+                      className="w-full px-3 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white font-mono" 
+                      required 
+                      title="Data di emissione o registrazione"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">
+                      Importo (€)
+                    </label>
+                    <input name="amount" defaultValue={editingCollection ? Math.abs(editingCollection.amount) : ''} type="number" step="0.01" placeholder="0.00" className="w-full px-4 py-2 rounded-xl border border-stone-200 text-sm focus:ring-2 focus:ring-stone-900 outline-none bg-white font-mono" required />
+                  </div>
+                  <div className="md:col-span-2 flex items-end gap-2">
                     <button type="submit" className="flex-1 bg-stone-900 text-white py-2 rounded-xl text-sm font-bold hover:bg-stone-800 shadow-lg shadow-stone-900/10 transition-colors">
                       {editingCollection ? 'Salva Modifica' : 'Registra'}
                     </button>
@@ -3319,6 +3458,40 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </button>
                     )}
                   </div>
+                  {editingCollection && (editingCollection.receipt_number || editingCollection.type === 'sponsorizzazione') && (
+                    <div className="md:col-span-12 mt-1 flex items-center justify-between bg-emerald-50 text-emerald-800 px-3.5 py-2 rounded-xl text-xs border border-emerald-100">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <span>Stai modificando una ricevuta (Ric. #{editingCollection.receipt_number}/{editingCollection.social_year}). Modificando la data, verrà aggiornata anche la data di emissione della ricevuta PDF.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const item = editingCollection;
+                          setEditingCollection(null);
+                          setEditingReceiptItem(item);
+                          let comp: any = {};
+                          if (item.company_details) {
+                            try { comp = typeof item.company_details === 'string' ? JSON.parse(item.company_details) : item.company_details; } catch (e) {}
+                          }
+                          setSponsorshipData({
+                            companyName: comp.companyName || item.event_name || '',
+                            address: comp.address || '',
+                            vatNumber: comp.vatNumber || '',
+                            amount: Math.abs(item.amount).toString(),
+                            date: item.date ? (item.date.includes('T') ? item.date.split('T')[0] : item.date) : new Date().toISOString().split('T')[0],
+                            paymentMethod: comp.paymentMethod || 'BONIFICO',
+                            city: comp.city || "86020 Colle d'Anchise (CB)",
+                            description: item.event_name || comp.description || "Erogazione liberale festività San Felice 2026 - Colle d'Anchise (CB)"
+                          });
+                          setShowSponsorshipModal(true);
+                        }}
+                        className="text-emerald-700 hover:text-emerald-900 font-bold underline ml-2 whitespace-nowrap"
+                      >
+                        Modifica scheda completa
+                      </button>
+                    </div>
+                  )}
                 </form>
 
                 <div className="overflow-x-auto">
@@ -3327,7 +3500,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       <tr className="text-stone-400 uppercase text-[10px] tracking-widest border-b border-stone-100">
                         <th className="pb-4 font-semibold">Soggetto / Ragione Sociale</th>
                         <th className="pb-4 font-semibold">Tipo</th>
-                        <th className="pb-4 font-semibold">Data</th>
+                        <th className="pb-4 font-semibold">Data Emissione</th>
                         <th className="pb-4 font-semibold text-right">Importo</th>
                         <th className="pb-4 font-semibold text-right">Ricevuta</th>
                         <th className="pb-4 font-semibold text-right">Azioni</th>
@@ -3377,7 +3550,7 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                                 {item.type.replace('_', ' ')}
                               </span>
                             </td>
-                            <td className="py-4 text-stone-500 whitespace-nowrap">{new Date(item.date).toLocaleDateString('it-IT')}</td>
+                            <td className="py-4 text-stone-500 whitespace-nowrap">{formatDateForReceipt(item.date)}</td>
                             <td className={`py-4 text-right font-mono font-bold whitespace-nowrap ${item.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                               € {item.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                             </td>
@@ -3396,7 +3569,32 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                             </td>
                             <td className="py-4 text-right whitespace-nowrap">
                               <div className="flex justify-end gap-2">
-                                <button onClick={() => setEditingCollection(item)} className="text-stone-400 hover:text-stone-900 transition-colors p-1" title="Modifica">
+                                <button 
+                                  onClick={() => {
+                                    if (item.receipt_number || item.type === 'sponsorizzazione' || item.company_details) {
+                                      setEditingReceiptItem(item);
+                                      let comp: any = {};
+                                      if (item.company_details) {
+                                        try { comp = typeof item.company_details === 'string' ? JSON.parse(item.company_details) : item.company_details; } catch (e) {}
+                                      }
+                                      setSponsorshipData({
+                                        companyName: comp.companyName || item.event_name || '',
+                                        address: comp.address || '',
+                                        vatNumber: comp.vatNumber || '',
+                                        amount: Math.abs(item.amount).toString(),
+                                        date: item.date ? (item.date.includes('T') ? item.date.split('T')[0] : item.date) : new Date().toISOString().split('T')[0],
+                                        paymentMethod: comp.paymentMethod || 'BONIFICO',
+                                        city: comp.city || "86020 Colle d'Anchise (CB)",
+                                        description: item.event_name || comp.description || "Erogazione liberale festività San Felice 2026 - Colle d'Anchise (CB)"
+                                      });
+                                      setShowSponsorshipModal(true);
+                                    } else {
+                                      setEditingCollection(item);
+                                    }
+                                  }} 
+                                  className="text-stone-400 hover:text-stone-900 transition-colors p-1" 
+                                  title="Modifica transazione o ricevuta"
+                                >
                                   <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button onClick={() => deleteCollection(item)} className="text-stone-400 hover:text-red-600 transition-colors p-1" title="Elimina">
@@ -3481,10 +3679,20 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                 >
                   <div className="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50">
                     <div>
-                      <h3 className="text-xl font-serif text-stone-900">Nuova Sponsorizzazione</h3>
-                      <p className="text-xs text-stone-500">Generazione automatica ricevuta erogazione liberale</p>
+                      <h3 className="text-xl font-serif text-stone-900">
+                        {editingReceiptItem ? `Modifica Ricevuta N° ${editingReceiptItem.receipt_number || ''}/${editingReceiptItem.social_year || ''}` : 'Nuova Sponsorizzazione'}
+                      </h3>
+                      <p className="text-xs text-stone-500">
+                        {editingReceiptItem ? 'Modifica la data di emissione, i dati dell\'intestatario o l\'importo per rigenerare il PDF' : 'Generazione automatica ricevuta erogazione liberale'}
+                      </p>
                     </div>
-                    <button onClick={() => setShowSponsorshipModal(false)} className="text-stone-400 hover:text-stone-900 transition-colors">
+                    <button 
+                      onClick={() => {
+                        setShowSponsorshipModal(false);
+                        setEditingReceiptItem(null);
+                      }} 
+                      className="text-stone-400 hover:text-stone-900 transition-colors"
+                    >
                       <X className="w-6 h-6" />
                     </button>
                   </div>
@@ -3538,13 +3746,16 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Data Versamento</label>
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Data Emissione Ricevuta</label>
+                          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold">Stampata sul PDF</span>
+                        </div>
                         <input 
                           required
                           type="date"
                           value={sponsorshipData.date}
                           onChange={e => setSponsorshipData({...sponsorshipData, date: e.target.value})}
-                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm"
+                          className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 outline-none text-sm font-mono"
                         />
                       </div>
 
@@ -3587,17 +3798,31 @@ export function Dashboard({ user, onLogout }: { user: any, onLogout: () => void 
                     <div className="flex gap-4 pt-4">
                       <button 
                         type="button"
-                        onClick={() => setShowSponsorshipModal(false)}
-                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-100 text-stone-600 font-bold hover:bg-stone-200 transition-colors"
+                        onClick={() => {
+                          setShowSponsorshipModal(false);
+                          setEditingReceiptItem(null);
+                        }}
+                        disabled={isSavingSponsorship}
+                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-100 text-stone-600 font-bold hover:bg-stone-200 transition-colors disabled:opacity-50"
                       >
                         Annulla
                       </button>
                       <button 
                         type="submit"
-                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2"
+                        disabled={isSavingSponsorship}
+                        className="flex-1 px-6 py-4 rounded-2xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors shadow-xl shadow-stone-900/20 flex items-center justify-center gap-2 disabled:opacity-75"
                       >
-                        <FileText className="w-5 h-5" />
-                        Genera Ricevuta & Salva
+                        {isSavingSponsorship ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Generazione in corso...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-5 h-5" />
+                            <span>{editingReceiptItem ? 'Salva Modifiche & Rigenera Ricevuta' : 'Genera Ricevuta & Salva'}</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </form>
